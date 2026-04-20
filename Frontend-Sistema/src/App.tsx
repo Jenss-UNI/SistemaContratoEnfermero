@@ -1,19 +1,15 @@
-import Navbar from "./components/Navbar";
-import Footer from "./components/Footer";
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import LandingPage from './pages/LandingPage';
 
 function App() {
   return (
-    <>
-      <Navbar />
-
-      <main className="min-h-screen pt-24">
-        <h1 className="text-center text-4xl mt-20">
-          Home Temporal
-        </h1>
-      </main>
-
-      <Footer />
-    </>
+    <Router>
+      <Routes>
+        <Route path="/" element={<LandingPage />} />
+        {/* <Route path="/services" element={<Services />} /> */}
+        {/* <Route path="/contact" element={<Contact />} /> */}
+      </Routes>
+    </Router>
   );
 }
 
