@@ -22,14 +22,14 @@ function Navbar() {
         scroll ? "bg-white shadow-md py-3 text-gray-800" : "bg-transparent py-5 text-white"
       }`}
     >
-      <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
+      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
         {/* Logo */}
         <Link to="/" className="text-2xl font-bold text-teal-500">
           CuidadoSalud
         </Link>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex gap-8 items-center">
+        {/* Centered desktop navigation */}
+        <nav className="hidden md:flex flex-1 justify-center gap-8 items-center">
           <Link to="/" className="hover:text-teal-400 transition">
             Inicio
           </Link>
@@ -39,8 +39,10 @@ function Navbar() {
           <Link to="/planes" className="hover:text-teal-400 transition">
             Planes
           </Link>
+        </nav>
 
-          {/* Dropdown Paneles */}
+        {/* Action buttons and panels */}
+        <div className="hidden md:flex items-center gap-4">
           <div className="relative">
             <button
               onClick={() => setPanelesOpen(!panelesOpen)}
@@ -50,7 +52,7 @@ function Navbar() {
             </button>
 
             {panelesOpen && (
-              <div className="absolute top-full left-0 mt-2 bg-white text-gray-800 rounded-lg shadow-lg py-2 min-w-[200px] z-50">
+              <div className="absolute top-full right-0 mt-2 bg-white text-gray-800 rounded-lg shadow-lg py-2 min-w-[200px] z-50">
                 <Link
                   to="/panel-familiar"
                   className="block px-4 py-2 hover:bg-teal-50 hover:text-teal-600 transition"
@@ -88,7 +90,7 @@ function Navbar() {
           >
             Registrarse
           </Link>
-        </nav>
+        </div>
 
         {/* Mobile Menu Button */}
         <button className="md:hidden" onClick={() => setOpen(!open)}>
