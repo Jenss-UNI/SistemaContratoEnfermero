@@ -1,7 +1,8 @@
 import { Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
+import type { Testimonial } from '../../../core/models';
 
-const testimonials = [
+const testimonials: Testimonial[] = [
   {
     name: 'Carmen Rodríguez',
     location: 'San Isidro, Lima',
@@ -57,7 +58,6 @@ export default function Testimonials() {
           </h2>
         </div>
 
-        {/* Testimonial Card Carousel */}
         <div className="relative">
           <div className="min-h-[480px] flex items-center justify-center">
             <article
@@ -65,20 +65,17 @@ export default function Testimonials() {
               key={currentIndex}
             >
               <div className="space-y-8">
-                {/* Rating */}
                 <div className="inline-flex items-center gap-2 rounded-full bg-slate-900 px-5 py-3 text-white">
                   <Star className="w-5 h-5 text-yellow-400 fill-yellow-400" />
                   <span className="font-bold text-lg">{current.rating}</span>
                 </div>
 
-                {/* Comment */}
                 <div className="space-y-4">
                   <p className="text-lg leading-relaxed text-gray-800 font-normal">
-                    "{current.comment}"
+                    &quot;{current.comment}&quot;
                   </p>
                 </div>
 
-                {/* Author Info */}
                 <div className="border-t border-gray-200 pt-8 flex items-center gap-4">
                   <div className="h-16 w-16 rounded-full bg-gradient-to-br from-teal-500/20 to-slate-200 flex items-center justify-center text-teal-600 text-xl font-bold">
                     {current.name
@@ -98,38 +95,38 @@ export default function Testimonials() {
                   </div>
                 </div>
 
-                {/* Navigation Controls - Inside Card */}
                 <div className="flex items-center justify-between pt-6">
-                  {/* Dots Indicator */}
                   <div className="flex gap-2">
                     {testimonials.map((_, index) => (
                       <button
                         key={index}
+                        type="button"
                         onClick={() => setCurrentIndex(index)}
                         className={`h-2.5 rounded-full transition-all duration-300 ${
                           index === currentIndex
                             ? 'bg-teal-500 w-8'
                             : 'bg-gray-300 w-2.5 hover:bg-gray-400'
                         }`}
-                        aria-label={`Go to testimonial ${index + 1}`}
+                        aria-label={`Ir al testimonio ${index + 1}`}
                       />
                     ))}
                   </div>
 
-                  {/* Arrow Buttons */}
                   <div className="flex gap-3">
                     <button
+                      type="button"
                       onClick={handlePrevious}
                       className="group relative flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-gray-50 transition-all duration-300 hover:border-teal-500 hover:bg-teal-50"
-                      aria-label="Previous testimonial"
+                      aria-label="Testimonio anterior"
                     >
                       <ChevronLeft className="h-5 w-5 text-gray-600 transition-colors group-hover:text-teal-600" />
                     </button>
 
                     <button
+                      type="button"
                       onClick={handleNext}
                       className="group relative flex h-10 w-10 items-center justify-center rounded-full border border-gray-300 bg-gray-50 transition-all duration-300 hover:border-teal-500 hover:bg-teal-50"
-                      aria-label="Next testimonial"
+                      aria-label="Siguiente testimonio"
                     >
                       <ChevronRight className="h-5 w-5 text-gray-600 transition-colors group-hover:text-teal-600" />
                     </button>

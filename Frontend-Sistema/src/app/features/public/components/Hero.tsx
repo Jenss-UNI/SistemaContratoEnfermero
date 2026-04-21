@@ -11,16 +11,12 @@ export default function Hero() {
       bg-[url('https://readdy.ai/api/search-image?query=warm%20and%20caring%20nurse%20helping%20elderly%20patient%20at%20home%20in%20Peru%2C%20cozy%20living%20room%20setting%2C%20soft%20natural%20light%20coming%20through%20window%2C%20professional%20healthcare%20worker%20in%20white%20uniform%2C%20emotional%20and%20trustworthy%20atmosphere%2C%20high%20quality%20photography%2C%20warm%20tones&width=1440&height=900&seq=hero-bg&orientation=landscape')] 
       bg-cover bg-center bg-no-repeat"
     >
-      {/* Overlay oscuro */}
       <div className="absolute inset-0 bg-black/60"></div>
 
-      {/* Contenido */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          
-          {/* LADO IZQUIERDO */}
+
           <div>
-            {/* Avatares + Texto */}
             <div className="flex items-center gap-4 mb-8">
               <div className="flex -space-x-2">
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-pink-400 to-pink-600 border-2 border-white"></div>
@@ -32,27 +28,23 @@ export default function Hero() {
               </span>
             </div>
 
-            {/* Título */}
             <h1 className="text-white text-5xl lg:text-6xl font-bold mb-6 leading-tight">
               Cuidamos a quienes<br />
               <span className="text-teal-400">MÁS AMAS</span>
             </h1>
 
-            {/* Subtítulo */}
             <p className="text-gray-300 text-sm mb-8 leading-relaxed">
               Profesionales verificados por SUNEDU. Contratación segura.<br />
               Pago protegido en custodia.
             </p>
 
-            {/* Buscador */}
             <div className="bg-white/10 border border-white/20 backdrop-blur-xl rounded-3xl p-6 mb-8 max-w-2xl">
               <h3 className="text-white text-xs font-bold mb-4 uppercase tracking-widest">
                 Busca tu enfermero ideal
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                
-                {/* Distrito */}
+
                 <div className="relative">
                   <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-400" />
                   <input
@@ -64,7 +56,6 @@ export default function Hero() {
                   />
                 </div>
 
-                {/* Tipo de cuidado */}
                 <div className="relative">
                   <div className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-teal-400">
                     <svg fill="currentColor" viewBox="0 0 20 20" className="w-4 h-4">
@@ -84,16 +75,14 @@ export default function Hero() {
                 </div>
               </div>
 
-              {/* Botón */}
-              <button className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-colors text-sm">
+              <button type="button" className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 rounded-2xl flex items-center justify-center gap-2 transition-colors text-sm">
                 <Search className="w-4 h-4" />
                 Buscar Enfermero Ahora
               </button>
             </div>
 
-            {/* Métricas */}
             <div className="grid grid-cols-3 gap-4 max-w-sm">
-              
+
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-teal-400" />
                 <div>
@@ -121,7 +110,6 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Decorativos */}
       <div className="absolute top-20 right-0 w-80 h-80 bg-teal-500 opacity-5 rounded-full blur-3xl"></div>
       <div className="absolute bottom-20 -left-40 w-80 h-80 bg-teal-400 opacity-5 rounded-full blur-3xl"></div>
     </div>

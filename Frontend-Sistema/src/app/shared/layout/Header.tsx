@@ -2,10 +2,15 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Menu, X, ChevronDown } from "lucide-react";
 
-function Navbar() {
+type HeaderProps = {
+  transparentOnTop?: boolean;
+};
+
+function Header({ transparentOnTop = false }: HeaderProps) {
   const [open, setOpen] = useState<boolean>(false);
   const [scroll, setScroll] = useState<boolean>(false);
   const [panelesOpen, setPanelesOpen] = useState<boolean>(false);
+  const isSolid = !transparentOnTop || scroll;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -19,16 +24,14 @@ function Navbar() {
   return (
     <header
       className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-        scroll ? "bg-white shadow-md py-3 text-gray-800" : "bg-transparent py-5 text-white"
+        isSolid ? "bg-white shadow-md py-3 text-gray-800" : "bg-transparent py-5 text-white"
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-        {/* Logo */}
         <Link to="/" className="text-2xl font-bold text-teal-500">
           CuidadoSalud
         </Link>
 
-        {/* Centered desktop navigation */}
         <nav className="hidden md:flex flex-1 justify-center gap-8 items-center">
           <Link to="/" className="hover:text-teal-400 transition">
             Inicio
@@ -41,10 +44,10 @@ function Navbar() {
           </Link>
         </nav>
 
-        {/* Action buttons and panels */}
         <div className="hidden md:flex items-center gap-4">
           <div className="relative">
             <button
+              type="button"
               onClick={() => setPanelesOpen(!panelesOpen)}
               className="flex items-center gap-1 hover:text-teal-400 transition"
             >
@@ -92,13 +95,11 @@ function Navbar() {
           </Link>
         </div>
 
-        {/* Mobile Menu Button */}
-        <button className="md:hidden" onClick={() => setOpen(!open)}>
+        <button type="button" className="md:hidden" onClick={() => setOpen(!open)}>
           {open ? <X size={28} /> : <Menu size={28} />}
         </button>
       </div>
 
-      {/* Mobile Navigation */}
       {open && (
         <div className="md:hidden bg-white text-gray-800 px-6 py-5 space-y-4 shadow-lg">
           <Link to="/" className="block hover:text-teal-500" onClick={() => setOpen(false)}>
@@ -111,7 +112,6 @@ function Navbar() {
             Planes
           </Link>
 
-          {/* Mobile Paneles Section */}
           <div>
             <p className="font-semibold text-teal-600 mb-2">Paneles</p>
             <div className="pl-4 space-y-2 border-l-2 border-teal-200">
@@ -146,4 +146,4 @@ function Navbar() {
   );
 }
 
-export default Navbar;
+export default Header;
