@@ -1,4 +1,5 @@
 import { Route, Routes } from "react-router-dom";
+import ForgotPasswordPage from "./features/auth/forgot-password/ForgotPasswordPage";
 import LoginPage from "./features/auth/login/LoginPage";
 import PrivateDashboardPlaceholder from "./features/private/PrivateDashboardPlaceholder";
 import ComingSoonPage from "./features/public/pages/ComingSoonPage";
@@ -9,6 +10,7 @@ export function AppRoutes() {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route
         path="/register"
         element={<ComingSoonPage title="Registro" showFooter={false} />}
