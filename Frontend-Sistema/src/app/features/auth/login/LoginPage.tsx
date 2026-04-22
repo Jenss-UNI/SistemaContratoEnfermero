@@ -1,16 +1,19 @@
-import { Eye, Lock, Mail } from "lucide-react";
+import { useState } from "react";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Header } from "../../../shared/layout";
 import loginImage from "../../../../assets/login/inicarsesion.jpg";
 
 export default function LoginPage() {
+  const [showPassword, setShowPassword] = useState(false);
+
   return (
     <>
       <Header />
       <main className="min-h-screen bg-white pt-[56px]">
         <section className="min-h-[calc(100dvh-56px)] w-full">
           <div className="grid min-h-[calc(100dvh-56px)] w-full overflow-hidden bg-white md:grid-cols-[1.05fr_0.95fr]">
-            <div className="relative h-[40vh] min-h-[300px] md:h-auto md:min-h-full">
+            <div className="relative hidden md:block">
               <img
                 src={loginImage}
                 alt="Enfermera brindando cuidado a un adulto mayor"
@@ -64,12 +67,23 @@ export default function LoginPage() {
                       <Lock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                       <input
                         id="password"
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         autoComplete="current-password"
                         placeholder="••••••••"
                         className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-11 text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                       />
-                      <Eye className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                        aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4" />
+                        ) : (
+                          <Eye className="h-4 w-4" />
+                        )}
+                      </button>
                     </div>
                   </div>
 
@@ -78,9 +92,9 @@ export default function LoginPage() {
                       <input type="checkbox" className="rounded border-slate-300 text-teal-600 focus:ring-teal-500" />
                       Recordarme
                     </label>
-                    <button type="button" className="font-medium text-teal-600 transition hover:text-teal-700">
+                    <Link to="/forgot-password" className="font-medium text-teal-600 transition hover:text-teal-700">
                       ¿Olvidaste tu contraseña?
-                    </button>
+                    </Link>
                   </div>
 
                   <button

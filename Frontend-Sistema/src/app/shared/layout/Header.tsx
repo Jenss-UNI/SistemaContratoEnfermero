@@ -21,6 +21,13 @@ function Header({ transparentOnTop = false }: HeaderProps) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  const scrollToTop = () => {
+  window.scrollTo({
+    top: 0,
+    behavior: 'smooth' 
+  });
+};
+
   return (
     <header
       className={`fixed top-0 w-full z-50 transition-all duration-300 ${
@@ -28,18 +35,18 @@ function Header({ transparentOnTop = false }: HeaderProps) {
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-        <Link to="/" className="text-2xl font-bold text-teal-500">
+        <Link to="/" onClick={scrollToTop} className="text-2xl font-bold text-teal-500">
           CuidadoSalud
         </Link>
 
         <nav className="hidden md:flex flex-1 justify-center gap-8 items-center">
-          <Link to="/" className="hover:text-teal-400 transition">
+          <Link to="/" onClick={scrollToTop} className="hover:text-teal-400 transition">
             Inicio
           </Link>
-          <Link to="/directorio" className="hover:text-teal-400 transition">
+          <Link to="/directorio"  onClick={scrollToTop} className="hover:text-teal-400 transition">
             Directorio
           </Link>
-          <Link to="/planes" className="hover:text-teal-400 transition">
+          <Link to="/planes" onClick={scrollToTop} className="hover:text-teal-400 transition">
             Planes
           </Link>
         </nav>
