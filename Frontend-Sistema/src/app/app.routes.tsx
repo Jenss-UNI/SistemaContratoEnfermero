@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import ForgotPasswordPage from "./features/auth/forgot-password/ForgotPasswordPage";
 import LoginPage from "./features/auth/login/LoginPage";
 import PrivateDashboardPlaceholder from "./features/private/PrivateDashboardPlaceholder";
+import RegisterPage from "./features/auth/register/RegisterPage";
 import ComingSoonPage from "./features/public/pages/ComingSoonPage";
 import LandingPage from "./features/public/pages/LandingPage";
 
@@ -11,10 +12,7 @@ export function AppRoutes() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-      <Route
-        path="/register"
-        element={<ComingSoonPage title="Registro" showFooter={false} />}
-      />
+      <Route path="/register" element={<RegisterPage />} />
       <Route
         path="/directorio"
         element={<ComingSoonPage title="Directorio de profesionales" />}
@@ -36,6 +34,7 @@ export function AppRoutes() {
         path="/admin"
         element={<PrivateDashboardPlaceholder title="Administración" />}
       />
+
     </Routes>
   );
 }
