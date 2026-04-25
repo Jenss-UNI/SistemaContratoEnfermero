@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {  Eye, EyeOff, Mail, User, Smartphone, CreditCard,  ChevronRight, MapPin, Briefcase, Lock,  CheckCircle2, ArrowLeft, ShieldCheck, AlertCircle, Send, Search } from "lucide-react";
 import { Link } from "react-router-dom";
+import ProgressTracker from "./ProgressTracker";
 
 export default function ClienteForm() {
   const [step, setStep] = useState(1);
@@ -48,22 +49,7 @@ export default function ClienteForm() {
   return (
     <div className="animate-in fade-in duration-300">
       
-      {}
-      <div className="flex justify-between items-center px-2 max-w-md mx-auto mb-10">
-        {[
-          { n: 1, label: 'Datos' },
-          { n: 2, label: 'Correo' },
-          { n: 3, label: 'DNI' },
-          { n: 4, label: 'Final' }
-        ].map((s) => (
-          <div key={s.n} className="flex flex-col items-center gap-2">
-            <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${step >= s.n ? 'bg-teal-500 text-white shadow-md shadow-teal-100' : 'bg-slate-100 text-slate-400'}`}>
-              {step > s.n ? <CheckCircle2 size={16} /> : s.n}
-            </div>
-            <span className={`text-[10px] font-bold uppercase tracking-tighter ${step >= s.n ? 'text-teal-600' : 'text-slate-400'}`}>{s.label}</span>
-          </div>
-        ))}
-      </div>
+      <ProgressTracker currentStep={step} />
 
       {}
       {step === 1 && (
