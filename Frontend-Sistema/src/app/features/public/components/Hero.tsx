@@ -81,7 +81,7 @@ export default function Hero() {
               </button>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 max-w-sm">
+            <div className="grid grid-cols-3 gap-4 max-w-sm mb-12 mt-6">
 
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-5 h-5 text-teal-400" />
