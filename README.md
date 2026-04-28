@@ -19,6 +19,12 @@ El sistema busca reducir la informalidad en este tipo de servicios mediante la v
 
 ---
 
+## 🔗 Link de Figma
+
+https://www.figma.com/design/NYJUyPMdMavQJPu1RAyOoM/WmOEObYE7W?node-id=0-1&t=v4ikLZnmzMI7Kc5w-1
+
+---
+
 ## ⚙️ Tecnologías utilizadas
 
 ### Frontend
