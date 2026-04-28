@@ -5,6 +5,7 @@ import type { StepSuccessProps } from "../../../../../core/models/StepSuccessPro
 export default function StepSuccess({ formData }: StepSuccessProps) {
     const primerNombre = formData.nombres.split(" ")[0];
     const primerApellido = formData.apellidos.split(" ")[0];
+    const esProfesional = "tarifa" in formData && formData.tarifa !== "";
 
     return (
         <div className="text-center space-y-8 animate-in fade-in zoom-in duration-500 max-w-sm mx-auto">
@@ -55,10 +56,16 @@ export default function StepSuccess({ formData }: StepSuccessProps) {
             </div>
 
             <div className="pt-4 space-y-3">
-                <button className="w-full bg-teal-500 text-white font-bold py-4 rounded-2xl shadow-xl shadow-teal-100 hover:bg-teal-600 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 group">
-                    <Search size={18} />
-                    Buscar Profesionales
-                </button>
+                {esProfesional ? (
+                    <button className="w-full bg-teal-500 text-white font-bold py-4 rounded-2xl shadow-xl shadow-teal-100 hover:bg-teal-600 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 group">
+                        Ir a mi Perfil
+                    </button>
+                ) : (
+                    <button className="w-full bg-teal-500 text-white font-bold py-4 rounded-2xl shadow-xl shadow-teal-100 hover:bg-teal-600 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 group">
+                        <Search size={18} />
+                        Buscar Profesionales
+                    </button>
+                )}
 
                 <Link
                     to="/"
