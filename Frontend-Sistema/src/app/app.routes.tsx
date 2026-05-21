@@ -5,8 +5,12 @@ import PrivateDashboardPlaceholder from "./features/private/PrivateDashboardPlac
 import RegisterPage from "./features/auth/register/RegisterPage";
 import ComingSoonPage from "./features/public/pages/ComingSoonPage";
 import LandingPage from "./features/public/pages/LandingPage";
+
 import { clientPanelRoutes } from "./features/private/client/client.routes";
 import { CLIENT_PANEL_BASE } from "./features/private/client/clientNav";
+
+import DirectorioPage from "./features/public/pages/DirectorioPage";
+
 
 export function AppRoutes() {
   return (
@@ -15,9 +19,7 @@ export function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route
-        path="/directorio"
-        element={<ComingSoonPage title="Directorio de profesionales" />}
+      <Route path="/directorio" element={<DirectorioPage />}
       />
       <Route path="/planes" element={<ComingSoonPage title="Planes" />} />
 
