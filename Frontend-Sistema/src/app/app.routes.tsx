@@ -1,10 +1,12 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import ForgotPasswordPage from "./features/auth/forgot-password/ForgotPasswordPage";
 import LoginPage from "./features/auth/login/LoginPage";
 import PrivateDashboardPlaceholder from "./features/private/PrivateDashboardPlaceholder";
 import RegisterPage from "./features/auth/register/RegisterPage";
 import ComingSoonPage from "./features/public/pages/ComingSoonPage";
 import LandingPage from "./features/public/pages/LandingPage";
+import { clientPanelRoutes } from "./features/private/client/client.routes";
+import { CLIENT_PANEL_BASE } from "./features/private/client/clientNav";
 
 export function AppRoutes() {
   return (
@@ -18,14 +20,18 @@ export function AppRoutes() {
         element={<ComingSoonPage title="Directorio de profesionales" />}
       />
       <Route path="/planes" element={<ComingSoonPage title="Planes" />} />
+
+      {clientPanelRoutes}
+
       <Route
         path="/panel-familiar"
-        element={<PrivateDashboardPlaceholder title="Panel familiar" />}
+        element={<Navigate to={`${CLIENT_PANEL_BASE}/resumen`} replace />}
       />
       <Route
         path="/mi-perfil-cliente"
-        element={<PrivateDashboardPlaceholder title="Mi perfil cliente" />}
+        element={<Navigate to={`${CLIENT_PANEL_BASE}/mi-perfil`} replace />}
       />
+
       <Route
         path="/panel-enfermero"
         element={<PrivateDashboardPlaceholder title="Panel enfermero" />}
@@ -34,7 +40,6 @@ export function AppRoutes() {
         path="/admin"
         element={<PrivateDashboardPlaceholder title="Administración" />}
       />
-
     </Routes>
   );
 }
