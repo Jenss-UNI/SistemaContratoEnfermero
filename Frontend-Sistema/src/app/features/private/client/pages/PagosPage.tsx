@@ -1,5 +1,5 @@
-import ClientSectionEmpty from "../ClientSectionEmpty";
+import PagosContent from "../components/pagos/PagosContent";
 
 export default function PagosPage() {
-  return <ClientSectionEmpty title="Pagos" />;
+  return <PagosContent />;
 }

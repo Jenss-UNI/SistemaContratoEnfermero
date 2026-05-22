@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 
 type ModalProps = {
   title: string;
@@ -21,23 +22,33 @@ export default function Modal({
       if (e.key === "Escape") onClose();
     };
     document.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
+
+    const blockBackgroundScroll = (e: WheelEvent | TouchEvent) => {
+      const modal = document.getElementById("app-modal-layer");
+      if (modal?.contains(e.target as Node)) return;
+      e.preventDefault();
+    };
+    document.addEventListener("wheel", blockBackgroundScroll, { passive: false });
+    document.addEventListener("touchmove", blockBackgroundScroll, { passive: false });
+
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
+      document.removeEventListener("wheel", blockBackgroundScroll);
+      document.removeEventListener("touchmove", blockBackgroundScroll);
     };
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+      id="app-modal-layer"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
     >
       <button
         type="button"
-        className="absolute inset-0 bg-slate-900/50 backdrop-blur-[2px]"
+        className="absolute inset-0 bg-slate-900/50"
         aria-label="Cerrar"
         onClick={onClose}
       />
@@ -57,11 +68,14 @@ export default function Modal({
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto px-5 py-5 sm:px-6">{children}</div>
+        <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
+          {children}
+        </div>
         {footer && (
           <div className="shrink-0 border-t border-slate-100 px-5 py-4 sm:px-6">{footer}</div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

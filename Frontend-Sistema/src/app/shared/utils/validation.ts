@@ -141,3 +141,50 @@ export function validateTagItem(value: string): string | undefined {
   if (hasDangerousContent(value)) return "Caracteres no permitidos";
   return undefined;
 }
+
+export function validateCardNumber(value: string): string | undefined {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return "Número de tarjeta obligatorio";
+  if (digits.length < 13 || digits.length > 19) return "Número de tarjeta inválido";
+  if (hasDangerousContent(value)) return "Caracteres no permitidos";
+  return undefined;
+}
+
+export function validateCardHolder(value: string): string | undefined {
+  const trimmed = value
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-ZÁÉÍÓÚÑ\s]/g, "")
+    .slice(0, 60);
+  if (!trimmed) return "Nombre en la tarjeta obligatorio";
+  if (trimmed.length < 2) return "Mínimo 2 caracteres";
+  if (!/^[A-ZÁÉÍÓÚÑ\s]{2,60}$/.test(trimmed)) return "Solo letras mayúsculas";
+  if (hasDangerousContent(value)) return "Caracteres no permitidos";
+  return undefined;
+}
+
+export function validateCardExpiry(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return "Vencimiento obligatorio";
+  if (!/^\d{2}\/\d{2}$/.test(trimmed)) return "Formato MM/AA";
+  const [mm, yy] = trimmed.split("/");
+  const month = Number(mm);
+  const year = Number(yy);
+  if (month < 1 || month > 12) return "Mes inválido";
+  if (hasDangerousContent(value)) return "Caracteres no permitidos";
+  const now = new Date();
+  const currentYY = now.getFullYear() % 100;
+  const currentMM = now.getMonth() + 1;
+  if (year < currentYY || (year === currentYY && month < currentMM)) {
+    return "Tarjeta vencida";
+  }
+  return undefined;
+}
+
+export function validateCvv(value: string): string | undefined {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return "CVV obligatorio";
+  if (!/^\d{3,4}$/.test(digits)) return "CVV inválido (3 o 4 dígitos)";
+  if (hasDangerousContent(value)) return "Caracteres no permitidos";
+  return undefined;
+}
