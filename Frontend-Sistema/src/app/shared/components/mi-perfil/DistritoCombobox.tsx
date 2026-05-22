@@ -1,6 +1,6 @@
 import { AlertCircle, ChevronDown } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { sanitizeText } from "../../../../shared/utils/validation";
+import { sanitizeText } from "../../utils/validation";
 
 type DistritoComboboxProps = {
   label: string;

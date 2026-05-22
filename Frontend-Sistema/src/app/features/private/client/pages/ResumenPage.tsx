@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { PinRegeneratedToast } from "../../components/resumen";
+import { PinRegeneratedToast } from "../../../../shared/components/resumen";
 import ResumenContent from "../components/resumen/ResumenContent";
 
 export default function ResumenPage() {

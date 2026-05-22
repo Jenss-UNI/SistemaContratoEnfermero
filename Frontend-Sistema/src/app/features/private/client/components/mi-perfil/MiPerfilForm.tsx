@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { ClientProfileUpdate } from "../../../../../core/models/client-profile.model";
-import { DistritoCombobox, FormField, PlanCard, ProfilePhotoUpload } from "../../../components/mi-perfil";
+import { DistritoCombobox, FormField, PlanCard, ProfilePhotoUpload } from "../../../../../shared/components/mi-perfil";
 import {
   allowDigitsOnly,
   blockNonDigitKey,

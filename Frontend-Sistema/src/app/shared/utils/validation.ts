@@ -77,3 +77,67 @@ export function allowDigitsOnly(value: string, maxLength?: number): string {
 export function blockNonDigitKey(e: React.KeyboardEvent<HTMLInputElement>): void {
   if (["e", "E", "+", "-", "."].includes(e.key)) e.preventDefault();
 }
+
+export function validateAge(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (!trimmed) return "Edad obligatoria";
+  if (!/^\d{1,3}$/.test(trimmed)) return "Edad inválida";
+  const num = Number(trimmed);
+  if (num < 0 || num > 120) return "Edad debe estar entre 0 y 120";
+  return undefined;
+}
+
+export function validateParentesco(value: string): string | undefined {
+  const trimmed = sanitizeText(value, 40);
+  if (!trimmed) return "Parentesco obligatorio";
+  if (hasDangerousContent(value)) return "Caracteres no permitidos";
+  return undefined;
+}
+
+const BLOOD_TYPES = ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"] as const;
+
+export function validateBloodType(value: string): string | undefined {
+  if (!value.trim()) return undefined;
+  if (!BLOOD_TYPES.includes(value as (typeof BLOOD_TYPES)[number])) {
+    return "Tipo de sangre inválido";
+  }
+  return undefined;
+}
+
+export function validateEmergencyContact(value: string): string | undefined {
+  const trimmed = sanitizeText(value, 80);
+  if (!trimmed) return "Contacto de emergencia obligatorio";
+  if (trimmed.length < 2) return "Mínimo 2 caracteres";
+  if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s.,#°'-]+$/.test(trimmed)) {
+    return "Caracteres no permitidos";
+  }
+  if (hasDangerousContent(value)) return "Contenido no permitido";
+  return undefined;
+}
+
+export function validateReference(value: string): string | undefined {
+  if (!value.trim()) return undefined;
+  const cleaned = sanitizeText(value, 200);
+  if (cleaned.length < 3) return "Mínimo 3 caracteres";
+  if (!/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,#°'-]+$/.test(cleaned)) {
+    return "Caracteres no permitidos";
+  }
+  if (hasDangerousContent(value)) return "Contenido no permitido";
+  return undefined;
+}
+
+export function validateNotes(value: string, maxLength = 500): string | undefined {
+  if (!value.trim()) return undefined;
+  const cleaned = sanitizeText(value, maxLength);
+  if (cleaned.length > maxLength) return `Máximo ${maxLength} caracteres`;
+  if (hasDangerousContent(value)) return "Contenido no permitido";
+  return undefined;
+}
+
+export function validateTagItem(value: string): string | undefined {
+  const trimmed = sanitizeText(value, 80);
+  if (!trimmed) return "Ingresa un valor";
+  if (trimmed.length < 2) return "Mínimo 2 caracteres";
+  if (hasDangerousContent(value)) return "Caracteres no permitidos";
+  return undefined;
+}

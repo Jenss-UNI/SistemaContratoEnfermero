@@ -1,5 +1,5 @@
-import ClientSectionEmpty from "../ClientSectionEmpty";
+import MisPacientesContent from "../components/mis-pacientes/MisPacientesContent";
 
 export default function MisPacientesPage() {
-  return <ClientSectionEmpty title="Mis Pacientes" />;
+  return <MisPacientesContent />;
 }
