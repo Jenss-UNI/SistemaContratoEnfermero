@@ -1,5 +1,5 @@
-import ClientSectionEmpty from "../ClientSectionEmpty";
+import MiPerfilForm from "../components/MiPerfilForm";
 
 export default function MiPerfilPage() {
-  return <ClientSectionEmpty title="Mi Perfil" />;
+  return <MiPerfilForm />;
 }
