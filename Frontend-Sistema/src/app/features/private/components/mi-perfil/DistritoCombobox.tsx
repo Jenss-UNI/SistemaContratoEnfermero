@@ -1,6 +1,6 @@
 import { AlertCircle, ChevronDown } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { sanitizeText } from "../../../shared/utils/validation";
+import { sanitizeText } from "../../../../shared/utils/validation";
 
 type DistritoComboboxProps = {
   label: string;
@@ -119,12 +119,12 @@ export default function DistritoCombobox({
         )}
       </div>
 
-      {error ? (
+      {error && (
         <p className="flex items-center gap-1 text-xs font-medium text-red-500">
           <AlertCircle className="h-3 w-3" />
           {error}
         </p>
-      ) : null}
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import MiPerfilForm from "../components/MiPerfilForm";
+import MiPerfilForm from "../components/mi-perfil/MiPerfilForm";
 
 export default function MiPerfilPage() {
   return <MiPerfilForm />;

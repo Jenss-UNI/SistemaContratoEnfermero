@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import type { ClientProfileUpdate } from "../../../../core/models/client-profile.model";
-import { DistritoCombobox, FormField, PlanCard, ProfilePhotoUpload } from "../../components";
+import type { ClientProfileUpdate } from "../../../../../core/models/client-profile.model";
+import { DistritoCombobox, FormField, PlanCard, ProfilePhotoUpload } from "../../../components/mi-perfil";
 import {
   allowDigitsOnly,
   blockNonDigitKey,
@@ -11,7 +11,7 @@ import {
   validateName,
   validatePhone,
   validateProfileImage,
-} from "../../../../shared/utils/validation";
+} from "../../../../../shared/utils/validation";
 
 const DISTRITOS = [
   "Pueblo Libre",

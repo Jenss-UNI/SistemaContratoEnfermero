@@ -61,9 +61,7 @@ export default function FormField({
           {error}
         </p>
       ) : (
-        helperText && (
-          <p className="text-xs text-slate-500">{helperText}</p>
-        )
+        helperText && <p className="text-xs text-slate-500">{helperText}</p>
       )}
     </div>
   );
