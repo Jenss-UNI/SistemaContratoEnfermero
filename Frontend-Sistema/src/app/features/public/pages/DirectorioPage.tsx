@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Header, Footer } from "../../../shared/layout";
+import NurseCard from "../components/NurseCard";
 import type { Nurse } from "../../../core/models/nurse.model";
-import { Search, Star, Award, X, MapPin, ShieldCheck, Users, Trophy } from "lucide-react";
+import { Search, Star, X, MapPin, ShieldCheck, Users, Trophy } from "lucide-react";
+
 
 export const nurses: Nurse[] = [
   {
@@ -131,7 +133,247 @@ export const nurses: Nurse[] = [
     experience: 3,
     completedServices: 41,
     pricePerHour: 35
-  }
+  },
+  {
+    id: "9",
+    name: "Lic. Andrea Salazar",
+    title: "Cuidados Cardiológicos",
+    isTopRated: true,
+    serviceType: "Especializado",
+    rating: 4.8,
+    reviews: 76,
+    punctuality: 4.9,
+    treatment: 4.8,
+    technical: 4.9,
+    district: "Lince",
+    experience: 9,
+    completedServices: 76,
+    pricePerHour: 78
+},
+{
+    id: "10",
+    name: "Tec. Javier Ramos",
+    title: "Aplicación de Medicamentos",
+    isTopRated: false,
+    serviceType: "Técnico",
+    rating: 4.5,
+    reviews: 43,
+    punctuality: 4.6,
+    treatment: 4.7,
+    technical: 4.5,
+    district: "Callao",
+    experience: 3,
+    completedServices: 43,
+    pricePerHour: 30
+},
+{
+    id: "11",
+    name: "Lic. Sofía Navarro",
+    title: "Enfermería Neonatal",
+    isTopRated: true,
+    serviceType: "Especializado",
+    rating: 5.0,
+    reviews: 102,
+    punctuality: 5,
+    treatment: 5,
+    technical: 4.9,
+    district: "Los Olivos",
+    experience: 11,
+    completedServices: 102,
+    pricePerHour: 85
+},
+{
+    id: "12",
+    name: "Tec. Ricardo Flores",
+    title: "Control de Signos Vitales",
+    isTopRated: false,
+    serviceType: "Técnico",
+    rating: 4.4,
+    reviews: 29,
+    punctuality: 4.5,
+    treatment: 4.6,
+    technical: 4.3,
+    district: "Ate",
+    experience: 2,
+    completedServices: 29,
+    pricePerHour: 35
+},
+{
+    id: "13",
+    name: "Lic. Diana Herrera",
+    title: "Cuidados Paliativos",
+    isTopRated: true,
+    serviceType: "Especializado",
+    rating: 4.9,
+    reviews: 96,
+    punctuality: 4.8,
+    treatment: 5,
+    technical: 4.8,
+    district: "San Martín de Porres",
+    experience: 10,
+    completedServices: 96,
+    pricePerHour: 82
+},
+{
+    id: "14",
+    name: "Tec. Luis Gutiérrez",
+    title: "Asistencia Domiciliaria",
+    isTopRated: false,
+    serviceType: "Asistencial",
+    rating: 4.3,
+    reviews: 31,
+    punctuality: 4.4,
+    treatment: 4.6,
+    technical: 4.2,
+    district: "Miraflores",
+    experience: 3,
+    completedServices: 31,
+    pricePerHour: 40
+},
+{
+    id: "15",
+    name: "Lic. Valeria Campos",
+    title: "Pediatría Especializada",
+    isTopRated: true,
+    serviceType: "Especializado",
+    rating: 4.9,
+    reviews: 121,
+    punctuality: 5,
+    treatment: 5,
+    technical: 4.9,
+    district: "La Victoria",
+    experience: 8,
+    completedServices: 121,
+    pricePerHour: 90
+},
+{
+    id: "16",
+    name: "Tec. Miguel Torres",
+    title: "Inyecciones y Curaciones",
+    isTopRated: false,
+    serviceType: "Técnico",
+    rating: 4.6,
+    reviews: 58,
+    punctuality: 4.7,
+    treatment: 4.8,
+    technical: 4.6,
+    district: "Barranco",
+    experience: 4,
+    completedServices: 58,
+    pricePerHour: 42
+},
+{
+    id: "17",
+    name: "Lic. Karen Vega",
+    title: "Cuidados Intensivos",
+    isTopRated: true,
+    serviceType: "Especializado",
+    rating: 4.9,
+    reviews: 137,
+    punctuality: 5,
+    treatment: 4.9,
+    technical: 5,
+    district: "San Borja",
+    experience: 12,
+    completedServices: 137,
+    pricePerHour: 95
+},
+{
+    id: "18",
+    name: "Tec. Diego Paredes",
+    title: "Atención Básica",
+    isTopRated: false,
+    serviceType: "Acompañamiento",
+    rating: 4.4,
+    reviews: 37,
+    punctuality: 4.5,
+    treatment: 4.5,
+    technical: 4.3,
+    district: "Jesús María",
+    experience: 3,
+    completedServices: 37,
+    pricePerHour: 32
+},
+{
+    id: "19",
+    name: "Lic. Patricia León",
+    title: "Geriatría Avanzada",
+    isTopRated: true,
+    serviceType: "Especializado",
+    rating: 4.8,
+    reviews: 110,
+    punctuality: 4.8,
+    treatment: 5,
+    technical: 4.8,
+    district: "Pueblo Libre",
+    experience: 9,
+    completedServices: 110,
+    pricePerHour: 79
+},
+{
+    id: "20",
+    name: "Tec. Kevin Díaz",
+    title: "Monitoreo de Pacientes",
+    isTopRated: false,
+    serviceType: "Técnico",
+    rating: 4.5,
+    reviews: 44,
+    punctuality: 4.6,
+    treatment: 4.7,
+    technical: 4.4,
+    district: "Surco",
+    experience: 4,
+    completedServices: 44,
+    pricePerHour: 36
+},
+{
+    id: "21",
+    name: "Lic. Brenda Soto",
+    title: "Oncología",
+    isTopRated: true,
+    serviceType: "Especializado",
+    rating: 5,
+    reviews: 148,
+    punctuality: 5,
+    treatment: 5,
+    technical: 5,
+    district: "San Isidro",
+    experience: 14,
+    completedServices: 148,
+    pricePerHour: 98
+},
+{
+    id: "22",
+    name: "Tec. Marco Silva",
+    title: "Cuidado Postoperatorio",
+    isTopRated: false,
+    serviceType: "Asistencial",
+    rating: 4.4,
+    reviews: 36,
+    punctuality: 4.5,
+    treatment: 4.5,
+    technical: 4.3,
+    district: "La Molina",
+    experience: 4,
+    completedServices: 36,
+    pricePerHour: 39
+},
+{
+    id: "23",
+    name: "Lic. Elena Cruz",
+    title: "Rehabilitación Integral",
+    isTopRated: true,
+    serviceType: "Especializado",
+    rating: 4.9,
+    reviews: 118,
+    punctuality: 4.9,
+    treatment: 4.9,
+    technical: 4.8,
+    district: "Miraflores",
+    experience: 10,
+    completedServices: 118,
+    pricePerHour: 88
+}
 ];
 
 export const stats = {
@@ -163,7 +405,12 @@ export default function DirectorioPage() {
                           filterTopRated ||
                           searchTerm !== "";
 
+    // PAGINACIÓN
+    const [currentPage, setCurrentPage] = useState(1);
+    const cardsPerPage = 8;
+
   const filteredNurses = nurses.filter((nurse) => {
+
     // Búsqueda por nombre o especialidad
     if (searchTerm && !nurse.name.toLowerCase().includes(searchTerm.toLowerCase()) && 
         !nurse.title.toLowerCase().includes(searchTerm.toLowerCase())) {
@@ -179,6 +426,42 @@ export default function DirectorioPage() {
     return true;
   });
 
+  // reiniciar página al cambiar filtros
+useEffect(() => {
+    setCurrentPage(1);
+}, [
+    filterService,
+    filterDistrict,
+    filterTopRated,
+    priceRange,
+    searchTerm
+]);
+
+// volver arriba al cambiar página
+useEffect(() => {
+    window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+    });
+}, [currentPage]);
+
+// CÁLCULOS DE PAGINACIÓN
+const totalPages = Math.ceil(
+    filteredNurses.length / cardsPerPage
+);
+
+const startIndex =
+    (currentPage - 1) * cardsPerPage;
+
+const endIndex =
+    startIndex + cardsPerPage;
+
+const paginatedNurses =
+    filteredNurses.slice(
+        startIndex,
+        endIndex
+);
+
   const clearFilters = () => {
     setFilterService("");
     setFilterDistrict("");
@@ -186,6 +469,8 @@ export default function DirectorioPage() {
     setPriceRange("todos");
     setSearchTerm("");
   };
+
+  const isAuthenticated = true; // Cambiar para probar modo autenticado
 
     return (
         <>
@@ -284,9 +569,7 @@ export default function DirectorioPage() {
                                     </p>
                                 </div>
                             </div>
-
                         </div>
-
                     </div>
                 </div>
 
@@ -368,9 +651,6 @@ export default function DirectorioPage() {
                                         Limpiar filtros
                                     </button>
                                 )}
-
-
-
                             </div>
 
                             {/* DERECHA */}
@@ -383,11 +663,76 @@ export default function DirectorioPage() {
 
 
                     {/* Grid de tarjetas */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {filteredNurses.map((nurse) => (
-                            <NurseCard key={nurse.id} nurse={nurse} />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+
+                        {paginatedNurses.map((nurse) => (
+                            <NurseCard
+                                key={nurse.id}
+                                nurse={nurse}
+                                isAuthenticated={isAuthenticated}
+                            />
                         ))}
+
                     </div>
+
+                    {filteredNurses.length > cardsPerPage && (
+
+<div className="mt-10 flex flex-col items-center gap-4">
+
+    {/* texto */}
+    <p className="text-sm text-slate-500">
+        Mostrando {startIndex + 1} - {Math.min(endIndex, filteredNurses.length)} de {filteredNurses.length} profesionales
+    </p>
+
+    {/* botones */}
+    <div className="flex items-center gap-2">
+
+        <button
+            onClick={() =>
+                setCurrentPage(prev => prev - 1)
+            }
+            disabled={currentPage===1}
+            className="px-4 py-2 rounded-xl border border-slate-200 disabled:opacity-40 hover:bg-slate-50 transition">
+            ←
+        </button>
+
+        {[...Array(totalPages)].map((_,index)=>(
+
+            <button
+                key={index}
+                onClick={() =>
+                    setCurrentPage(index+1)
+                }
+                className={`w-10 h-10 rounded-xl transition-all
+
+                ${
+                currentPage===index+1
+                ? "bg-teal-500 text-white shadow-md"
+                : "bg-white border border-slate-200 hover:bg-slate-50"
+                }
+            `}
+            >
+                {index+1}
+            </button>
+
+        ))}
+
+        <button
+            onClick={() =>
+                setCurrentPage(prev=>prev+1)
+            }
+            disabled={
+                currentPage===totalPages
+            }
+            className="px-4 py-2 rounded-xl border border-slate-200 disabled:opacity-40 hover:bg-slate-50 transition">
+            →
+        </button>
+
+    </div>
+
+</div>
+
+)}
 
                     {/* Mensaje si no hay resultados */}
                     {filteredNurses.length === 0 && (
@@ -406,94 +751,5 @@ export default function DirectorioPage() {
             </main>
             <Footer />
         </>
-    );
-}
-
-// Componente NurseCard
-function NurseCard({ nurse }: { nurse: Nurse }) {
-    const renderStars = (rating: number) => {
-        const fullStars = Math.floor(rating);
-        const hasHalfStar = rating % 1 >= 0.5;
-        return (
-            <div className="flex items-center gap-0.5">
-                {[...Array(5)].map((_, i) => (
-                    <span key={i} className="text-yellow-400 text-sm">
-                        {i < fullStars ? "★" : i === fullStars && hasHalfStar ? "½" : "☆"}
-                    </span>
-                ))}
-            </div>
-        );
-    };
-
-    return (
-        <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-slate-100 group">
-            <div className="p-5">
-                {/* Header con nombre y badge TOP */}
-                <div className="flex justify-between items-start mb-2">
-                    <div>
-                        <h3 className="font-bold text-slate-900 text-lg">{nurse.name}</h3>
-                        <p className="text-xs text-slate-400 mt-0.5">{nurse.title}</p>
-                    </div>
-                    {nurse.isTopRated && (
-                        <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1">
-                            <Award className="w-3 h-3" /> TOP
-                        </span>
-                    )}
-                </div>
-
-                {/* Tipo de servicio */}
-                <div className="mt-3">
-                    <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-1 rounded-full">
-                        {nurse.serviceType === "Especializado" ? "Enfermero Especializado" :
-                            nurse.serviceType === "Técnico" ? "Técnico en Enfermería" :
-                                nurse.serviceType === "Acompañamiento" ? "Acompañamiento" : "Asistencial"}
-                    </span>
-                </div>
-
-                {/* Rating y reseñas */}
-                <div className="flex items-center gap-2 mt-3">
-                    {renderStars(nurse.rating)}
-                    <span className="font-bold text-sm text-slate-800">{nurse.rating}</span>
-                    <span className="text-xs text-slate-400">({nurse.reviews} reseñas)</span>
-                </div>
-
-                {/* Calificaciones detalladas */}
-                <div className="grid grid-cols-3 gap-3 mt-4 pt-3 border-t border-slate-100">
-                    <div className="text-center">
-                        <p className="text-sm font-bold text-slate-700">{nurse.punctuality}</p>
-                        <p className="text-[10px] text-slate-400">Puntualidad</p>
-                    </div>
-                    <div className="text-center">
-                        <p className="text-sm font-bold text-slate-700">{nurse.treatment}</p>
-                        <p className="text-[10px] text-slate-400">Trato</p>
-                    </div>
-                    <div className="text-center">
-                        <p className="text-sm font-bold text-slate-700">{nurse.technical}</p>
-                        <p className="text-[10px] text-slate-400">Técnico</p>
-                    </div>
-                </div>
-
-                {/* Información adicional */}
-                <div className="flex justify-between items-center mt-4 pt-3 border-t border-slate-100">
-                    <div>
-                        <p className="text-xs text-slate-500">{nurse.district}</p>
-                        <p className="text-xs text-slate-500">{nurse.experience} años exp.</p>
-                        <p className="text-xs text-slate-500">{nurse.completedServices} servicios</p>
-                    </div>
-                    <div className="text-right">
-                        <p className="text-2xl font-bold text-teal-600">S/ {nurse.pricePerHour}</p>
-                        <p className="text-[10px] text-slate-400">/hora</p>
-                        {nurse.isTopRated && (
-                            <p className="text-[9px] text-amber-600 font-medium">+10% Top Ranked</p>
-                        )}
-                    </div>
-                </div>
-
-                {/* Botón Ver perfil */}
-                <button className="w-full mt-4 bg-teal-500 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-teal-600 transition-colors">
-                    Ver perfil
-                </button>
-            </div>
-        </div>
     );
 }
