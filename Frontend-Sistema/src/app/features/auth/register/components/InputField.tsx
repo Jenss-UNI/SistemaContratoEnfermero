@@ -1,5 +1,5 @@
 import { AlertCircle, ChevronDown } from "lucide-react";
-import type { InputFieldProps } from "../../../../core/models/InputFieldProps";
+import type { InputFieldProps } from "./register-ui.types";
 
 export default function InputField({
     label,

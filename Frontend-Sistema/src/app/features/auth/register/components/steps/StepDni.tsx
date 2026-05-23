@@ -1,6 +1,6 @@
 import { ShieldCheck, Search, CheckCircle2, ArrowLeft, Loader2} from "lucide-react";
 import { useState } from "react";
-import type { StepDniProps } from "../../../../../core/models/StepDniProps";
+import type { StepDniProps } from "../register-ui.types";
 
 
 export default function StepDni({ dni, nombres, apellidos, onNext, onBack }: StepDniProps) {

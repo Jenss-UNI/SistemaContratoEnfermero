@@ -1,6 +1,6 @@
 import { User, Mail, CreditCard, Smartphone, MapPin, Award, Clock, Coins, FileText, ChevronRight, Lock, Eye, EyeOff } from "lucide-react";
 import { useState } from "react";
-import type { StepProProps } from "../../../../../core/models/StepProProps";
+import type { StepProProps } from "../register-ui.types";
 import InputField from "../InputField";
 
 export default function StepProProfesional({ formData, onChange, onNext, errors = {} }: StepProProps) {
