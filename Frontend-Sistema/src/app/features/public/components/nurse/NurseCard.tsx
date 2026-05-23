@@ -1,7 +1,7 @@
-
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { Star, Award, MapPin, Clock, CheckCircle, Lock, Eye, Heart, Stethoscope} from "lucide-react";
-import type { Nurse } from "../../../core/models/nurse.model";
+import type { Nurse } from "../../../../core/models/nurse.model";
 
 interface NurseCardProps {
     nurse: Nurse;
@@ -40,22 +40,67 @@ export default function NurseCard({ nurse, isAuthenticated = false }: NurseCardP
     };
 
     // Obtener el badge según el tipo de servicio
-    const getServiceBadge = () => {
-        switch (nurse.serviceType) {
+    const [activeService, setActiveService] = useState(0);
+
+    useEffect(() => {
+
+        if (nurse.serviceType.length <= 1) return;
+
+        const interval = setInterval(() => {
+
+            setActiveService((prev) =>
+                prev === nurse.serviceType.length - 1
+                    ? 0
+                    : prev + 1
+            );
+
+        }, 2500);
+
+        return () => clearInterval(interval);
+
+    }, [nurse.serviceType]);
+
+    const currentService =
+        nurse.serviceType[activeService];
+
+    const getBadgeStyle = (serviceName: string) => {
+
+        switch (serviceName) {
+
             case "Especializado":
-                return { text: "Enfermero Especializado", bg: "bg-purple-100", textColor: "text-purple-700" };
+                return {
+                    bg: "bg-teal-100",
+                    text: "text-teal-700"
+                };
+
             case "Técnico":
-                return { text: "Técnico en Enfermería", bg: "bg-blue-100", textColor: "text-blue-700" };
+                return {
+                    bg: "bg-blue-100",
+                    text: "text-blue-700"
+                };
+
             case "Acompañamiento":
-                return { text: "Acompañamiento", bg: "bg-green-100", textColor: "text-green-700" };
+                return {
+                    bg: "bg-amber-100",
+                    text: "text-amber-700"
+                };
+
             case "Asistencial":
-                return { text: "Licenciado en Enfermería", bg: "bg-teal-100", textColor: "text-teal-700" };
+                return {
+                    bg: "bg-emerald-100",
+                    text: "text-emerald-700"
+                };
+
             default:
-                return { text: "Profesional", bg: "bg-slate-100", textColor: "text-slate-700" };
+                return {
+                    bg: "bg-slate-100",
+                    text: "text-slate-700"
+                };
         }
     };
 
-    const serviceBadge = getServiceBadge();
+    const badgeStyle =
+        getBadgeStyle(currentService.name);
 
     return (
         <div
@@ -117,12 +162,13 @@ export default function NurseCard({ nurse, isAuthenticated = false }: NurseCardP
                     </span>
                 )}
 
-                <span className={`px-3 py-1 rounded-full text-xs font-medium
-        ${serviceBadge.bg}
-        ${serviceBadge.textColor}
-      `}>
-                    {serviceBadge.text}
-                </span>
+                <span
+    className={`px-3 py-1 rounded-full text-xs font-semibold
+    ${badgeStyle.bg}
+    ${badgeStyle.text}`}
+>
+    {currentService.name}
+</span>
 
             </div>
 
@@ -172,24 +218,24 @@ export default function NurseCard({ nurse, isAuthenticated = false }: NurseCardP
 
                 </div>
 
-    {/* Técnico */}
-    {nurse.technical && (
-        <div className="text-center flex flex-col items-center gap-1">
+                {/* Técnico */}
+                {nurse.technical && (
+                    <div className="text-center flex flex-col items-center gap-1">
 
-            <Stethoscope className="w-4 h-4 text-teal-500" />
+                        <Stethoscope className="w-4 h-4 text-teal-500" />
 
-            <p className="font-bold text-slate-800">
-                {nurse.technical}
-            </p>
+                        <p className="font-bold text-slate-800">
+                            {nurse.technical}
+                        </p>
 
-            <p className="text-xs text-slate-400">
-                Técnico
-            </p>
+                        <p className="text-xs text-slate-400">
+                            Técnico
+                        </p>
 
-        </div>
-    )}
+                    </div>
+                )}
 
-</div>
+            </div>
 
             {/* INFO */}
             <div className="flex justify-between text-xs text-slate-500 mb-5">
@@ -207,18 +253,100 @@ export default function NurseCard({ nurse, isAuthenticated = false }: NurseCardP
                 </div>
             </div>
 
-            {/* PRECIO */}
-            <div className="bg-teal-50 rounded-2xl py-4 text-center mb-5">
-                <span className="text-3xl font-bold text-teal-700">
-                    S/ {nurse.pricePerHour}
-                </span>
+            {/* SERVICIOS + PRECIOS */}
+            <div className="bg-gradient-to-br from-teal-50 to-emerald-50 rounded-3xl p-5 mb-5 overflow-hidden">
 
-                <span className="text-sm text-teal-600">/hora</span>
+                <div className="flex items-center justify-between mb-3">
 
-                {nurse.isTopRated && (
-                    <p className="text-xs text-teal-500 mt-1">
-                        +10% Top Ranked incluido
-                    </p>
+                    {nurse.serviceType.length > 1 ? (
+
+                        <button
+                            onClick={() =>
+                                setActiveService((prev) =>
+                                    prev === 0
+                                        ? nurse.serviceType.length - 1
+                                        : prev - 1
+                                )
+                            }
+                            className="text-teal-500 text-lg font-bold"
+                        >
+                            ‹
+                        </button>
+
+                    ) : (
+
+                        <div className="w-5" />
+
+                    )}
+
+                    <div className="text-center transition-all duration-500">
+
+                        <p className="text-sm font-medium text-slate-500 mb-1">
+                            {currentService.name}
+                        </p>
+
+                        <div className="flex items-end justify-center gap-1">
+
+                            <span className="text-4xl font-bold text-teal-700">
+                                S/ {currentService.price}
+                            </span>
+
+                            <span className="text-sm text-teal-600 mb-1">
+                                /hora
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                    {nurse.serviceType.length > 1 ? (
+
+                        <button
+                            onClick={() =>
+                                setActiveService((prev) =>
+                                    prev === nurse.serviceType.length - 1
+                                        ? 0
+                                        : prev + 1
+                                )
+                            }
+                            className="text-teal-500 text-lg font-bold"
+                        >
+                            ›
+                        </button>
+
+                    ) : (
+
+                        <div className="w-5" />
+
+                    )}
+
+                </div>
+
+                {/* DOTS */}
+                {nurse.serviceType.length > 1 && (
+
+                    <div className="flex justify-center gap-2 mt-2">
+
+                        {nurse.serviceType.map((_, index) => (
+
+                            <button
+                                key={index}
+                                onClick={() =>
+                                    setActiveService(index)
+                                }
+                                className={`h-2 rounded-full transition-all duration-300
+
+                    ${activeService === index
+                                        ? "bg-teal-500 w-6"
+                                        : "bg-teal-200 w-2"
+                                    }
+                `}
+                            />
+
+                        ))}
+
+                    </div>
+
                 )}
 
             </div>

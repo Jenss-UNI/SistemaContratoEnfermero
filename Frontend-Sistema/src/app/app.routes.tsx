@@ -10,6 +10,7 @@ import { clientPanelRoutes } from "./features/private/client/client.routes";
 import { CLIENT_PANEL_BASE } from "./features/private/client/clientNav";
 
 import DirectorioPage from "./features/public/pages/DirectorioPage";
+import NurseProfilePage from "./features/public/pages/NurseProfilePage";
 
 
 export function AppRoutes() {
@@ -19,8 +20,9 @@ export function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/register" element={<RegisterPage />} />
-      <Route path="/directorio" element={<DirectorioPage />}
-      />
+      <Route path="/directorio" element={<DirectorioPage />} />
+      <Route path="/enfermero/:id" element={<NurseProfilePage />} />
+      
       <Route path="/planes" element={<ComingSoonPage title="Planes" />} />
 
       {clientPanelRoutes}

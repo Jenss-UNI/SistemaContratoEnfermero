@@ -1,49 +1,192 @@
 import { useEffect, useState } from "react";
 import { Header, Footer } from "../../../shared/layout";
-import NurseCard from "../components/NurseCard";
+import NurseCard from "../components/nurse/NurseCard";
 import type { Nurse } from "../../../core/models/nurse.model";
 import { Search, Star, X, MapPin, ShieldCheck, Users, Trophy } from "lucide-react";
 
 
 export const nurses: Nurse[] = [
   {
-    id: "1",
-    name: "Lic. María Fernández",
-    title: "Geriatría y Cuidado del Adulto Mayor",
-    isTopRated: true,
-    serviceType: "Especializado",
-    rating: 4.9,
-    reviews: 142,
-    punctuality: 4.9,
-    treatment: 5.0,
-    technical: 4.8,
-    district: "Miraflores",
-    experience: 8,
-    completedServices: 142,
-    pricePerHour: 65
+  id: "1",
+  name: "Lic. María Fernández",
+  photo: "https://citbm.unmsm.edu.pe/wp-content/uploads/2021/04/ENFERMERA-IV-edited.png",
+  title: "Geriatría y Cuidado del Adulto Mayor",
+
+  about:
+    "Especialista en cuidado geriátrico con más de 8 años de experiencia atendiendo pacientes adultos mayores en domicilio, rehabilitación y control de enfermedades crónicas. Me enfoco en brindar atención humana, segura y profesional.",
+
+  isTopRated: true,
+
+  serviceType: [
+  {
+    name: "Especializado",
+    price: 65
   },
   {
-    id: "2",
-    name: "Lic. Carlos Mendoza",
-    title: "Cuidados Intensivos y Post-Operatorio",
-    isTopRated: true,
-    serviceType: "Especializado",
-    rating: 4.8,
-    reviews: 98,
-    punctuality: 4.7,
-    treatment: 4.9,
-    technical: 4.9,
-    district: "San Isidro",
-    experience: 10,
-    completedServices: 98,
-    pricePerHour: 75
+    name: "Asistencial",
+    price: 53
   },
+  {
+    name: "Acompañamiento",
+    price: 45
+  }
+],
+
+  rating: 4.9,
+  reviews: 142,
+
+  punctuality: 4.9,
+  treatment: 5.0,
+  technical: 4.8,
+
+  district: "Miraflores",
+
+  districts: [
+    "Miraflores",
+    "San Isidro",
+    "Barranco"
+  ],
+
+  experience: 8,
+  completedServices: 142,
+
+  languages: [
+    "Español",
+    "Inglés"
+  ],
+
+  education: [
+    {
+      degree: "Licenciatura en Enfermería",
+      institution: "Universidad Peruana Cayetano Heredia",
+      year: 2016
+    },
+    {
+      degree: "Especialización en Geriatría",
+      institution: "Universidad Nacional Mayor de San Marcos",
+      year: 2018
+    }
+  ],
+
+  certifications: [
+    {
+      title: "Cuidados Geriátricos Avanzados",
+      institution: "MINSA",
+      year: 2021
+    },
+    {
+      title: "Atención Domiciliaria Integral",
+      institution: "EsSalud",
+      year: 2022
+    }
+  ],
+
+  reviewList: [
+    {
+      id: "r1",
+      author: "Carlos R.",
+      date: "Hace 2 semanas",
+      comment:
+        "Excelente profesional. Muy paciente y puntual con mi padre.",
+      rating: 5,
+      punctuality: 5,
+      treatment: 5,
+      technical: 5
+    },
+    {
+      id: "r2",
+      author: "Lucía M.",
+      date: "Hace 1 mes",
+      comment:
+        "Muy amable y profesional. Totalmente recomendada.",
+      rating: 5,
+      punctuality: 5,
+      treatment: 5,
+      technical: 4.8
+    }
+  ]
+},
+  {
+  id: "2",
+  name: "Lic. Carlos Mendoza",
+  photo: "https://cdn-cjlhn.nitrocdn.com/MDbIaQnHgvYrWdlkNlAApgMXaoLyMZQw/assets/images/optimized/rev-2534a30/www.brooklinecollege.edu/wp-content/uploads/2023/11/shutterstock_1572238627-scaled.jpg",
+  title: "Cuidados Intensivos y Post-Operatorio",
+
+  about:
+    "Especialista en UCI y recuperación postoperatoria. Experiencia en monitoreo constante, administración de medicamentos y cuidado crítico domiciliario.",
+
+  isTopRated: true,
+
+  serviceType: [
+  {
+    name: "Especializado",
+    price: 75
+  }
+],
+
+  rating: 4.8,
+  reviews: 98,
+
+  punctuality: 4.7,
+  treatment: 4.9,
+  technical: 4.9,
+
+  district: "San Isidro",
+
+  districts: [
+    "San Isidro",
+    "Miraflores",
+    "Surco"
+  ],
+
+  experience: 10,
+  completedServices: 98,
+
+  languages: [
+    "Español"
+  ],
+
+  education: [
+    {
+      degree: "Licenciatura en Enfermería",
+      institution: "Universidad Ricardo Palma",
+      year: 2014
+    }
+  ],
+
+  certifications: [
+    {
+      title: "Cuidados Intensivos",
+      institution: "Colegio de Enfermeros del Perú",
+      year: 2020
+    }
+  ],
+
+  reviewList: [
+    {
+      id: "r3",
+      author: "María T.",
+      date: "Hace 5 días",
+      comment:
+        "Gran profesional en recuperación postoperatoria.",
+      rating: 5,
+      punctuality: 4.8,
+      treatment: 5,
+      technical: 5
+    }
+  ]
+},
   {
     id: "3",
     name: "Tec. Ana Quispe",
     title: "Signos Vitales y Medicación",
     isTopRated: false,
-    serviceType: "Técnico",
+    serviceType: [
+      {
+        name: "Técnico",
+        price: 38
+      }
+    ],
     rating: 4.7,
     reviews: 67,
     punctuality: 4.8,
@@ -52,14 +195,18 @@ export const nurses: Nurse[] = [
     district: "Surco",
     experience: 4,
     completedServices: 67,
-    pricePerHour: 38
   },
   {
     id: "4",
     name: "Lic. Rosa Huanca",
     title: "Rehabilitación y Fisioterapia",
     isTopRated: true,
-    serviceType: "Especializado",
+    serviceType: [
+      {
+        name: "Especializado",
+        price: 80
+      }
+    ],
     rating: 4.9,
     reviews: 115,
     punctuality: 4.9,
@@ -68,14 +215,18 @@ export const nurses: Nurse[] = [
     district: "La Molina",
     experience: 7,
     completedServices: 115,
-    pricePerHour: 80
   },
   {
     id: "5",
     name: "Lic. Jorge Castillo",
     title: "Oncología y Cuidados Paliativos",
     isTopRated: true,
-    serviceType: "Especializado",
+    serviceType: [
+      {
+        name: "Especializado",
+        price: 80
+      }
+    ],
     rating: 4.9,
     reviews: 87,
     punctuality: 4.8,
@@ -84,14 +235,18 @@ export const nurses: Nurse[] = [
     district: "San Borja",
     experience: 12,
     completedServices: 87,
-    pricePerHour: 80
   },
   {
     id: "6",
     name: "Tec. Patricia Llanos",
     title: "Pediatría y Cuidado Infantil",
     isTopRated: false,
-    serviceType: "Técnico",
+    serviceType: [
+      {
+        name: "Técnico",
+        price: 45
+      }
+    ],
     rating: 4.6,
     reviews: 54,
     punctuality: 4.7,
@@ -100,14 +255,18 @@ export const nurses: Nurse[] = [
     district: "Barranco",
     experience: 2,
     completedServices: 54,
-    pricePerHour: 45
   },
   {
     id: "7",
     name: "Lic. Diego Torres",
     title: "Acompañamiento y Cuidado Básico",
     isTopRated: false,
-    serviceType: "Asistencial",
+    serviceType: [
+      {
+        name: "Asistencial",
+        price: 42
+      }
+    ],
     rating: 4.5,
     reviews: 23,
     punctuality: 4.7,
@@ -116,14 +275,18 @@ export const nurses: Nurse[] = [
     district: "Jesús María",
     experience: 5,
     completedServices: 23,
-    pricePerHour: 42
   },
   {
     id: "8",
     name: "Tec. Lucía Vargas",
     title: "Diabetes y Enfermedades Crónicas",
     isTopRated: false,
-    serviceType: "Técnico",
+    serviceType: [
+      {
+        name: "Técnico",
+        price: 35
+      }
+    ],
     rating: 4.6,
     reviews: 41,
     punctuality: 4.7,
@@ -132,14 +295,18 @@ export const nurses: Nurse[] = [
     district: "Pueblo Libre",
     experience: 3,
     completedServices: 41,
-    pricePerHour: 35
   },
   {
     id: "9",
     name: "Lic. Andrea Salazar",
     title: "Cuidados Cardiológicos",
     isTopRated: true,
-    serviceType: "Especializado",
+    serviceType: [
+      {
+        name: "Especializado",
+        price: 78
+      }
+    ],
     rating: 4.8,
     reviews: 76,
     punctuality: 4.9,
@@ -148,14 +315,18 @@ export const nurses: Nurse[] = [
     district: "Lince",
     experience: 9,
     completedServices: 76,
-    pricePerHour: 78
 },
 {
     id: "10",
     name: "Tec. Javier Ramos",
     title: "Aplicación de Medicamentos",
     isTopRated: false,
-    serviceType: "Técnico",
+    serviceType: [
+      {
+        name: "Técnico",
+        price: 30
+      }
+    ],
     rating: 4.5,
     reviews: 43,
     punctuality: 4.6,
@@ -164,14 +335,18 @@ export const nurses: Nurse[] = [
     district: "Callao",
     experience: 3,
     completedServices: 43,
-    pricePerHour: 30
 },
 {
     id: "11",
     name: "Lic. Sofía Navarro",
     title: "Enfermería Neonatal",
     isTopRated: true,
-    serviceType: "Especializado",
+    serviceType: [
+      {
+        name: "Especializado",
+        price: 85
+      }
+    ],
     rating: 5.0,
     reviews: 102,
     punctuality: 5,
@@ -180,14 +355,18 @@ export const nurses: Nurse[] = [
     district: "Los Olivos",
     experience: 11,
     completedServices: 102,
-    pricePerHour: 85
 },
 {
     id: "12",
     name: "Tec. Ricardo Flores",
     title: "Control de Signos Vitales",
     isTopRated: false,
-    serviceType: "Técnico",
+    serviceType: [
+      {
+        name: "Técnico",
+        price: 35
+      }
+    ],
     rating: 4.4,
     reviews: 29,
     punctuality: 4.5,
@@ -196,14 +375,18 @@ export const nurses: Nurse[] = [
     district: "Ate",
     experience: 2,
     completedServices: 29,
-    pricePerHour: 35
 },
 {
     id: "13",
     name: "Lic. Diana Herrera",
     title: "Cuidados Paliativos",
     isTopRated: true,
-    serviceType: "Especializado",
+    serviceType: [
+      {
+        name: "Especializado",
+        price: 82
+      }
+    ],
     rating: 4.9,
     reviews: 96,
     punctuality: 4.8,
@@ -212,14 +395,18 @@ export const nurses: Nurse[] = [
     district: "San Martín de Porres",
     experience: 10,
     completedServices: 96,
-    pricePerHour: 82
 },
 {
     id: "14",
     name: "Tec. Luis Gutiérrez",
     title: "Asistencia Domiciliaria",
     isTopRated: false,
-    serviceType: "Asistencial",
+    serviceType: [
+      {
+        name: "Asistencial",
+        price: 40
+      }
+    ],
     rating: 4.3,
     reviews: 31,
     punctuality: 4.4,
@@ -228,14 +415,18 @@ export const nurses: Nurse[] = [
     district: "Miraflores",
     experience: 3,
     completedServices: 31,
-    pricePerHour: 40
 },
 {
     id: "15",
     name: "Lic. Valeria Campos",
     title: "Pediatría Especializada",
     isTopRated: true,
-    serviceType: "Especializado",
+    serviceType: [
+      {
+        name: "Especializado",
+        price: 90
+      }
+    ],
     rating: 4.9,
     reviews: 121,
     punctuality: 5,
@@ -244,14 +435,18 @@ export const nurses: Nurse[] = [
     district: "La Victoria",
     experience: 8,
     completedServices: 121,
-    pricePerHour: 90
 },
 {
     id: "16",
     name: "Tec. Miguel Torres",
     title: "Inyecciones y Curaciones",
     isTopRated: false,
-    serviceType: "Técnico",
+    serviceType: [
+      {
+        name: "Técnico",
+        price: 42
+      }
+    ],
     rating: 4.6,
     reviews: 58,
     punctuality: 4.7,
@@ -260,14 +455,18 @@ export const nurses: Nurse[] = [
     district: "Barranco",
     experience: 4,
     completedServices: 58,
-    pricePerHour: 42
 },
 {
     id: "17",
     name: "Lic. Karen Vega",
     title: "Cuidados Intensivos",
     isTopRated: true,
-    serviceType: "Especializado",
+    serviceType: [
+      {
+        name: "Especializado",
+        price: 95
+      }
+    ],
     rating: 4.9,
     reviews: 137,
     punctuality: 5,
@@ -276,14 +475,18 @@ export const nurses: Nurse[] = [
     district: "San Borja",
     experience: 12,
     completedServices: 137,
-    pricePerHour: 95
 },
 {
     id: "18",
     name: "Tec. Diego Paredes",
     title: "Atención Básica",
     isTopRated: false,
-    serviceType: "Acompañamiento",
+    serviceType: [
+      {
+        name: "Acompañamiento",
+        price: 32
+      }
+    ],
     rating: 4.4,
     reviews: 37,
     punctuality: 4.5,
@@ -292,14 +495,18 @@ export const nurses: Nurse[] = [
     district: "Jesús María",
     experience: 3,
     completedServices: 37,
-    pricePerHour: 32
 },
 {
     id: "19",
     name: "Lic. Patricia León",
     title: "Geriatría Avanzada",
     isTopRated: true,
-    serviceType: "Especializado",
+    serviceType: [
+      {
+        name: "Especializado",
+        price: 79
+      }
+    ],
     rating: 4.8,
     reviews: 110,
     punctuality: 4.8,
@@ -308,14 +515,18 @@ export const nurses: Nurse[] = [
     district: "Pueblo Libre",
     experience: 9,
     completedServices: 110,
-    pricePerHour: 79
 },
 {
     id: "20",
     name: "Tec. Kevin Díaz",
     title: "Monitoreo de Pacientes",
     isTopRated: false,
-    serviceType: "Técnico",
+    serviceType: [
+      {
+        name: "Técnico",
+        price: 36
+      }
+    ],
     rating: 4.5,
     reviews: 44,
     punctuality: 4.6,
@@ -324,14 +535,18 @@ export const nurses: Nurse[] = [
     district: "Surco",
     experience: 4,
     completedServices: 44,
-    pricePerHour: 36
 },
 {
     id: "21",
     name: "Lic. Brenda Soto",
     title: "Oncología",
     isTopRated: true,
-    serviceType: "Especializado",
+    serviceType: [
+      {
+        name: "Especializado",
+        price: 98
+      }
+    ],
     rating: 5,
     reviews: 148,
     punctuality: 5,
@@ -340,14 +555,18 @@ export const nurses: Nurse[] = [
     district: "San Isidro",
     experience: 14,
     completedServices: 148,
-    pricePerHour: 98
 },
 {
     id: "22",
     name: "Tec. Marco Silva",
     title: "Cuidado Postoperatorio",
     isTopRated: false,
-    serviceType: "Asistencial",
+    serviceType: [
+      {
+        name: "Asistencial",
+        price: 39
+      }
+    ],
     rating: 4.4,
     reviews: 36,
     punctuality: 4.5,
@@ -356,14 +575,18 @@ export const nurses: Nurse[] = [
     district: "La Molina",
     experience: 4,
     completedServices: 36,
-    pricePerHour: 39
 },
 {
     id: "23",
     name: "Lic. Elena Cruz",
     title: "Rehabilitación Integral",
     isTopRated: true,
-    serviceType: "Especializado",
+    serviceType: [
+      {
+        name: "Especializado",
+        price: 88
+      }
+    ],
     rating: 4.9,
     reviews: 118,
     punctuality: 4.9,
@@ -372,7 +595,6 @@ export const nurses: Nurse[] = [
     district: "Miraflores",
     experience: 10,
     completedServices: 118,
-    pricePerHour: 88
 }
 ];
 
@@ -411,64 +633,157 @@ export default function DirectorioPage() {
 
   const filteredNurses = nurses.filter((nurse) => {
 
-    // Búsqueda por nombre o especialidad
-    if (searchTerm && !nurse.name.toLowerCase().includes(searchTerm.toLowerCase()) && 
-        !nurse.title.toLowerCase().includes(searchTerm.toLowerCase())) {
-      return false;
-    }
-    if (filterService && nurse.serviceType !== filterService) return false;
-    if (filterDistrict && nurse.district !== filterDistrict) return false;
-    if (filterTopRated && !nurse.isTopRated) return false;
-    if (priceRange === "0-30" && nurse.pricePerHour > 30) return false;
-    if (priceRange === "30-60" && (nurse.pricePerHour < 30 || nurse.pricePerHour > 60)) return false;
-    if (priceRange === "60-80" && (nurse.pricePerHour < 60 || nurse.pricePerHour > 80)) return false;
-    if (priceRange === "80-300" && nurse.pricePerHour <= 80) return false;
-    return true;
+      // búsqueda
+      // búsqueda
+      if (searchTerm.trim().length >= 2) {
+
+          const term =
+              searchTerm.toLowerCase();
+
+          const matchesName =
+              nurse.name
+                  .toLowerCase()
+                  .includes(term);
+
+          const matchesTitle =
+              nurse.title
+                  .toLowerCase()
+                  .includes(term);
+
+          const matchesService =
+              nurse.serviceType.some(
+                  (service) =>
+                      service.name
+                          .toLowerCase()
+                          .includes(term)
+              );
+
+          if (
+              !matchesName &&
+              !matchesTitle &&
+              !matchesService
+          ) {
+              return false;
+          }
+
+      }
+
+      // filtro por tipo de servicio
+      if (
+          filterService &&
+          !nurse.serviceType.some(
+              (service) => service.name === filterService
+          )
+      ) {
+          return false;
+      }
+
+      // distrito
+      if (
+          filterDistrict &&
+          nurse.district !== filterDistrict
+      ) {
+          return false;
+      }
+
+      // top rated
+      if (
+          filterTopRated &&
+          !nurse.isTopRated
+      ) {
+          return false;
+      }
+
+      // filtro por precios
+      const hasPriceInRange = nurse.serviceType.some(
+          (service) => {
+
+              if (priceRange === "todos") return true;
+
+              if (
+                  priceRange === "0-30"
+              ) {
+                  return service.price <= 30;
+              }
+
+              if (
+                  priceRange === "30-60"
+              ) {
+                  return (
+                      service.price >= 30 &&
+                      service.price <= 60
+                  );
+              }
+
+              if (
+                  priceRange === "60-80"
+              ) {
+                  return (
+                      service.price >= 60 &&
+                      service.price <= 80
+                  );
+              }
+
+              if (
+                  priceRange === "80-300"
+              ) {
+                  return service.price > 80;
+              }
+
+              return true;
+          }
+      );
+
+      if (!hasPriceInRange) {
+          return false;
+      }
+
+      return true;
   });
 
-  // reiniciar página al cambiar filtros
-useEffect(() => {
-    setCurrentPage(1);
-}, [
-    filterService,
-    filterDistrict,
-    filterTopRated,
-    priceRange,
-    searchTerm
-]);
+    // reiniciar página al cambiar filtros
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [
+        filterService,
+        filterDistrict,
+        filterTopRated,
+        priceRange,
+        searchTerm
+    ]);
 
-// volver arriba al cambiar página
-useEffect(() => {
-    window.scrollTo({
-        top: 0,
-        behavior: "smooth"
-    });
-}, [currentPage]);
+    // volver arriba al cambiar página
+    useEffect(() => {
+        window.scrollTo({
+            top: 0,
+            behavior: "smooth"
+        });
+    }, [currentPage]);
 
-// CÁLCULOS DE PAGINACIÓN
-const totalPages = Math.ceil(
-    filteredNurses.length / cardsPerPage
-);
+    // CÁLCULOS DE PAGINACIÓN
+    const totalPages = Math.ceil(
+        filteredNurses.length / cardsPerPage
+    );
 
-const startIndex =
-    (currentPage - 1) * cardsPerPage;
+    const startIndex =
+        (currentPage - 1) * cardsPerPage;
 
-const endIndex =
-    startIndex + cardsPerPage;
+    const endIndex =
+        startIndex + cardsPerPage;
 
-const paginatedNurses =
-    filteredNurses.slice(
-        startIndex,
-        endIndex
-);
+    const paginatedNurses =
+        filteredNurses.slice(
+            startIndex,
+            endIndex
+        );
 
-  const clearFilters = () => {
-    setFilterService("");
-    setFilterDistrict("");
-    setFilterTopRated(false);
-    setPriceRange("todos");
-    setSearchTerm("");
-  };
+    const clearFilters = () => {
+        setFilterService("");
+        setFilterDistrict("");
+        setFilterTopRated(false);
+        setPriceRange("todos");
+        setSearchTerm("");
+    };
 
   const isAuthenticated = true; // Cambiar para probar modo autenticado
 
@@ -499,7 +814,27 @@ const paginatedNurses =
                                     <input
                                         type="text"
                                         value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        onChange={(e) => {
+
+                                            let value = e.target.value;
+
+                                            // quitar espacios al inicio
+                                            value = value.replace(/^\s+/, "");
+
+                                            // evitar espacios múltiples
+                                            value = value.replace(/\s{2,}/g, " ");
+
+                                            // limitar longitud
+                                            if (value.length > 40) return;
+
+                                            // permitir letras, números y espacios
+                                            const regex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/;
+
+                                            if (!regex.test(value)) return;
+
+                                            setSearchTerm(value);
+
+                                        }}
                                         placeholder="Buscar por nombre, especialidad..."
                                         className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-500 shadow-sm"
                                     />
