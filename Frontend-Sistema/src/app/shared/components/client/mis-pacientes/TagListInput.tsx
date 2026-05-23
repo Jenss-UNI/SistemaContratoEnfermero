@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { validateTagItem } from "../../utils/validation";
+import { validateTagItem } from "../../../utils/validation";
 import TagBadge, { type TagVariant } from "./TagBadge";
 
 type TagListInputProps = {

@@ -1,5 +1,5 @@
 import { CreditCard, Smartphone } from "lucide-react";
-import type { PaymentMethodType } from "../../../core/models/payment.model";
+import type { PaymentMethodType } from "../../../../core/models/payment.model";
 
 type PaymentMethodIconProps = {
   tipo: PaymentMethodType;

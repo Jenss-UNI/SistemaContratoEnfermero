@@ -7,7 +7,7 @@ import {
   PatientDetailModal,
   PatientFormModal,
   patientToForm,
-} from "../../../../../shared/components/mis-pacientes";
+} from "../../../../../shared/components/client/mis-pacientes";
 import { MOCK_PATIENTS } from "../../data/mockPatients";
 
 type ModalMode = "view" | "add" | "edit" | null;

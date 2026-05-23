@@ -1,4 +1,4 @@
-import type { Patient, PatientFormData } from "../../../core/models/patient.model";
+import type { Patient, PatientFormData } from "../../../../core/models/patient.model";
 import {
   validateAddress,
   validateAge,
@@ -10,7 +10,7 @@ import {
   validateParentesco,
   validatePhone,
   validateReference,
-} from "../../utils/validation";
+} from "../../../utils/validation";
 
 export const EMPTY_PATIENT_FORM: PatientFormData = {
   nombreCompleto: "",

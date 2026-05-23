@@ -1,4 +1,4 @@
-import type { PaymentMethod } from "../../../core/models/payment.model";
+import type { PaymentMethod } from "../../../../core/models/payment.model";
 
 export function formatWalletPhone(phone: string): string {
   const d = phone.replace(/\D/g, "").slice(-9);

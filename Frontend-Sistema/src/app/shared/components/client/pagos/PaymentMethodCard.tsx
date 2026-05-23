@@ -1,5 +1,5 @@
 import { Trash2 } from "lucide-react";
-import type { PaymentMethod } from "../../../core/models/payment.model";
+import type { PaymentMethod } from "../../../../core/models/payment.model";
 import PaymentMethodIcon, { VisaBrandMark } from "./PaymentMethodIcon";
 import { getMethodSubtitle, getMethodTitle } from "./paymentUtils";
 

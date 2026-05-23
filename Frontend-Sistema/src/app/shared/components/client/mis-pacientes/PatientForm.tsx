@@ -1,12 +1,12 @@
 import { MapPin } from "lucide-react";
 import { useState } from "react";
-import type { PatientFormData } from "../../../core/models/patient.model";
+import type { PatientFormData } from "../../../../core/models/patient.model";
 import { DistritoCombobox, FormField } from "../mi-perfil";
 import {
   allowDigitsOnly,
   blockNonDigitKey,
   sanitizeText,
-} from "../../utils/validation";
+} from "../../../utils/validation";
 import GoogleMapPlaceholder from "./GoogleMapPlaceholder";
 import {
   BLOOD_TYPE_OPTIONS,

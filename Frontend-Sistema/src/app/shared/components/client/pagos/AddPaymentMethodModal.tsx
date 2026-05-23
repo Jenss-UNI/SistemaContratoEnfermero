@@ -1,6 +1,6 @@
 import { CreditCard, Shield, Smartphone } from "lucide-react";
 import { useState } from "react";
-import type { CardFormData, PaymentMethodType, WalletFormData } from "../../../core/models/payment.model";
+import type { CardFormData, PaymentMethodType, WalletFormData } from "../../../../core/models/payment.model";
 import { FormField } from "../mi-perfil";
 import Modal from "../mis-pacientes/Modal";
 import {
@@ -11,7 +11,7 @@ import {
   validateCardNumber,
   validateCvv,
   validatePhone,
-} from "../../utils/validation";
+} from "../../../utils/validation";
 import { formatCardNumberInput, formatExpiryInput } from "./paymentUtils";
 
 type AddPaymentMethodModalProps = {

@@ -7,7 +7,7 @@ import {
   SectionHeader,
   ServiceCard,
   StatCard,
-} from "../../../../../shared/components/resumen";
+} from "../../../../../shared/components/client/resumen";
 
 type ResumenContentProps = {
   onPinRegenerado?: () => void;

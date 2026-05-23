@@ -1,5 +1,5 @@
 import { FileText } from "lucide-react";
-import type { PaymentHistoryItem } from "../../../core/models/payment.model";
+import type { PaymentHistoryItem } from "../../../../core/models/payment.model";
 import PaymentStatusBadge from "./PaymentStatusBadge";
 
 type PaymentHistoryTableProps = {

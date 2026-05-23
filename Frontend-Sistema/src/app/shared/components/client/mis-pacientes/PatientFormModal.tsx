@@ -1,4 +1,4 @@
-import type { PatientFormData } from "../../../core/models/patient.model";
+import type { PatientFormData } from "../../../../core/models/patient.model";
 import Modal from "./Modal";
 import PatientForm from "./PatientForm";
 

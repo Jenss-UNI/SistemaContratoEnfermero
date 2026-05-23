@@ -11,7 +11,7 @@ import {
   PaymentHistoryTable,
   PaymentMethodCard,
   SecurityBanner,
-} from "../../../../../shared/components/pagos";
+} from "../../../../../shared/components/client/pagos";
 import { MOCK_PAYMENT_HISTORY, MOCK_PAYMENT_METHODS } from "../../data/mockPayments";
 
 function createId(): string {

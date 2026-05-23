@@ -1,5 +1,5 @@
 import { MapPin } from "lucide-react";
-import type { Patient } from "../../../core/models/patient.model";
+import type { Patient } from "../../../../core/models/patient.model";
 import Modal from "./Modal";
 import TagBadge from "./TagBadge";
 

@@ -1,5 +1,5 @@
 import { Eye, MapPin, Pencil, Trash2 } from "lucide-react";
-import type { Patient } from "../../../core/models/patient.model";
+import type { Patient } from "../../../../core/models/patient.model";
 
 const MAX_VISIBLE_TAGS = 2;
 

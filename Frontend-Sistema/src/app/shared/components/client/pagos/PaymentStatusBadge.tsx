@@ -1,5 +1,5 @@
 import { CheckCircle2, Clock } from "lucide-react";
-import type { PaymentHistoryStatus } from "../../../core/models/payment.model";
+import type { PaymentHistoryStatus } from "../../../../core/models/payment.model";
 
 const CONFIG: Record<
   PaymentHistoryStatus,
