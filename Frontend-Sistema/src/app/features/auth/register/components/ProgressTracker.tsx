@@ -1,5 +1,5 @@
 import { CheckCircle2 } from "lucide-react";
-import type { ProgressTrackerProps } from "../../../../core/models/ProgressTrackerProps";
+import type { ProgressTrackerProps } from "./register-ui.types";
 
 const STEPS_CONFIG = [
     { id: 1, label: 'Datos' },

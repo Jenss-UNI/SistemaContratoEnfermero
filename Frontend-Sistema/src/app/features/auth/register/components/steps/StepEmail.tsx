@@ -1,6 +1,6 @@
 import { Mail, Send, CheckCircle2, ArrowLeft, Loader2 } from "lucide-react";
 import { useState } from "react";
-import type { StepEmailProps } from "../../../../../core/models/StepEmailProps";
+import type { StepEmailProps } from "../register-ui.types";
 
 export default function StepEmail({ email, onNext, onBack }: StepEmailProps) {
     const [isEmailSent, setIsEmailSent] = useState(false);

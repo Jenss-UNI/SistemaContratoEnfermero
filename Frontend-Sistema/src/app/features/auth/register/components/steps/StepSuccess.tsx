@@ -1,6 +1,6 @@
 import { CheckCircle2, Search, UserCheck } from "lucide-react";
 import { Link } from "react-router-dom";
-import type { StepSuccessProps } from "../../../../../core/models/StepSuccessProps";
+import type { StepSuccessProps } from "../register-ui.types";
 
 export default function StepSuccess({ formData }: StepSuccessProps) {
     const primerNombre = formData.nombres.split(" ")[0];
