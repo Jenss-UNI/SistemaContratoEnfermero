@@ -1,21 +1,20 @@
 import { useState } from "react";
-import { CheckCircle2, Eye, FileText, ShieldCheck, User, XCircle } from "lucide-react";
-import Modal from "../../../../shared/components/client/mis-pacientes/Modal";
+import { Check, Eye, X, FileText, CheckCircle2, ShieldCheck } from "lucide-react";
+import Modal from "../../../../shared/components/client/mis-pacientes/Modal"; // Ajusta la ruta a tu componente Modal
 
 type Nurse = {
   id: string;
+  initials: string;
   name: string;
   role: string;
-  specialty: string;
-  status: string;
-  notice: string;
+  statusBadge: string;
+  statusColor: "green" | "red";
   date: string;
 };
 
 type DocumentField = {
   id: string;
   label: string;
-  description: string;
   status: "pending" | "approved" | "rejected";
   reason?: string;
 };
@@ -23,64 +22,39 @@ type DocumentField = {
 const NURSES: Nurse[] = [
   {
     id: "andrea",
+    initials: "AP",
     name: "Lic. Andrea Palomino",
     role: "Geriatría y Adulto Mayor",
-    specialty: "Documentos pendientes",
-    status: "5 solicitudes",
-    notice: "5 pendientes",
+    statusBadge: "Listo para aprobar",
+    statusColor: "green",
     date: "2026-04-11",
   },
   {
     id: "marco",
+    initials: "MV",
     name: "Tec. Marco Villanueva",
     role: "Signos Vitales y Medicación",
-    specialty: "Revisión necesaria",
-    status: "3 solicitudes",
-    notice: "Tiene rechazados",
+    statusBadge: "Tiene rechazados",
+    statusColor: "red",
     date: "2026-04-10",
   },
   {
     id: "sofia",
+    initials: "SR",
     name: "Lic. Sofía Ramírez",
     role: "Pediatría y Cuidado Infantil",
-    specialty: "Listo para publicar",
-    status: "2 solicitudes",
-    notice: "Listo para aprobar",
+    statusBadge: "Listo para aprobar",
+    statusColor: "green",
     date: "2026-04-09",
   },
 ];
 
 const INITIAL_FIELDS: DocumentField[] = [
-  {
-    id: "dni-frontal",
-    label: "DNI Frontal",
-    description: "Documento de identidad visible y legible.",
-    status: "pending",
-  },
-  {
-    id: "dni-posterior",
-    label: "DNI Posterior",
-    description: "Reverso del documento de identidad.",
-    status: "pending",
-  },
-  {
-    id: "titulo-profesional",
-    label: "Título Profesional",
-    description: "Certificado emitido por la universidad.",
-    status: "pending",
-  },
-  {
-    id: "registro-sunedu",
-    label: "Registro SUNEDU",
-    description: "Constancia de registro profesional.",
-    status: "pending",
-  },
-  {
-    id: "antecedentes-penales",
-    label: "Antecedentes Penales",
-    description: "Certificado de antecedentes penales.",
-    status: "pending",
-  },
+  { id: "dni-frontal", label: "DNI Frontal", status: "approved" },
+  { id: "dni-posterior", label: "DNI Posterior", status: "approved" },
+  { id: "titulo-profesional", label: "Título Profesional", status: "pending" },
+  { id: "registro-sunedu", label: "Registro SUNEDU", status: "pending" },
+  { id: "antecedentes-penales", label: "Antecedentes Penales", status: "rejected" },
 ];
 
 const initialStatusByNurse = NURSES.reduce<Record<string, DocumentField[]>>(
@@ -91,21 +65,10 @@ const initialStatusByNurse = NURSES.reduce<Record<string, DocumentField[]>>(
   {}
 );
 
-const statusLabel = {
-  pending: "Pendiente",
-  approved: "Aprobado",
-  rejected: "Rechazado",
-} as const;
-
-const statusStyles = {
-  pending: "border-slate-200 bg-slate-100 text-slate-600",
-  approved: "border-emerald-200 bg-emerald-50 text-emerald-700",
-  rejected: "border-rose-200 bg-rose-50 text-rose-700",
-};
-
 export default function VerificacionesPage() {
-  const [selectedNurseId, setSelectedNurseId] = useState(NURSES[0].id);
+  const [selectedNurseId, setSelectedNurseId] = useState(NURSES[1].id);
   const [fieldStatuses, setFieldStatuses] = useState<Record<string, DocumentField[]>>(initialStatusByNurse);
+  
   const [visiblePdfFieldId, setVisiblePdfFieldId] = useState<string | null>(null);
   const [visibleRejectFieldId, setVisibleRejectFieldId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
@@ -114,9 +77,8 @@ export default function VerificacionesPage() {
   const selectedNurse = NURSES.find((nurse) => nurse.id === selectedNurseId) ?? NURSES[0];
   const fields = fieldStatuses[selectedNurseId] ?? INITIAL_FIELDS;
 
-  const approvedCount = fields.filter((field) => field.status === "approved").length;
-  const rejectedCount = fields.filter((field) => field.status === "rejected").length;
-  const pendingCount = fields.filter((field) => field.status === "pending").length;
+  // Verificamos si absolutamente TODOS los campos están aprobados
+  const allApproved = fields.every((field) => field.status === "approved");
 
   const currentPdfField = fields.find((field) => field.id === visiblePdfFieldId) ?? null;
   const currentRejectField = fields.find((field) => field.id === visibleRejectFieldId) ?? null;
@@ -155,252 +117,271 @@ export default function VerificacionesPage() {
     setRejectReason("");
   };
 
-  const handlePublishProfile = () => {
-    setShowPublishSuccess(true);
-  };
-
   return (
-    <div className="space-y-8">
-      <div className="space-y-2">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Verificaciones</p>
-        <h1 className="text-3xl font-semibold text-slate-900">Revisión de enfermeros</h1>
-        <p className="max-w-3xl text-sm leading-6 text-slate-600">
-          Selecciona un profesional a la izquierda para revisar cada documento y aprobar o rechazar el perfil.
-        </p>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
-        <aside className="space-y-4">
-          {NURSES.map((nurse) => (
-            <button
-              key={nurse.id}
-              type="button"
-              onClick={() => setSelectedNurseId(nurse.id)}
-              className={`group w-full rounded-3xl border px-4 py-4 text-left transition ${
-                selectedNurseId === nurse.id
-                  ? "border-teal-300 bg-teal-50 shadow-sm"
-                  : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-600 text-white">
-                  <User className="h-6 w-6" />
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-base font-semibold text-slate-900">{nurse.name}</p>
-                  <p className="mt-1 text-sm text-slate-600">{nurse.role}</p>
-                </div>
-              </div>
-              <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-                <span className="rounded-full border bg-white px-3 py-1 text-slate-600">{nurse.notice}</span>
-                <span className="rounded-full border bg-white px-3 py-1 text-slate-600">{nurse.date}</span>
-              </div>
-            </button>
-          ))}
-        </aside>
-
-        <section className="space-y-6">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-sm font-medium uppercase tracking-[0.18em] text-slate-400">Perfil en revisión</p>
-                <h2 className="mt-3 text-2xl font-semibold text-slate-900">{selectedNurse.name}</h2>
-                <p className="mt-2 text-sm text-slate-500">{selectedNurse.role} · {selectedNurse.specialty}</p>
-              </div>
+    <div className="grid gap-8 lg:grid-cols-[380px_minmax(0,1fr)]">
+      
+      {/* --- COLUMNA IZQUIERDA: LISTA DE SOLICITUDES --- */}
+      <aside>
+        <h3 className="mb-4 text-[15px] font-bold text-slate-900">
+          Solicitudes Pendientes ({NURSES.length})
+        </h3>
+        <div className="space-y-4">
+          {NURSES.map((nurse) => {
+            const isSelected = selectedNurseId === nurse.id;
+            return (
               <button
+                key={nurse.id}
                 type="button"
-                onClick={handleApproveAll}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-teal-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-700"
+                onClick={() => setSelectedNurseId(nurse.id)}
+                className={`flex w-full items-start gap-4 rounded-[1.5rem] border p-5 text-left transition-all ${
+                  isSelected
+                    ? "border-[#00c59e] bg-[#f2fdfa]"
+                    : "border-slate-100 bg-white hover:border-slate-200"
+                }`}
               >
-                <ShieldCheck className="h-4 w-4" />
-                Aprobar todo
-              </button>
-            </div>
-
-            <div className="mt-6 flex flex-wrap items-center gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4">
-              <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Aprobados</p>
-                <p className="mt-2 text-xl font-semibold text-slate-900">{approvedCount}</p>
-              </div>
-              <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Pendientes</p>
-                <p className="mt-2 text-xl font-semibold text-slate-900">{pendingCount}</p>
-              </div>
-              <div className="rounded-2xl bg-white px-4 py-3 shadow-sm">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Rechazados</p>
-                <p className="mt-2 text-xl font-semibold text-slate-900">{rejectedCount}</p>
-              </div>
-            </div>
-
-            <div className="mt-8 space-y-4">
-              {fields.map((field) => (
-                <div
-                  key={field.id}
-                  className="rounded-3xl border border-slate-200 bg-slate-50 p-5 shadow-sm"
-                >
-                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex items-start gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-teal-600 shadow-sm">
-                        <FileText className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="text-base font-semibold text-slate-900">{field.label}</p>
-                        <p className="mt-1 text-sm text-slate-500">{field.description}</p>
-                        {field.status === "rejected" && field.reason ? (
-                          <p className="mt-3 text-sm text-rose-600">Motivo: {field.reason}</p>
-                        ) : null}
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                      <span
-                        className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${statusStyles[field.status]}`}
-                      >
-                        {statusLabel[field.status]}
-                      </span>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setVisiblePdfFieldId(field.id)}
-                          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-teal-200 bg-white px-4 py-2 text-sm font-semibold text-teal-600 transition hover:bg-teal-50"
-                        >
-                          <Eye className="h-4 w-4" />
-                          Ver
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleApproveField(field.id)}
-                          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-                        >
-                          <CheckCircle2 className="h-4 w-4" />
-                          Aprobar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setVisibleRejectFieldId(field.id)}
-                          className="inline-flex items-center justify-center gap-2 rounded-2xl bg-rose-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-700"
-                        >
-                          <XCircle className="h-4 w-4" />
-                          Rechazar
-                        </button>
-                      </div>
-                    </div>
+                {/* Iniciales en lugar de foto */}
+                <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-teal-100 text-lg font-bold text-teal-700">
+                  {nurse.initials}
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <p className="truncate text-[15px] font-bold text-slate-900">{nurse.name}</p>
+                  <p className="mt-0.5 truncate text-[13px] text-slate-400">{nurse.role}</p>
+                  <div className="mt-3 flex items-center justify-between">
+                    <span
+                      className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold ${
+                        nurse.statusColor === "green"
+                          ? "bg-[#e5f9f4] text-[#00a884]"
+                          : "bg-[#ffeef0] text-[#f43f5e]"
+                      }`}
+                    >
+                      {nurse.statusBadge}
+                    </span>
+                    <span className="text-[12px] font-medium text-slate-400">{nurse.date}</span>
                   </div>
                 </div>
-              ))}
-            </div>
-
-            <div className="mt-8 border-t border-slate-200 pt-5">
-              <button
-                type="button"
-                onClick={handlePublishProfile}
-                className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-              >
-                Publicar perfil en Directorio
               </button>
+            );
+          })}
+        </div>
+      </aside>
+
+      {/* --- COLUMNA DERECHA: REVISIÓN DE DOCUMENTOS --- */}
+      <section className="rounded-[2rem] border border-slate-100 bg-white p-8 shadow-sm">
+        
+        {/* Cabecera del Perfil a Revisar */}
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-teal-100 text-xl font-bold text-teal-700">
+              {selectedNurse.initials}
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-slate-900">{selectedNurse.name}</h2>
+              <p className="text-[13px] text-slate-500">
+                {selectedNurse.role} · Enviado: {selectedNurse.date}
+              </p>
             </div>
           </div>
-        </section>
-      </div>
+          <button
+            type="button"
+            onClick={handleApproveAll}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0db39e] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#0aa38f]"
+          >
+            <Check className="h-5 w-5" strokeWidth={2.5} />
+            Aprobar Todo
+          </button>
+        </div>
 
-      {currentPdfField && (
-        <Modal title={`Ver: ${currentPdfField.label}`} onClose={() => setVisiblePdfFieldId(null)} maxWidthClass="max-w-3xl">
-          <div className="space-y-5">
-            <p className="text-sm text-slate-600">
-              Vista previa del documento en formato PDF. Aquí se podrá mostrar el archivo o la información de cada campo cuando se integre con el backend.
-            </p>
-            <div className="rounded-3xl border border-slate-200 bg-slate-100 p-6">
-              <div className="mb-4 flex items-center gap-3">
-                <FileText className="h-5 w-5 text-teal-600" />
-                <p className="text-base font-semibold text-slate-900">{currentPdfField.label}</p>
-              </div>
-              <div className="h-64 rounded-3xl bg-white p-5 shadow-inner">
-                <div className="h-4 w-52 rounded-full bg-slate-200" />
-                <div className="mt-4 h-4 w-5/6 rounded-full bg-slate-200" />
-                <div className="mt-3 h-4 w-4/6 rounded-full bg-slate-200" />
-                <div className="mt-6 space-y-3">
-                  <div className="h-3 w-full rounded-full bg-slate-200" />
-                  <div className="h-3 w-full rounded-full bg-slate-200" />
-                  <div className="h-3 w-3/4 rounded-full bg-slate-200" />
+        {/* Lista de Documentos */}
+        <div className="space-y-4">
+          {fields.map((field) => {
+            const isApproved = field.status === "approved";
+            const isRejected = field.status === "rejected";
+            const isPending = field.status === "pending";
+
+            return (
+              <div
+                key={field.id}
+                className={`flex flex-col gap-4 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between transition-colors ${
+                  isApproved
+                    ? "border-[#a5edd9] bg-[#f2fdfa]"
+                    : isRejected
+                    ? "border-[#fbcfe8] bg-[#fff5f6]"
+                    : "border-slate-200 bg-[#fafafa]"
+                }`}
+              >
+                <div className="flex items-center gap-4">
+                  <div
+                    className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${
+                      isApproved
+                        ? "bg-[#d1f4eb] text-[#0db39e]"
+                        : isRejected
+                        ? "bg-[#ffe4e6] text-[#f43f5e]"
+                        : "bg-slate-200 text-slate-500"
+                    }`}
+                  >
+                    {isApproved ? (
+                      <Check className="h-5 w-5" strokeWidth={2.5} />
+                    ) : isRejected ? (
+                      <X className="h-5 w-5" strokeWidth={2.5} />
+                    ) : (
+                      <FileText className="h-5 w-5" strokeWidth={2.5} />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-[15px] font-bold text-slate-900">{field.label}</p>
+                    <p
+                      className={`text-[13px] font-medium ${
+                        isApproved
+                          ? "text-[#0db39e]"
+                          : isRejected
+                          ? "text-[#f43f5e]"
+                          : "text-slate-400"
+                      }`}
+                    >
+                      {isApproved
+                        ? "Aprobado"
+                        : isRejected
+                        ? "Rechazado"
+                        : "Pendiente de revisión"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setVisiblePdfFieldId(field.id)}
+                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#a5edd9] bg-white px-4 py-2 text-[13px] font-bold text-[#0db39e] transition hover:bg-[#f2fdfa]"
+                  >
+                    <Eye className="h-4 w-4" />
+                    Ver
+                  </button>
+
+                  {(isPending || isRejected) && (
+                    <button
+                      type="button"
+                      onClick={() => handleApproveField(field.id)}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#0db39e] px-4 py-2 text-[13px] font-bold text-white transition hover:bg-[#0aa38f]"
+                    >
+                      <Check className="h-4 w-4" strokeWidth={2.5} />
+                      Aprobar
+                    </button>
+                  )}
+
+                  {(isPending || isApproved) && (
+                    <button
+                      type="button"
+                      onClick={() => setVisibleRejectFieldId(field.id)}
+                      className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#f43f5e] px-4 py-2 text-[13px] font-bold text-white transition hover:bg-[#e11d48]"
+                    >
+                      <X className="h-4 w-4" strokeWidth={2.5} />
+                      Rechazar
+                    </button>
+                  )}
                 </div>
               </div>
-            </div>
+            );
+          })}
+        </div>
+
+        {/* Botón de Publicación (Aparece SÓLO si todos los campos están aprobados, diseño actualizado) */}
+        {allApproved && (
+          <div className="mt-8 border-t border-slate-100 pt-6">
+            <button
+              type="button"
+              onClick={() => setShowPublishSuccess(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#14b8a6] px-6 py-4 text-[15px] font-bold text-white transition hover:bg-[#0f9788]"
+            >
+              <ShieldCheck className="h-5 w-5" strokeWidth={2.5} />
+              Publicar Perfil en Directorio
+            </button>
+          </div>
+        )}
+      </section>
+
+      {/* --- MODALES --- */}
+
+      {currentPdfField && (
+        <Modal 
+          title={`Documento: ${currentPdfField.label}`} 
+          onClose={() => setVisiblePdfFieldId(null)} 
+          maxWidthClass="max-w-4xl"
+        >
+          <div className="flex flex-col h-[70vh]">
+            <p className="mb-4 text-sm text-slate-500">
+              Visualizando el documento subido por el profesional.
+            </p>
+            <iframe
+              src="https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+              title="Visor PDF"
+              className="w-full flex-1 rounded-xl border border-slate-200 bg-slate-50"
+            />
           </div>
         </Modal>
       )}
 
+      {/* Modal 2: Motivo de Rechazo Actualizado */}
       {currentRejectField && (
         <Modal
-          title={`Rechazar: ${currentRejectField.label}`}
+          title="Rechazar documento"
           onClose={() => {
             setVisibleRejectFieldId(null);
             setRejectReason("");
           }}
-          maxWidthClass="max-w-2xl"
-          footer={
-            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+          maxWidthClass="max-w-md"
+        >
+          <div className="space-y-4">
+            <label className="block text-sm font-medium text-slate-700">
+              Motivo del rechazo
+            </label>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              rows={4}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none transition focus:border-[#0db39e] focus:bg-white"
+              placeholder="Explica aquí el motivo..."
+            />
+            <div className="flex gap-3 pt-2">
               <button
-                type="button"
                 onClick={() => {
                   setVisibleRejectFieldId(null);
                   setRejectReason("");
                 }}
-                className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
               >
                 Cancelar
               </button>
               <button
-                type="button"
                 onClick={handleRejectSubmit}
-                className="inline-flex items-center justify-center rounded-2xl bg-rose-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-700"
+                className="flex-1 rounded-xl bg-[#f43f5e] py-2.5 text-sm font-bold text-white hover:bg-[#e11d48]"
               >
-                Rechazar
+                Confirmar Rechazo
               </button>
             </div>
-          }
-        >
-          <div className="space-y-5">
-            <p className="text-sm leading-6 text-slate-600">
-              Añade el motivo del rechazo para que el profesional pueda corregir la documentación.
-            </p>
-            <label className="block text-sm font-medium text-slate-700">Motivo del rechazo</label>
-            <textarea
-              value={rejectReason}
-              onChange={(event) => setRejectReason(event.target.value)}
-              rows={6}
-              className="w-full rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-900 outline-none transition focus:border-teal-400 focus:bg-white"
-              placeholder="Describe aquí el motivo por el que rechazas este documento"
-            />
           </div>
         </Modal>
       )}
 
       {showPublishSuccess && (
         <Modal
-          title="Perfil publicado"
+          title=""
           onClose={() => setShowPublishSuccess(false)}
-          maxWidthClass="max-w-md"
-          footer={
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowPublishSuccess(false)}
-                className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-              >
-                Aceptar
-              </button>
-            </div>
-          }
+          maxWidthClass="max-w-sm"
         >
-          <div className="space-y-4 text-center">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
-              <CheckCircle2 className="h-8 w-8" />
+          <div className="text-center pb-4">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#d1f4eb] text-[#0db39e]">
+              <CheckCircle2 className="h-8 w-8" strokeWidth={2.5} />
             </div>
-            <p className="text-lg font-semibold text-slate-900">¡Publicación exitosa!</p>
-            <p className="text-sm leading-6 text-slate-600">
-              El perfil del enfermero se ha publicado en el directorio correctamente. Ahora el profesional estará visible para clientes.
+            <h3 className="mb-2 text-xl font-bold text-slate-900">¡Perfil Publicado!</h3>
+            <p className="text-sm text-slate-500">
+              El perfil de {selectedNurse.name} ha sido verificado y ahora está visible en el directorio.
             </p>
+            <button
+              onClick={() => setShowPublishSuccess(false)}
+              className="mt-6 w-full rounded-xl bg-slate-900 py-3 text-sm font-bold text-white hover:bg-slate-800"
+            >
+              Aceptar
+            </button>
           </div>
         </Modal>
       )}
