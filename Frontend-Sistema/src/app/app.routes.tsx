@@ -3,7 +3,6 @@ import ForgotPasswordPage from "./features/auth/forgot-password/ForgotPasswordPa
 import LoginPage from "./features/auth/login/LoginPage";
 import PrivateDashboardPlaceholder from "./features/private/PrivateDashboardPlaceholder";
 import RegisterPage from "./features/auth/register/RegisterPage";
-import ComingSoonPage from "./features/public/pages/ComingSoonPage";
 import LandingPage from "./features/public/pages/LandingPage";
 
 import { clientPanelRoutes } from "./features/private/client/client.routes";
@@ -13,6 +12,7 @@ import { ADMIN_PANEL_BASE } from "./features/private/admin/adminNav";
 
 import DirectorioPage from "./features/public/pages/DirectorioPage";
 import NurseProfilePage from "./features/public/pages/NurseProfilePage";
+import PlanesPage from "./features/public/pages/PlanesPage"; // ← NUEVO
 
 
 export function AppRoutes() {
@@ -24,8 +24,8 @@ export function AppRoutes() {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/directorio" element={<DirectorioPage />} />
       <Route path="/enfermero/:id" element={<NurseProfilePage />} />
-      
-      <Route path="/planes" element={<ComingSoonPage title="Planes" />} />
+
+      <Route path="/planes" element={<PlanesPage />} /> 
 
       {clientPanelRoutes}
 
