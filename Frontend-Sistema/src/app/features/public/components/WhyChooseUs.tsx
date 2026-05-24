@@ -79,6 +79,7 @@ export default function WhyChooseUs() {
               {topCards.map((item, index) => {
                 const Icon = item.icon;
                 return (
+                
                   <div
                     key={index}
                     className="bg-white rounded-3xl p-8 border border-slate-100/60 shadow-[0_4px_24px_rgb(0,0,0,0.04)] flex flex-col justify-center flex-1"
