@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Check, Eye, X, FileText, CheckCircle2, ShieldCheck } from "lucide-react";
-import Modal from "../../../../shared/components/client/mis-pacientes/Modal"; // Ajusta la ruta a tu componente Modal
+import Modal from "../../../../shared/components/client/mis-pacientes/Modal";
 
 type Nurse = {
   id: string;
@@ -77,7 +77,6 @@ export default function VerificacionesPage() {
   const selectedNurse = NURSES.find((nurse) => nurse.id === selectedNurseId) ?? NURSES[0];
   const fields = fieldStatuses[selectedNurseId] ?? INITIAL_FIELDS;
 
-  // Verificamos si absolutamente TODOS los campos están aprobados
   const allApproved = fields.every((field) => field.status === "approved");
 
   const currentPdfField = fields.find((field) => field.id === visiblePdfFieldId) ?? null;
@@ -118,14 +117,14 @@ export default function VerificacionesPage() {
   };
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[380px_minmax(0,1fr)]">
+    <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
       
       {/* --- COLUMNA IZQUIERDA: LISTA DE SOLICITUDES --- */}
       <aside>
-        <h3 className="mb-4 text-[15px] font-bold text-slate-900">
+        <h3 className="mb-3 text-sm font-bold text-slate-900">
           Solicitudes Pendientes ({NURSES.length})
         </h3>
-        <div className="space-y-4">
+        <div className="space-y-3">
           {NURSES.map((nurse) => {
             const isSelected = selectedNurseId === nurse.id;
             return (
@@ -133,22 +132,22 @@ export default function VerificacionesPage() {
                 key={nurse.id}
                 type="button"
                 onClick={() => setSelectedNurseId(nurse.id)}
-                className={`flex w-full items-start gap-4 rounded-[1.5rem] border p-5 text-left transition-all ${
+                className={`flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition-all ${
                   isSelected
                     ? "border-[#00c59e] bg-[#f2fdfa]"
                     : "border-slate-100 bg-white hover:border-slate-200"
                 }`}
               >
-                {/* Iniciales en lugar de foto */}
-                <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-full bg-teal-100 text-lg font-bold text-teal-700">
+                {/* Iniciales más pequeñas */}
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-teal-100 text-sm font-bold text-teal-700">
                   {nurse.initials}
                 </div>
                 <div className="flex-1 overflow-hidden">
-                  <p className="truncate text-[15px] font-bold text-slate-900">{nurse.name}</p>
-                  <p className="mt-0.5 truncate text-[13px] text-slate-400">{nurse.role}</p>
-                  <div className="mt-3 flex items-center justify-between">
+                  <p className="truncate text-sm font-bold text-slate-900">{nurse.name}</p>
+                  <p className="mt-0.5 truncate text-xs text-slate-400">{nurse.role}</p>
+                  <div className="mt-2 flex items-center justify-between">
                     <span
-                      className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold ${
+                      className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${
                         nurse.statusColor === "green"
                           ? "bg-[#e5f9f4] text-[#00a884]"
                           : "bg-[#ffeef0] text-[#f43f5e]"
@@ -156,7 +155,7 @@ export default function VerificacionesPage() {
                     >
                       {nurse.statusBadge}
                     </span>
-                    <span className="text-[12px] font-medium text-slate-400">{nurse.date}</span>
+                    <span className="text-[11px] font-medium text-slate-400">{nurse.date}</span>
                   </div>
                 </div>
               </button>
@@ -166,17 +165,17 @@ export default function VerificacionesPage() {
       </aside>
 
       {/* --- COLUMNA DERECHA: REVISIÓN DE DOCUMENTOS --- */}
-      <section className="rounded-[2rem] border border-slate-100 bg-white p-8 shadow-sm">
+      <section className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
         
         {/* Cabecera del Perfil a Revisar */}
-        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-teal-100 text-xl font-bold text-teal-700">
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-teal-100 text-base font-bold text-teal-700">
               {selectedNurse.initials}
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900">{selectedNurse.name}</h2>
-              <p className="text-[13px] text-slate-500">
+              <h2 className="text-lg font-bold text-slate-900">{selectedNurse.name}</h2>
+              <p className="text-xs text-slate-500">
                 {selectedNurse.role} · Enviado: {selectedNurse.date}
               </p>
             </div>
@@ -184,15 +183,15 @@ export default function VerificacionesPage() {
           <button
             type="button"
             onClick={handleApproveAll}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0db39e] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#0aa38f]"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#0db39e] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#0aa38f]"
           >
-            <Check className="h-5 w-5" strokeWidth={2.5} />
+            <Check className="h-4 w-4" strokeWidth={2.5} />
             Aprobar Todo
           </button>
         </div>
 
         {/* Lista de Documentos */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {fields.map((field) => {
             const isApproved = field.status === "approved";
             const isRejected = field.status === "rejected";
@@ -201,7 +200,7 @@ export default function VerificacionesPage() {
             return (
               <div
                 key={field.id}
-                className={`flex flex-col gap-4 rounded-2xl border p-4 sm:flex-row sm:items-center sm:justify-between transition-colors ${
+                className={`flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between transition-colors ${
                   isApproved
                     ? "border-[#a5edd9] bg-[#f2fdfa]"
                     : isRejected
@@ -209,9 +208,9 @@ export default function VerificacionesPage() {
                     : "border-slate-200 bg-[#fafafa]"
                 }`}
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                   <div
-                    className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${
+                    className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${
                       isApproved
                         ? "bg-[#d1f4eb] text-[#0db39e]"
                         : isRejected
@@ -220,17 +219,17 @@ export default function VerificacionesPage() {
                     }`}
                   >
                     {isApproved ? (
-                      <Check className="h-5 w-5" strokeWidth={2.5} />
+                      <Check className="h-4 w-4" strokeWidth={2.5} />
                     ) : isRejected ? (
-                      <X className="h-5 w-5" strokeWidth={2.5} />
+                      <X className="h-4 w-4" strokeWidth={2.5} />
                     ) : (
-                      <FileText className="h-5 w-5" strokeWidth={2.5} />
+                      <FileText className="h-4 w-4" strokeWidth={2.5} />
                     )}
                   </div>
                   <div>
-                    <p className="text-[15px] font-bold text-slate-900">{field.label}</p>
+                    <p className="text-sm font-bold text-slate-900">{field.label}</p>
                     <p
-                      className={`text-[13px] font-medium ${
+                      className={`text-xs font-medium ${
                         isApproved
                           ? "text-[#0db39e]"
                           : isRejected
@@ -251,9 +250,9 @@ export default function VerificacionesPage() {
                   <button
                     type="button"
                     onClick={() => setVisiblePdfFieldId(field.id)}
-                    className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#a5edd9] bg-white px-4 py-2 text-[13px] font-bold text-[#0db39e] transition hover:bg-[#f2fdfa]"
+                    className="inline-flex items-center justify-center gap-1 rounded-lg border border-[#a5edd9] bg-white px-3 py-1.5 text-xs font-bold text-[#0db39e] transition hover:bg-[#f2fdfa]"
                   >
-                    <Eye className="h-4 w-4" />
+                    <Eye className="h-3.5 w-3.5" />
                     Ver
                   </button>
 
@@ -261,9 +260,9 @@ export default function VerificacionesPage() {
                     <button
                       type="button"
                       onClick={() => handleApproveField(field.id)}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#0db39e] px-4 py-2 text-[13px] font-bold text-white transition hover:bg-[#0aa38f]"
+                      className="inline-flex items-center justify-center gap-1 rounded-lg bg-[#0db39e] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#0aa38f]"
                     >
-                      <Check className="h-4 w-4" strokeWidth={2.5} />
+                      <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
                       Aprobar
                     </button>
                   )}
@@ -272,9 +271,9 @@ export default function VerificacionesPage() {
                     <button
                       type="button"
                       onClick={() => setVisibleRejectFieldId(field.id)}
-                      className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#f43f5e] px-4 py-2 text-[13px] font-bold text-white transition hover:bg-[#e11d48]"
+                      className="inline-flex items-center justify-center gap-1 rounded-lg bg-[#f43f5e] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#e11d48]"
                     >
-                      <X className="h-4 w-4" strokeWidth={2.5} />
+                      <X className="h-3.5 w-3.5" strokeWidth={2.5} />
                       Rechazar
                     </button>
                   )}
@@ -284,15 +283,15 @@ export default function VerificacionesPage() {
           })}
         </div>
 
-        {/* Botón de Publicación (Aparece SÓLO si todos los campos están aprobados, diseño actualizado) */}
+        {/* Botón de Publicación compacto */}
         {allApproved && (
-          <div className="mt-8 border-t border-slate-100 pt-6">
+          <div className="mt-6 border-t border-slate-100 pt-5">
             <button
               type="button"
               onClick={() => setShowPublishSuccess(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#14b8a6] px-6 py-4 text-[15px] font-bold text-white transition hover:bg-[#0f9788]"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#14b8a6] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#0f9788]"
             >
-              <ShieldCheck className="h-5 w-5" strokeWidth={2.5} />
+              <ShieldCheck className="h-4 w-4" strokeWidth={2.5} />
               Publicar Perfil en Directorio
             </button>
           </div>
@@ -300,6 +299,7 @@ export default function VerificacionesPage() {
       </section>
 
       {/* --- MODALES --- */}
+      {/* (Los modales se mantienen similares, pero he ajustado ligeramente sus fuentes para que hagan juego) */}
 
       {currentPdfField && (
         <Modal 
@@ -308,7 +308,7 @@ export default function VerificacionesPage() {
           maxWidthClass="max-w-4xl"
         >
           <div className="flex flex-col h-[70vh]">
-            <p className="mb-4 text-sm text-slate-500">
+            <p className="mb-3 text-xs text-slate-500">
               Visualizando el documento subido por el profesional.
             </p>
             <iframe
@@ -320,7 +320,6 @@ export default function VerificacionesPage() {
         </Modal>
       )}
 
-      {/* Modal 2: Motivo de Rechazo Actualizado */}
       {currentRejectField && (
         <Modal
           title="Rechazar documento"
@@ -330,30 +329,30 @@ export default function VerificacionesPage() {
           }}
           maxWidthClass="max-w-md"
         >
-          <div className="space-y-4">
-            <label className="block text-sm font-medium text-slate-700">
+          <div className="space-y-3">
+            <label className="block text-xs font-bold text-slate-700">
               Motivo del rechazo
             </label>
             <textarea
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               rows={4}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm outline-none transition focus:border-[#0db39e] focus:bg-white"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm outline-none transition focus:border-[#0db39e] focus:bg-white"
               placeholder="Explica aquí el motivo..."
             />
-            <div className="flex gap-3 pt-2">
+            <div className="flex gap-2 pt-2">
               <button
                 onClick={() => {
                   setVisibleRejectFieldId(null);
                   setRejectReason("");
                 }}
-                className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                className="flex-1 rounded-lg border border-slate-200 bg-white py-2 text-xs font-bold text-slate-700 hover:bg-slate-50"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleRejectSubmit}
-                className="flex-1 rounded-xl bg-[#f43f5e] py-2.5 text-sm font-bold text-white hover:bg-[#e11d48]"
+                className="flex-1 rounded-lg bg-[#f43f5e] py-2 text-xs font-bold text-white hover:bg-[#e11d48]"
               >
                 Confirmar Rechazo
               </button>
@@ -366,19 +365,19 @@ export default function VerificacionesPage() {
         <Modal
           title=""
           onClose={() => setShowPublishSuccess(false)}
-          maxWidthClass="max-w-sm"
+          maxWidthClass="max-w-xs"
         >
-          <div className="text-center pb-4">
-            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#d1f4eb] text-[#0db39e]">
-              <CheckCircle2 className="h-8 w-8" strokeWidth={2.5} />
+          <div className="text-center pb-2">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#d1f4eb] text-[#0db39e]">
+              <CheckCircle2 className="h-6 w-6" strokeWidth={2.5} />
             </div>
-            <h3 className="mb-2 text-xl font-bold text-slate-900">¡Perfil Publicado!</h3>
-            <p className="text-sm text-slate-500">
-              El perfil de {selectedNurse.name} ha sido verificado y ahora está visible en el directorio.
+            <h3 className="mb-1 text-lg font-bold text-slate-900">¡Perfil Publicado!</h3>
+            <p className="text-xs text-slate-500">
+              El perfil de {selectedNurse.name} ha sido verificado.
             </p>
             <button
               onClick={() => setShowPublishSuccess(false)}
-              className="mt-6 w-full rounded-xl bg-slate-900 py-3 text-sm font-bold text-white hover:bg-slate-800"
+              className="mt-5 w-full rounded-lg bg-slate-900 py-2.5 text-sm font-bold text-white hover:bg-slate-800"
             >
               Aceptar
             </button>
