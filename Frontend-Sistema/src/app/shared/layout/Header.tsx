@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Menu, X, RefreshCw } from "lucide-react";
 
 type HeaderProps = {
   transparentOnTop?: boolean;
+  variant?: "default" | "admin";
 };
 
-function Header({ transparentOnTop = false }: HeaderProps) {
+function Header({ transparentOnTop = false, variant = "default" }: HeaderProps) {
   const [open, setOpen] = useState<boolean>(false);
   const [scroll, setScroll] = useState<boolean>(false);
   const isSolid = !transparentOnTop || scroll;
@@ -21,14 +22,39 @@ function Header({ transparentOnTop = false }: HeaderProps) {
   }, []);
 
   const scrollToTop = () => {
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-};
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const navLink =
-  "hover:text-teal-500 relative after:block after:h-[2px] after:bg-teal-500 after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:origin-center transition";
+    "hover:text-teal-500 relative after:block after:h-[2px] after:bg-teal-500 after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:origin-center transition";
 
   const mobileLink = "block pt-3 hover:text-teal-500";
 
+  // Admin topbar
+  if (variant === "admin") {
+    return (
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-slate-100">
+        <div className="max-w-7xl mx-auto px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <Link to="/" onClick={scrollToTop} className="text-teal-600 font-bold">
+              Cuídame
+            </Link>
+            <div className="text-lg font-medium text-slate-800">Resumen</div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="rounded-3xl bg-slate-50 px-3 py-1 text-sm text-slate-600">23 de mayo de 2026</div>
+            <button className="p-2 rounded-full text-slate-500 hover:bg-slate-50">
+              <RefreshCw className="h-4 w-4" />
+            </button>
+            <div className="rounded-full bg-emerald-50 px-3 py-1 text-sm text-emerald-700">Administrador</div>
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  // Default/public header
   return (
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
@@ -44,7 +70,7 @@ function Header({ transparentOnTop = false }: HeaderProps) {
           <Link to="/" onClick={scrollToTop} className={navLink}>
             Inicio
           </Link>
-          <Link to="/directorio"  onClick={scrollToTop} className={navLink}>
+          <Link to="/directorio" onClick={scrollToTop} className={navLink}>
             Directorio
           </Link>
           <Link to="/planes" onClick={scrollToTop} className={navLink}>

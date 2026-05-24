@@ -8,6 +8,8 @@ import LandingPage from "./features/public/pages/LandingPage";
 
 import { clientPanelRoutes } from "./features/private/client/client.routes";
 import { CLIENT_PANEL_BASE } from "./features/private/client/clientNav";
+import { adminPanelRoutes } from "./features/private/admin/admin.routes";
+import { ADMIN_PANEL_BASE } from "./features/private/admin/adminNav";
 
 import DirectorioPage from "./features/public/pages/DirectorioPage";
 import NurseProfilePage from "./features/public/pages/NurseProfilePage";
@@ -42,8 +44,9 @@ export function AppRoutes() {
       />
       <Route
         path="/admin"
-        element={<PrivateDashboardPlaceholder title="Administración" />}
+        element={<Navigate to={`${ADMIN_PANEL_BASE}/resumen`} replace />}
       />
+      {adminPanelRoutes}
     </Routes>
   );
 }
