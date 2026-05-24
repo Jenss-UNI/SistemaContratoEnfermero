@@ -85,8 +85,8 @@ export default function GestionClientesPage() {
   };
 
   const handleSearchChange = (value: string) => {
-    // Solo permite letras y espacios (bloquea números y caracteres especiales)
-    const validInput = value.replace(/[^a-záéíóúñA-ZÁÉÍÓÚÑ ]/g, "");
+    // Solo permite letras (bloquea números, caracteres especiales y espacios)
+    const validInput = value.replace(/[^a-záéíóúñA-ZÁÉÍÓÚÑ]/g, "");
     setSearchQuery(validInput);
   };
 

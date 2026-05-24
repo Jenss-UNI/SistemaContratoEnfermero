@@ -27,7 +27,8 @@ export default function AdminPanelSidebar() {
 
       {/* Navegación */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-4 pt-2">
-        {ADMIN_NAV_ITEMS.map(({ label, path, icon: Icon, badge }) => (
+        {/* Nota: Se eliminó la extracción de 'badge' ya que no se usará */}
+        {ADMIN_NAV_ITEMS.map(({ label, path, icon: Icon }) => (
           <NavLink
             key={path}
             to={path}
@@ -41,13 +42,6 @@ export default function AdminPanelSidebar() {
           >
             <Icon className="h-5 w-5 flex-shrink-0" />
             {label}
-            
-            {/* Renderiza el círculo rojo solo si el ítem tiene un número en "badge" */}
-            {badge && (
-              <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white">
-                {badge}
-              </span>
-            )}
           </NavLink>
         ))}
       </nav>

@@ -1,118 +1,119 @@
-import { FileText, ShieldCheck, UserCheck, Users, Wallet } from "lucide-react";
+import { Users, User, FileText, Wallet, ShieldCheck, DollarSign } from "lucide-react";
+
+// Tipos de dados
+type ContractType = "Asistencial" | "Acompañamiento" | "Especializado";
+type StatusType = "Pendiente" | "Activo" | "Confirmado";
+
+type Contract = {
+  id: string;
+  code: string;
+  patient: string;
+  type: ContractType;
+  status: StatusType;
+  amount: string;
+  date: string;
+};
+
+// Dados de prova atualizados de acordo com a imagem
+const MOCK_CONTRACTS: Contract[] = [
+  { id: "1", code: "CON-000039", patient: "Elena Rodriguez", type: "Asistencial", status: "Pendiente", amount: "S/ 120", date: "23/5/2026" },
+  { id: "2", code: "CON-000038", patient: "Elena Rodriguez", type: "Acompañamiento", status: "Pendiente", amount: "S/ 75", date: "23/5/2026" },
+  { id: "3", code: "CON-000037", patient: "Elena Rodriguez", type: "Acompañamiento", status: "Pendiente", amount: "S/ 180", date: "23/5/2026" },
+  { id: "4", code: "CON-000036", patient: "Elena Rodriguez", type: "Asistencial", status: "Pendiente", amount: "S/ 120", date: "22/5/2026" },
+  { id: "5", code: "CON-000035", patient: "Elena Rodriguez", type: "Especializado", status: "Pendiente", amount: "S/ 318", date: "22/5/2026" },
+  { id: "6", code: "CON-000034", patient: "Elena Rodriguez", type: "Especializado", status: "Activo", amount: "S/ 106", date: "22/5/2026" },
+  { id: "7", code: "CS-89634", patient: "Juana Lopez Casas", type: "Asistencial", status: "Confirmado", amount: "S/ 340", date: "21/5/2026" },
+];
+
+// Configuração dos 6 cards superiores
+const MOCK_STATS = [
+  { label: "Enfermeros activos", value: "2", icon: Users, colorClass: "text-[#0db39e]", bgClass: "bg-[#e5f9f4]" },
+  { label: "Clientes registrados", value: "3", icon: User, colorClass: "text-rose-500", bgClass: "bg-rose-50" },
+  { label: "Contratos activos", value: "1", icon: FileText, colorClass: "text-amber-500", bgClass: "bg-amber-50" },
+  { label: "En custodia", value: "S/ 1,577", icon: Wallet, colorClass: "text-emerald-500", bgClass: "bg-emerald-50" },
+  { label: "Verificaciones pendientes", value: "0", icon: ShieldCheck, colorClass: "text-orange-500", bgClass: "bg-orange-50" },
+  { label: "Ingresos del mes", value: "S/ 100", icon: DollarSign, colorClass: "text-[#0db39e]", bgClass: "bg-[#e5f9f4]" },
+];
+
+// Configuração dos 3 cards centrais
+const MOCK_SUMMARY = [
+  { title: "Total en custodia", value: "S/ 1,577", detail: "Servicios activos y pendientes", valueColor: "text-[#0db39e]" },
+  { title: "Ingresos del mes", value: "S/ 100", detail: "Servicios completados", valueColor: "text-[#0db39e]" },
+  { title: "Comisión estimada (10%)", value: "S/ 10", detail: "Del mes actual", valueColor: "text-amber-500" },
+];
+
+// Estilos das badges de status da tabela
+const statusStyle = {
+  Pendiente: "bg-[#fef3c7] text-[#b45309]", // Âmbar claro
+  Activo: "bg-[#ccfbf1] text-[#0f766e]",    // Verde água
+  Confirmado: "bg-[#dbeafe] text-[#1d4ed8]", // Azul claro
+};
 
 export default function ResumenPage() {
-  const stats = [
-    { label: "Enfermeros activos", value: "2", icon: Users, accent: "text-sky-600 bg-sky-50" },
-    { label: "Clientes registrados", value: "3", icon: UserCheck, accent: "text-rose-600 bg-rose-50" },
-    { label: "Contratos activos", value: "1", icon: FileText, accent: "text-amber-600 bg-amber-50" },
-    { label: "En custodia", value: "S/ 1,577", icon: Wallet, accent: "text-emerald-600 bg-emerald-50" },
-    { label: "Verificaciones pendientes", value: "0", icon: ShieldCheck, accent: "text-orange-600 bg-orange-50" },
-    { label: "Ingresos del mes", value: "S/ 100", icon: Wallet, accent: "text-teal-600 bg-teal-50" },
-  ];
-
-  const summaryDetails = [
-    { title: "Total en custodia", value: "S/ 1,577", detail: "Servicios activos y pendientes" },
-    { title: "Ingresos del mes", value: "S/ 100", detail: "Servicios completados" },
-    { title: "Comisión estimada (10%)", value: "S/ 10", detail: "Del mes actual" },
-  ];
-
-  const contracts = [
-    { code: "CON-000039", patient: "Elena Rodriguez", type: "Asistencial", status: "Pendiente", amount: "S/ 120", date: "23/5/2026" },
-    { code: "CON-000038", patient: "Elena Rodriguez", type: "Acompañamiento", status: "Pendiente", amount: "S/ 75", date: "23/5/2026" },
-    { code: "CON-000037", patient: "Elena Rodriguez", type: "Acompañamiento", status: "Pendiente", amount: "S/ 180", date: "23/5/2026" },
-    { code: "CON-000036", patient: "Elena Rodriguez", type: "Asistencial", status: "Pendiente", amount: "S/ 120", date: "22/5/2026" },
-    { code: "CON-000035", patient: "Elena Rodriguez", type: "Especializado", status: "Pendiente", amount: "S/ 318", date: "22/5/2026" },
-    { code: "CON-000034", patient: "Elena Rodriguez", type: "Especializado", status: "Activo", amount: "S/ 106", date: "22/5/2026" },
-  ];
-
-  const statusStyle = {
-    Pendiente: "bg-amber-100 text-amber-800",
-    Activo: "bg-emerald-100 text-emerald-800",
-    Confirmado: "bg-sky-100 text-sky-700",
-  };
-
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-400">Resumen</p>
-          <h1 className="text-3xl font-semibold text-slate-900">Panel administrativo</h1>
-        </div>
-        <div className="inline-flex items-center gap-3 rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 shadow-sm">
-          <span>23 de mayo de 2026</span>
-          <span className="h-2 w-2 rounded-full bg-slate-300" />
-          <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
-            Administrador
-          </span>
-        </div>
-      </div>
-
-      <div className="grid gap-4 xl:grid-cols-6">
-        {stats.map((item) => (
-          <div key={item.label} className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between gap-4">
-              <div className={`inline-flex h-11 w-11 items-center justify-center rounded-2xl ${item.accent}`}>
-                <item.icon className="h-5 w-5" />
-              </div>
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
-                {item.label}
-              </span>
+    <div className="w-full space-y-6">
+      
+      {/* 1. Linha Superior: 6 Cards Pequenos */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+        {MOCK_STATS.map((item, index) => (
+          <div key={index} className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
+            <div className={`mb-3 inline-flex h-8 w-8 items-center justify-center rounded-xl ${item.bgClass}`}>
+              <item.icon className={`h-4 w-4 ${item.colorClass}`} strokeWidth={2.5} />
             </div>
-            <p className="mt-6 text-3xl font-semibold text-slate-900">{item.value}</p>
+            <p className={`text-2xl font-bold ${item.colorClass}`}>{item.value}</p>
+            <p className="mt-1 text-[13px] font-medium text-slate-400">{item.label}</p>
           </div>
         ))}
       </div>
 
+      {/* 2. Linha Central: 3 Cards Largos */}
       <div className="grid gap-4 lg:grid-cols-3">
-        {summaryDetails.map((card) => (
-          <div key={card.title} className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-medium uppercase tracking-[0.15em] text-slate-400">{card.title}</p>
-            <p className="mt-4 text-3xl font-semibold text-slate-900">{card.value}</p>
-            <p className="mt-3 text-sm leading-6 text-slate-600">{card.detail}</p>
+        {MOCK_SUMMARY.map((card, index) => (
+          <div key={index} className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+            <p className="text-[13px] font-medium text-slate-400">{card.title}</p>
+            <p className={`mt-2 text-3xl font-bold ${card.valueColor}`}>{card.value}</p>
+            <p className="mt-2 text-[12px] font-medium text-slate-400">{card.detail}</p>
           </div>
         ))}
       </div>
 
-      <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold text-slate-900">Contratos recientes</h2>
-            <p className="text-sm text-slate-500">Aquí se muestran los contratos recientes cargados en el panel.</p>
-          </div>
-          <div className="text-sm font-medium text-slate-500">Últimos 7 registros</div>
-        </div>
+      {/* 3. Seção da Tabela: Contratos Recientes */}
+      <section className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm md:p-8">
+        <h2 className="mb-6 text-[15px] font-bold text-slate-900">Contratos Recientes</h2>
 
-        <div className="mt-6 overflow-hidden rounded-3xl border border-slate-200">
-          <table className="min-w-full divide-y divide-slate-200 text-left text-sm text-slate-600">
-            <thead className="bg-slate-50 text-slate-500">
-              <tr>
-                <th className="px-6 py-4 font-semibold">Código</th>
-                <th className="px-6 py-4 font-semibold">Paciente</th>
-                <th className="px-6 py-4 font-semibold">Tipo</th>
-                <th className="px-6 py-4 font-semibold">Estado</th>
-                <th className="px-6 py-4 font-semibold">Monto</th>
-                <th className="px-6 py-4 font-semibold">Fecha</th>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-slate-50 text-[13px] text-slate-500">
+                <th className="pb-4 pl-2 font-medium">Código</th>
+                <th className="pb-4 font-medium">Paciente</th>
+                <th className="pb-4 font-medium">Tipo</th>
+                <th className="pb-4 font-medium">Estado</th>
+                <th className="pb-4 font-medium">Monto</th>
+                <th className="pb-4 font-medium">Fecha</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200 bg-white">
-              {contracts.map((contract) => (
-                <tr key={contract.code} className="hover:bg-slate-50">
-                  <td className="whitespace-nowrap px-6 py-4 font-medium text-slate-900">{contract.code}</td>
-                  <td className="px-6 py-4">{contract.patient}</td>
-                  <td className="px-6 py-4 text-slate-500">{contract.type}</td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${statusStyle[contract.status as keyof typeof statusStyle] ?? "bg-slate-100 text-slate-700"}`}>
+            
+            <tbody className="divide-y divide-slate-50">
+              {MOCK_CONTRACTS.map((contract) => (
+                <tr key={contract.id} className="transition-colors hover:bg-slate-50/50">
+                  <td className="py-4 pl-2 text-[13px] font-medium text-slate-600">{contract.code}</td>
+                  <td className="py-4 text-[13px] font-medium text-slate-600">{contract.patient}</td>
+                  <td className="py-4 text-[13px] font-medium text-slate-600">{contract.type}</td>
+                  <td className="py-4">
+                    <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold ${statusStyle[contract.status]}`}>
                       {contract.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-slate-900">{contract.amount}</td>
-                  <td className="px-6 py-4 text-slate-500">{contract.date}</td>
+                  <td className="py-4 text-[13px] font-bold text-slate-800">{contract.amount}</td>
+                  <td className="py-4 text-[13px] font-medium text-slate-500">{contract.date}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </section>
+      
     </div>
   );
 }
