@@ -1,118 +1,230 @@
-import { Mail, Send, CheckCircle2, ArrowLeft, Loader2 } from "lucide-react";
 import { useState } from "react";
-import type { StepEmailProps } from "../register-ui.types";
+import { Mail, Send, Check, RefreshCw, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+
+interface StepEmailProps {
+  email: string;
+  onNext: () => void;
+  onBack: () => void;
+}
+
+
+type Estado = "idle" | "enviando" | "enviado" | "verificado";
 
 export default function StepEmail({ email, onNext, onBack }: StepEmailProps) {
-    const [isEmailSent, setIsEmailSent] = useState(false);
-    const [isEmailVerified, setIsEmailVerified] = useState(false);
-    const [verificationCode, setVerificationCode] = useState("");
-    const [codeError, setCodeError] = useState("");
-    const [isSending, setIsSending] = useState(false);
+  const [estado, setEstado]           = useState<Estado>("idle");
+  const [codigoSimulado, setCodigoSimulado] = useState("");
+  const [inputCodigo, setInputCodigo]  = useState("");
+  const [errorCodigo, setErrorCodigo]  = useState("");
+  const [reenviando, setReenviando]    = useState(false);
 
-    const handleSendCode = () => {
-        setIsSending(true);
-        setTimeout(() => {
-            setIsEmailSent(true);
-            setIsSending(false);
-        }, 500);
-    };
+ 
+  const enviarCodigo = async () => {
 
-    const handleVerifyCode = () => {
-        if (verificationCode.length !== 6) {
-            setCodeError("El código debe tener 6 dígitos");
-            return;
-        }
-        setCodeError("");
-        setIsEmailVerified(true);
-    };
+    setEstado("enviando");
+    
 
-    return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // 3. Generar código y completar el envío
+    const nuevo = Math.floor(100000 + Math.random() * 900000).toString();
+    setCodigoSimulado(nuevo);
+    setEstado("enviado");
+    setInputCodigo("");
+    setErrorCodigo("");
+    
 
-            <div className="bg-teal-50 border border-teal-100 p-4 rounded-2xl flex gap-4 text-pretty">
-                <div className="bg-white p-2 rounded-lg text-teal-600 h-fit shadow-sm">
-                    <Mail size={20} />
-                </div>
-                <div>
-                    <h4 className="font-bold text-teal-900 text-sm">Verificación de Correo</h4>
-                    <p className="text-xs text-teal-700 mt-1">
-                        Enviaremos un código a <span className="font-bold text-teal-800 underline">{email || "tu correo"}</span>
-                    </p>
-                </div>
-            </div>
+    console.info(`[DEV] Código de verificación: ${nuevo}`);
+  };
 
-            <div className="border border-slate-100 p-6 rounded-2xl space-y-4 shadow-sm bg-slate-50/50 text-center">
-                {!isEmailSent ? (
-                    <button
-                        onClick={handleSendCode}
-                        disabled={isSending}
-                        className="w-full bg-teal-500 text-white font-bold py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-teal-100 hover:bg-teal-600 transition-all disabled:opacity-70"
-                    >
-                        {isSending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
-                        {isSending ? "Enviando..." : "Enviar código de seguridad"}
-                    </button>
-                ) : !isEmailVerified ? (
-                    <div className="space-y-4 animate-in zoom-in-95 duration-300">
-                        <div className="bg-green-50 text-green-700 p-3 rounded-xl text-xs flex items-center justify-center gap-2 border border-green-100 italic">
-                            <CheckCircle2 size={14} /> Revisa tu bandeja de entrada
-                        </div>
+  const reenviarCodigo = async () => {
+    setReenviando(true);
+    await new Promise((r) => setTimeout(r, 800));
+    enviarCodigo();
+    setReenviando(false);
+  };
 
-                        <div className="space-y-2">
-                            <input
-                                type="text"
-                                maxLength={6}
-                                value={verificationCode}
-                                onChange={(e) => {
-                                    setVerificationCode(e.target.value.replace(/\D/g, ''));
-                                    if (codeError) setCodeError("");
-                                }}
-                                placeholder="345612"
-                                className={`w-full p-4 text-center text-2xl tracking-[0.5em] font-bold border rounded-xl outline-none focus:ring-2 bg-white ${codeError ? 'border-red-400 focus:ring-red-100' : 'border-slate-200 focus:border-teal-500 focus:ring-teal-100'
-                                    }`}
-                            />
-                            {codeError && <p className="text-[10px] text-red-500 font-bold">{codeError}</p>}
-                        </div>
+  
+  const verificar = () => {
+    if (inputCodigo.trim() === codigoSimulado) {
+      setEstado("verificado");
+      setErrorCodigo("");
+    } else {
+      setErrorCodigo("Código incorrecto. Revisa el código o reenvíalo.");
+    }
+  };
 
-                        <button
-                            onClick={handleVerifyCode}
-                            className="w-full bg-teal-500 text-white font-bold py-3.5 rounded-xl hover:bg-teal-600 transition-all"
-                        >
-                            Verificar Código
-                        </button>
+  return (
+    <div className="flex flex-col gap-4 animate-in slide-in-from-right-4 duration-300">
 
-                        <button
-                            onClick={() => setIsEmailSent(false)}
-                            className="text-xs text-slate-400 font-bold hover:text-teal-600 transition-colors"
-                        >
-                            ¿No recibiste el código? Reintentar
-                        </button>
-                    </div>
-                ) : (
-                    <div className="bg-teal-50 p-6 rounded-xl border border-teal-200 flex flex-col items-center gap-2 text-teal-600 font-bold animate-in zoom-in duration-300">
-                        <CheckCircle2 size={32} className="text-teal-500" />
-                        <span className="text-sm">¡Correo Verificado con éxito!</span>
-                    </div>
-                )}
-            </div>
-
-            <div className="flex gap-4 pt-2">
-                <button
-                    onClick={onBack}
-                    className="flex-1 py-3 border border-slate-200 rounded-xl font-bold text-slate-500 hover:bg-slate-50 flex items-center justify-center gap-2 transition-all"
-                >
-                    <ArrowLeft size={18} /> Volver
-                </button>
-                <button
-                    onClick={onNext}
-                    disabled={!isEmailVerified}
-                    className={`flex-1 py-3 rounded-xl font-bold transition-all ${isEmailVerified
-                            ? 'bg-teal-500 text-white shadow-md hover:bg-teal-600'
-                            : 'bg-slate-100 text-slate-300 cursor-not-allowed'
-                        }`}
-                >
-                    Continuar
-                </button>
-            </div>
+      
+      <div className="bg-teal-50 border border-teal-200 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <div className="h-8 w-8 rounded-full bg-teal-100 flex items-center justify-center shrink-0 mt-0.5">
+            <Mail size={16} className="text-teal-600" />
+          </div>
+          <div>
+            <p className="font-semibold text-slate-800 text-sm mb-1">
+              Verificación de Correo Electrónico
+            </p>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Enviaremos un código de 6 dígitos a{" "}
+              <span className="text-teal-600 font-semibold">{email}</span>{" "}
+              para confirmar que es tuyo.
+            </p>
+          </div>
         </div>
-    );
+      </div>
+
+   
+      <div className="border border-slate-200 rounded-xl p-4">
+    
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center shrink-0">
+            <Mail size={16} className="text-slate-500" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-800">Correo a verificar</p>
+            <p className="text-xs text-slate-500">{email}</p>
+          </div>
+        </div>
+
+   
+        {estado === "idle" && (
+          <button
+            type="button"
+            onClick={enviarCodigo}
+            className="w-full bg-teal-500 hover:bg-teal-600 active:bg-teal-700 text-white font-semibold py-3 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors"
+          >
+            <Send size={15} />
+            Enviar código de verificación
+          </button>
+        )}
+
+
+        {estado === "enviando" && (
+          <button
+            type="button"
+            disabled
+            className="w-full bg-teal-400 text-white font-semibold py-3 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors cursor-wait opacity-90"
+          >
+            <Loader2 size={15} className="animate-spin" />
+            Enviando código...
+          </button>
+        )}
+
+       
+        {(estado === "enviado" || estado === "verificado") && (
+          <div className="flex flex-col gap-3">
+
+           
+            <div className="bg-green-50 border border-green-200 rounded-lg px-3 py-2.5 flex items-center gap-2">
+              <Check size={14} className="text-green-600 shrink-0" />
+              <p className="text-xs text-green-700">
+                Código enviado a <span className="font-semibold">{email}</span>. Revisa tu bandeja de entrada.
+              </p>
+            </div>
+
+        
+            {estado === "verificado" ? (
+              <div className="bg-teal-50 border border-teal-200 rounded-lg px-4 py-3 flex items-center gap-2 animate-in fade-in zoom-in-95 duration-300">
+                <Check size={16} className="text-teal-600 shrink-0" />
+                <p className="text-sm text-teal-700 font-semibold">
+                  Correo verificado correctamente ✓
+                </p>
+              </div>
+            ) : (
+             
+              <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                <p className="text-sm font-medium text-slate-700 mb-2">
+                  Ingresa el código de 6 dígitos
+                </p>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    value={inputCodigo}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, "").slice(0, 6);
+                      setInputCodigo(val);
+                      setErrorCodigo("");
+                    }}
+                    onKeyDown={(e) => e.key === "Enter" && inputCodigo.length === 6 && verificar()}
+                    placeholder="123456"
+                    className={[
+                      "flex-1 border rounded-lg px-4 py-2.5 text-sm text-center tracking-[0.3em] font-mono",
+                      "outline-none transition-all focus:ring-2",
+                      errorCodigo
+                        ? "border-red-400 bg-red-50 focus:ring-red-300"
+                        : "border-slate-200 focus:ring-teal-400 focus:border-teal-400",
+                    ].join(" ")}
+                  />
+                  <button
+                    type="button"
+                    onClick={verificar}
+                    disabled={inputCodigo.length !== 6}
+                    className={[
+                      "px-4 rounded-lg text-sm font-semibold transition-colors",
+                      inputCodigo.length === 6
+                        ? "bg-teal-500 text-white hover:bg-teal-600"
+                        : "bg-slate-100 text-slate-400 cursor-not-allowed",
+                    ].join(" ")}
+                  >
+                    Verificar
+                  </button>
+                </div>
+
+                {errorCodigo && (
+                  <p className="text-xs text-red-500 flex items-center gap-1 mt-2">
+                    ⚠ {errorCodigo}
+                  </p>
+                )}
+
+                <button
+                  type="button"
+                  onClick={reenviarCodigo}
+                  disabled={reenviando}
+                  className="text-xs text-teal-600 hover:underline flex items-center gap-1 self-center mt-3 disabled:opacity-60"
+                >
+                  {reenviando ? (
+                    <><RefreshCw size={11} className="animate-spin" /> Reenviando...</>
+                  ) : (
+                    "¿No recibiste el código? Reenviar"
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+    
+      <div className="grid grid-cols-2 gap-3 mt-1">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex items-center justify-center gap-2 border border-slate-200 text-slate-700 font-semibold py-3.5 rounded-xl text-sm hover:bg-slate-50 transition-colors"
+        >
+          <ArrowLeft size={16} />
+          Volver
+        </button>
+
+        <button
+          type="button"
+          onClick={onNext}
+          disabled={estado !== "verificado"}
+          className={[
+            "flex items-center justify-center gap-2 font-semibold py-3.5 rounded-xl text-sm transition-all",
+            estado === "verificado"
+              ? "bg-teal-500 text-white hover:bg-teal-600 shadow-md shadow-teal-200/50"
+              : "bg-slate-100 text-slate-400 cursor-not-allowed",
+          ].join(" ")}
+        >
+          Continuar
+          {estado === "verificado" && <ArrowRight size={16} className="group-hover:translate-x-1" />}
+        </button>
+      </div>
+    </div>
+  );
 }
