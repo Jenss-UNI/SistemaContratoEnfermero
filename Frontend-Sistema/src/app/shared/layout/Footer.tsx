@@ -1,64 +1,176 @@
 function Footer() {
   return (
-    <footer className="bg-slate-900 text-white mt-20 border border-slate-800 rounded-t-3xl overflow-hidden shadow-2xl">
-      <div className="max-w-7xl mx-auto px-6 md:px-8 py-16">
-        <div className="grid md:grid-cols-3 gap-10 lg:gap-20">
+    <footer className="bg-[#021311] text-white mt-16 rounded-t-[28px] overflow-hidden border-t border-[#12312d]">
+      <div className="max-w-7xl mx-auto px-6 md:px-10 lg:px-16 py-14">
 
-          <div>
-            <h2 className="text-2xl font-bold text-teal-400">Mantente</h2>
-            <h3 className="text-2xl font-bold mb-5">Informado</h3>
-            <p className="text-slate-400 leading-relaxed mb-6">
-              Recibe consejos de cuidado, actualizaciones de profesionales y ofertas exclusivas para familias peruanas.
+       
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+
+        
+          <div className="max-w-sm">
+            <h2 className="text-3xl md:text-4xl leading-tight font-light text-white">
+              Mantente
+            </h2>
+
+            <h3 className="text-4xl md:text-5xl leading-tight font-bold text-white mb-6">
+              Informado
+            </h3>
+
+            <p className="text-[#9cb3ad] text-sm md:text-base leading-7 mb-8">
+              Recibe consejos de cuidado, actualizaciones de profesionales y
+              ofertas exclusivas para familias peruanas.
             </p>
-            <div className="flex flex-col sm:flex-row gap-2">
+
+            {/* INPUT */}
+            <div className="w-full">
               <input
                 type="email"
                 placeholder="tu@email.com"
-                className="bg-slate-800 text-white px-4 py-3 rounded-xl flex-1 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400"
+                className="w-full bg-transparent border-b border-[#314542] pb-3 text-white placeholder:text-[#71807d] outline-none text-sm"
               />
-              <button type="button" className="bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600 px-5 py-3 rounded-xl transition font-semibold whitespace-nowrap shadow-lg">
+
+              <button className="mt-5 bg-white text-black px-6 py-3 rounded-full font-semibold hover:bg-gray-200 transition-all duration-300 text-sm">
                 Suscribirme →
               </button>
             </div>
           </div>
 
           <div>
-            <h3 className="font-bold text-lg mb-1 tracking-wide text-white">NAVEGACIÓN</h3>
-            <ul className="space-y-2 text-slate-400">
-              <li><a href="#" className="hover:text-teal-400 transition hover:translate-x-1 inline-block">Buscar Enfermeros</a></li>
-              <li><a href="#" className="hover:text-teal-400 transition hover:translate-x-1 inline-block">Cómo Funciona</a></li>
-              <li><a href="#" className="hover:text-teal-400 transition hover:translate-x-1 inline-block">Registrarse</a></li>
-              <li><a href="#" className="hover:text-teal-400 transition hover:translate-x-1 inline-block">Preguntas Frecuentes</a></li>
-              <li><a href="#" className="hover:text-teal-400 transition hover:translate-x-1 inline-block">Términos de Servicio</a></li>
+            <h4 className="text-[12px] tracking-[3px] uppercase text-[#b9c5c2] mb-6">
+              Navegación
+            </h4>
+
+            <ul className="space-y-4 text-[#c4d0cd] text-sm">
+
+              <li>
+                <a
+                  href="#"
+                  className="hover:text-white transition underline underline-offset-4"
+                >
+                  Buscar Enfermeros
+                </a>
+              </li>
+
+              <li>
+                <a
+                  href="#"
+                  className="hover:text-white transition underline underline-offset-4"
+                >
+                  Cómo Funciona
+                </a>
+              </li>
+
+              <li>
+                <a
+                  href="#"
+                  className="hover:text-white transition underline underline-offset-4"
+                >
+                  Registrarse
+                </a>
+              </li>
+
+              <li>
+                <a
+                  href="#"
+                  className="hover:text-white transition underline underline-offset-4"
+                >
+                  Preguntas Frecuentes
+                </a>
+              </li>
+
+              <li>
+                <a
+                  href="#"
+                  className="hover:text-white transition underline underline-offset-4"
+                >
+                  Términos de Servicio
+                </a>
+              </li>
+
             </ul>
           </div>
 
           <div>
-            <h3 className="font-bold text-lg mb-1 tracking-wide text-white">CONTACTO</h3>
-            <div className="space-y-2 text-slate-400">
-              <p className="block hover:text-teal-400 transition hover:translate-x-1 cursor-pointer">+51 999 888 777</p>
-              <p className="block hover:text-teal-400 transition hover:translate-x-1 cursor-pointer">soporte@cuidadosalud.pe</p>
-              <p>
-                OFICINA PRINCIPAL<br />
-                Av. Javier Prado Este 5268<br />
-                La Molina, Lima - Perú
-              </p>
-              <div className="flex gap-4 pt-2">
-                <a href="#" className="hover:text-teal-400 transition hover:translate-x-1 inline-block">Facebook</a>
-                <a href="#" className="hover:text-teal-400 transition hover:translate-x-1 inline-block">LinkedIn</a>
-                <a href="#" className="hover:text-teal-400 transition hover:translate-x-1 inline-block">Instagram</a>
+            <h4 className="text-[12px] tracking-[3px] uppercase text-[#b9c5c2] mb-6">
+              Contacto
+            </h4>
+
+            <div className="space-y-5 text-[#d9e3e1]">
+
+              <div>
+                <p className="text-xl md:text-2xl font-semibold text-white">
+                  +51 999 888 777
+                </p>
+
+                <p className="mt-2 text-sm text-[#b8c3c0]">
+                  soporte@cuidadosalud.pe
+                </p>
+              </div>
+
+              <div>
+                <p className="uppercase tracking-[2px] text-xs text-[#b9c5c2] mb-2">
+                  Oficina Principal
+                </p>
+
+                <p className="leading-7 text-sm text-[#d0d9d7]">
+                  Av. Javier Prado Este 5268
+                  <br />
+                  La Molina, Lima - Perú
+                </p>
+              </div>
+
+             
+              <div className="flex gap-3 pt-1">
+
+                <a
+                  href="#"
+                  className="w-10 h-10 rounded-full border border-[#415451] flex items-center justify-center hover:border-white hover:text-white transition-all duration-300 text-sm"
+                >
+                  f
+                </a>
+
+                <a
+                  href="#"
+                  className="w-10 h-10 rounded-full border border-[#415451] flex items-center justify-center hover:border-white hover:text-white transition-all duration-300 text-sm"
+                >
+                  ◎
+                </a>
+
+                <a
+                  href="#"
+                  className="w-10 h-10 rounded-full border border-[#415451] flex items-center justify-center hover:border-white hover:text-white transition-all duration-300 text-sm"
+                >
+                  in
+                </a>
+
               </div>
             </div>
           </div>
         </div>
 
-        <div className="border-t border-slate-700 mt-10 pt-6 text-center text-slate-500 text-sm">
-          <p>© 2026 CuidadoSalud. Todos los derechos reservados.</p>
-          <div className="flex justify-center gap-6 mt-2">
-            <a href="#" className="hover:text-teal-400 transition hover:translate-x-1 inline-block">Política de Privacidad</a>
-            <a href="#" className="hover:text-teal-400 transition hover:translate-x-1 inline-block">Términos de Servicio</a>
+        <div className="border-t border-[#1b302d] mt-14 pt-6 flex flex-col md:flex-row justify-between items-center gap-4">
+
+          <p className="text-[#8c9b98] text-xs md:text-sm text-center md:text-left">
+            © 2025 CuidadoSalud. Todos los derechos reservados.
+          </p>
+
+          <div className="flex gap-6 text-xs md:text-sm">
+            <a
+              href="#"
+              className="text-[#9eb0ac] hover:text-white transition"
+            >
+              Política de Privacidad
+            </a>
+
+            <a
+              href="#"
+              className="text-[#9eb0ac] hover:text-white transition"
+            >
+              Términos de Servicio
+            </a>
           </div>
         </div>
+
       </div>
     </footer>
   );
