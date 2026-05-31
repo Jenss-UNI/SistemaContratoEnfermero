@@ -147,15 +147,15 @@ export default function GestionClientesPage() {
 
         {/* Tabla Contenedora */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="min-w-[860px] table-auto w-full text-left text-sm whitespace-nowrap">
             <thead>
               <tr className="border-b border-slate-100 text-[13px] text-slate-500">
-                <th className="pb-4 pl-2 font-bold">Profesional</th>
-                <th className="pb-4 font-bold">Nivel</th>
-                <th className="pb-4 font-bold">Distrito</th>
-                <th className="pb-4 font-bold">Estado</th>
-                <th className="pb-4 font-bold">Registro</th>
-                <th className="pb-4 font-bold">Acciones</th>
+                <th className="px-3 pb-4 font-bold">Profesional</th>
+                <th className="px-3 pb-4 font-bold">Nivel</th>
+                <th className="px-3 pb-4 font-bold">Distrito</th>
+                <th className="px-3 pb-4 font-bold">Estado</th>
+                <th className="px-3 pb-4 font-bold">Registro</th>
+                <th className="px-3 pb-4 font-bold">Acciones</th>
               </tr>
             </thead>
             
@@ -164,7 +164,7 @@ export default function GestionClientesPage() {
                 <tr key={item.id} className="transition-colors hover:bg-slate-50/50">
                   
                   {/* Profesional */}
-                  <td className="py-4 pl-2">
+                  <td className="px-3 py-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#ccfbf1] text-[13px] font-bold text-[#0f766e]">
                         {item.initials}
@@ -174,23 +174,23 @@ export default function GestionClientesPage() {
                   </td>
                   
                   {/* Nivel */}
-                  <td className="py-4 text-[13px] font-medium text-slate-500">{item.role}</td>
+                  <td className="px-3 py-4 text-[13px] font-medium text-slate-500">{item.role}</td>
                   
                   {/* Distrito */}
-                  <td className="py-4 text-[13px] font-medium text-slate-500">{item.district}</td>
+                  <td className="px-3 py-4 text-[13px] font-medium text-slate-500">{item.district}</td>
                   
                   {/* Estado (Badge) */}
-                  <td className="py-4">
+                  <td className="px-3 py-4">
                     <span className="inline-flex items-center rounded-full bg-[#ccfbf1] px-3 py-1 text-[11px] font-bold text-[#0f766e]">
                       {item.status}
                     </span>
                   </td>
                   
                   {/* Registro */}
-                  <td className="py-4 text-[13px] font-medium text-slate-400">{item.date}</td>
+                  <td className="px-3 py-4 text-[13px] font-medium text-slate-400">{item.date}</td>
                   
                   {/* Acciones */}
-                  <td className="py-4">
+                  <td className="px-3 py-4">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => handleOpenProfile(item)}

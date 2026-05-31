@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { User, Tag } from "lucide-react";
 
 type Severity = "alta" | "media" | "baja";
@@ -16,23 +16,22 @@ type Report = {
   currentResponse: string | null;
 };
 
-// Datos de prueba basados en tu imagen
 const MOCK_REPORTS: Report[] = [
   {
     id: "1",
-    title: "Enfemero llego tarde",
+    title: "Enfermero llegó tarde",
     authorType: "enfermero",
     targetType: "cliente",
     severity: "alta",
     status: "Resuelto",
     date: "22/5/2026",
-    description: "LLego 30 min tarde sin justificacion",
-    currentResponse: "su reporte fue revisado",
+    description: "Llegó 30 min tarde sin justificación.",
+    currentResponse: "Su reporte fue revisado.",
   },
   {
     id: "2",
-    title: "problema",
-    authorType: "condiciones",
+    title: "Problema en condiciones de trabajo",
+    authorType: "cliente",
     targetType: "enfermero",
     severity: "media",
     status: "Abierto",
@@ -42,27 +41,59 @@ const MOCK_REPORTS: Report[] = [
   },
 ];
 
-const FILTERS = ["Todos", "Abiertos", "En revisión", "Resueltos"];
+const FILTERS = ["Todos", "Abiertos", "En revisión", "Resueltos"] as const;
 
-// Estilos dinámicos para los badges
+const FILTER_STATUS_MAP: Record<(typeof FILTERS)[number], Status | null> = {
+  Todos: null,
+  Abiertos: "Abierto",
+  "En revisión": "En revisión",
+  Resueltos: "Resuelto",
+};
+
 const severityStyle: Record<Severity, string> = {
-  alta: "bg-[#ffe4e6] text-[#e11d48]", // Rosa/Rojo
-  media: "bg-[#fef3c7] text-[#d97706]", // Naranja/Ambar
+  alta: "bg-[#ffe4e6] text-[#e11d48]",
+  media: "bg-[#fef3c7] text-[#d97706]",
   baja: "bg-slate-100 text-slate-600",
 };
 
 const statusStyle: Record<Status, string> = {
-  Resuelto: "bg-[#d1f4eb] text-[#0db39e]", // Verde agua
-  Abierto: "bg-[#dbeafe] text-[#2563eb]", // Azul
+  Resuelto: "bg-[#d1f4eb] text-[#0db39e]",
+  Abierto: "bg-[#dbeafe] text-[#2563eb]",
   "En revisión": "bg-[#fef3c7] text-[#d97706]",
 };
 
 export default function ReportesPage() {
-  const [activeFilter, setActiveFilter] = useState("Todos");
-  const [selectedReportId, setSelectedReportId] = useState(MOCK_REPORTS[0].id);
+  const [activeFilter, setActiveFilter] = useState<(typeof FILTERS)[number]>("Todos");
+  const [selectedReportId, setSelectedReportId] = useState(MOCK_REPORTS[0]?.id ?? "");
   const [responseText, setResponseText] = useState("");
+  const [reportResponses, setReportResponses] = useState<Record<string, string>>({});
 
-  const selectedReport = MOCK_REPORTS.find((r) => r.id === selectedReportId);
+  const filteredReports = useMemo(
+    () =>
+      MOCK_REPORTS.filter((report) => {
+        const status = FILTER_STATUS_MAP[activeFilter];
+        return status === null || report.status === status;
+      }),
+    [activeFilter]
+  );
+
+  useEffect(() => {
+    if (!filteredReports.some((report) => report.id === selectedReportId)) {
+      setSelectedReportId(filteredReports[0]?.id ?? "");
+    }
+  }, [filteredReports, selectedReportId]);
+
+  const selectedReport = filteredReports.find((r) => r.id === selectedReportId) || filteredReports[0] || null;
+  const currentResponse = selectedReport ? reportResponses[selectedReport.id] ?? selectedReport.currentResponse : null;
+
+  const handleSendResponse = () => {
+    if (!selectedReport || !responseText.trim()) return;
+    setReportResponses((current) => ({
+      ...current,
+      [selectedReport.id]: responseText.trim(),
+    }));
+    setResponseText("");
+  };
 
   return (
     <div className="w-full space-y-6">
@@ -177,10 +208,19 @@ export default function ReportesPage() {
                     rows={4}
                     className="w-full resize-none rounded-2xl border border-slate-200 bg-white p-4 text-[14px] text-slate-700 outline-none transition focus:border-[#0db39e]"
                   />
+
+                  <button
+                    type="button"
+                    onClick={handleSendResponse}
+                    disabled={!responseText.trim()}
+                    className="mt-3 inline-flex items-center justify-center rounded-2xl bg-[#0db39e] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#0a8e7c] disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
+                  >
+                    Enviar respuesta
+                  </button>
                 </div>
 
                 {/* Respuesta Actual (Solo se muestra si existe) */}
-                {selectedReport.currentResponse && (
+                {currentResponse && (
                   <div className="rounded-2xl border border-[#a5edd9] bg-[#f2fdfa] p-4">
                     <p className="mb-1 text-[12px] font-bold text-[#0db39e]">Respuesta actual:</p>
                     <p className="text-[14px] text-[#0db39e]">

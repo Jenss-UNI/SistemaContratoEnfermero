@@ -46,21 +46,15 @@ export default function ContratosPage() {
   // Función para manejar el buscador con restricción estricta
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
-    // Expresión regular: Permite solo letras (mayúsculas, minúsculas, vocales con tilde y la ñ)
-    // No permite espacios, ni números, ni símbolos.
     if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ]*$/.test(value)) {
       setSearchQuery(value);
     }
   };
 
-  // Lógica de filtrado combinado (Estado + Búsqueda de texto)
   const filteredContracts = MOCK_CONTRACTS.filter((contract) => {
-    // 1. Filtro por Estado
     const matchesStatus = activeFilter === "Todos" || contract.status === activeFilter;
-    
-    // 2. Filtro por Búsqueda (busca en el nombre del paciente o del enfermero)
     const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = 
+    const matchesSearch =
       contract.patient.toLowerCase().includes(searchLower) ||
       contract.nurse.toLowerCase().includes(searchLower);
 
@@ -69,14 +63,14 @@ export default function ContratosPage() {
 
   return (
     <div className="w-full space-y-6">
-      
+
       {/* 1. Tarjetas Superiores (Métricas) */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
           <p className="text-[13px] font-medium text-slate-400">Total contratos</p>
           <p className="mt-2 text-3xl font-bold text-slate-900">9</p>
         </div>
-        
+
         <div className="rounded-[1.5rem] border border-slate-100 bg-white p-6 shadow-sm">
           <p className="text-[13px] font-medium text-slate-400">En custodia</p>
           <p className="mt-2 text-3xl font-bold text-[#f59e0b]">S/ 1,577</p>
@@ -90,23 +84,22 @@ export default function ContratosPage() {
 
       {/* 2. Sección Principal: Tabla de Contratos */}
       <section className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm md:p-8">
-        
+
         <div className="mb-8 flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
           <h2 className="text-[15px] font-bold text-slate-900">Contratos del Sistema</h2>
 
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
-            
+
             {/* Filtros de Estado Interactivos */}
             <div className="flex flex-wrap items-center gap-2">
               {FILTERS.map((filter) => (
                 <button
                   key={filter}
                   onClick={() => setActiveFilter(filter)}
-                  className={`rounded-full px-4 py-1.5 text-[12px] font-medium transition-colors ${
-                    activeFilter === filter
+                  className={`rounded-full px-4 py-1.5 text-[12px] font-medium transition-colors ${activeFilter === filter
                       ? "bg-[#14b8a6] text-white border border-[#14b8a6]"
                       : "border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
+                    }`}
                 >
                   {filter}
                 </button>
@@ -129,41 +122,41 @@ export default function ContratosPage() {
 
         {/* Contenedor de la Tabla */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="min-w-[980px] table-auto w-full text-left text-sm whitespace-nowrap">
             <thead>
               <tr className="border-b border-slate-50 text-[13px] text-slate-500">
-                <th className="pb-4 pl-2 font-medium">Código</th>
-                <th className="pb-4 font-medium">Paciente</th>
-                <th className="pb-4 font-medium">Enfermero</th>
-                <th className="pb-4 font-medium">Estado</th>
-                <th className="pb-4 font-medium">Monto</th>
-                <th className="pb-4 font-medium">Pago</th>
-                <th className="pb-4 font-medium">Fecha</th>
-                <th className="pb-4 font-medium">Acciones</th>
+                <th className="px-3 pb-4 font-medium">Código</th>
+                <th className="px-3 pb-4 font-medium">Paciente</th>
+                <th className="px-3 pb-4 font-medium">Enfermero</th>
+                <th className="px-3 pb-4 font-medium">Estado</th>
+                <th className="px-3 pb-4 font-medium">Monto</th>
+                <th className="px-3 pb-4 font-medium">Pago</th>
+                <th className="px-3 pb-4 font-medium">Fecha</th>
+                <th className="px-3 pb-4 font-medium">Acciones</th>
               </tr>
             </thead>
-            
+
             <tbody className="divide-y divide-slate-50">
               {/* Rendereamos 'filteredContracts' en lugar de 'MOCK_CONTRACTS' */}
               {filteredContracts.length > 0 ? (
                 filteredContracts.map((contract) => (
                   <tr key={contract.id} className="transition-colors hover:bg-slate-50/50">
-                    <td className="py-4 pl-2 text-[13px] font-medium text-slate-600">{contract.code}</td>
-                    <td className="py-4 text-[13px] font-medium text-slate-600">{contract.patient}</td>
-                    <td className="py-4 text-[13px] font-medium text-slate-600">{contract.nurse}</td>
-                    <td className="py-4">
+                    <td className="px-3 py-4 text-[13px] font-medium text-slate-600">{contract.code}</td>
+                    <td className="px-3 py-4 text-[13px] font-medium text-slate-600">{contract.patient}</td>
+                    <td className="px-3 py-4 text-[13px] font-medium text-slate-600">{contract.nurse}</td>
+                    <td className="px-3 py-4">
                       <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold ${statusStyle[contract.status]}`}>
                         {contract.status}
                       </span>
                     </td>
-                    <td className="py-4 text-[13px] font-bold text-slate-800">{contract.amount}</td>
-                    <td className="py-4">
+                    <td className="px-3 py-4 text-[13px] font-bold text-slate-800">{contract.amount}</td>
+                    <td className="px-3 py-4">
                       <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold ${paymentStyle[contract.payment]}`}>
                         {contract.payment}
                       </span>
                     </td>
-                    <td className="py-4 text-[13px] font-medium text-slate-500">{contract.date}</td>
-                    <td className="py-4">
+                    <td className="px-3 py-4 text-[13px] font-medium text-slate-500">{contract.date}</td>
+                    <td className="px-3 py-4">
                       <div className="flex items-center gap-2">
                         {contract.status === "Activo" && (
                           <button className="inline-flex items-center justify-center rounded-lg border border-[#a5edd9] px-3 py-1.5 text-[12px] font-bold text-[#0db39e] transition hover:bg-[#f2fdfa]">
@@ -188,13 +181,13 @@ export default function ContratosPage() {
             </tbody>
           </table>
         </div>
-        
+
         {/* Footer dinámico */}
         <div className="mt-6 text-[13px] font-medium text-slate-400">
           Mostrando {filteredContracts.length} contratos
         </div>
       </section>
-      
+
     </div>
   );
 }

@@ -1,8 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { ADMIN_NAV_ITEMS } from "../adminNav"; // Verifica que esta ruta sea la correcta en tu proyecto
+import { ADMIN_NAV_ITEMS } from "../adminNav"; 
 import { User, ShieldCheck, LogOut } from "lucide-react";
 
-export default function AdminPanelSidebar() {
+type AdminPanelSidebarProps = {
+  closeSidebar?: () => void;
+};
+
+export default function AdminPanelSidebar({ closeSidebar }: AdminPanelSidebarProps) {
   return (
     <div className="flex h-full flex-col">
       
@@ -27,11 +31,11 @@ export default function AdminPanelSidebar() {
 
       {/* Navegación */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-4 pt-2">
-        {/* Nota: Se eliminó la extracción de 'badge' ya que no se usará */}
         {ADMIN_NAV_ITEMS.map(({ label, path, icon: Icon }) => (
           <NavLink
             key={path}
             to={path}
+            onClick={() => closeSidebar?.()}
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
                 isActive

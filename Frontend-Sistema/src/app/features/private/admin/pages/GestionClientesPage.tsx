@@ -98,16 +98,16 @@ export default function GestionClientesPage() {
 
         {/* Contenedor de la Tabla (con scroll horizontal en móviles) */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="min-w-[720px] table-auto w-full text-left text-sm whitespace-nowrap">
             
             {/* Cabecera de la tabla */}
             <thead>
               <tr className="border-b border-slate-100 text-[13px] text-slate-500">
-                <th className="pb-4 pl-2 font-bold">Cliente</th>
-                <th className="pb-4 font-bold">Distrito</th>
-                <th className="pb-4 font-bold">Teléfono</th>
-                <th className="pb-4 font-bold">Registro</th>
-                <th className="pb-4 font-bold">Acciones</th>
+                <th className="px-3 pb-4 font-bold">Cliente</th>
+                <th className="px-3 pb-4 font-bold">Distrito</th>
+                <th className="px-3 pb-4 font-bold">Teléfono</th>
+                <th className="px-3 pb-4 font-bold">Registro</th>
+                <th className="px-3 pb-4 font-bold">Acciones</th>
               </tr>
             </thead>
             
@@ -117,7 +117,7 @@ export default function GestionClientesPage() {
                 <tr key={client.id} className="transition-colors hover:bg-slate-50/50">
                   
                   {/* Columna: Cliente (Avatar + Nombre) */}
-                  <td className="py-4 pl-2">
+                  <td className="px-3 py-4">
                     <div className="flex items-center gap-4">
                       {/* Círculo del Avatar (Rosa) */}
                       <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-rose-100 text-[13px] font-bold text-rose-700">
@@ -128,22 +128,22 @@ export default function GestionClientesPage() {
                   </td>
                   
                   {/* Columna: Distrito */}
-                  <td className="py-4 text-[13px] font-medium text-slate-500">
+                  <td className="px-3 py-4 text-[13px] font-medium text-slate-500">
                     {client.district}
                   </td>
                   
                   {/* Columna: Teléfono */}
-                  <td className="py-4 text-[13px] font-medium text-slate-500">
+                  <td className="px-3 py-4 text-[13px] font-medium text-slate-500">
                     {client.phone}
                   </td>
                   
                   {/* Columna: Fecha de Registro */}
-                  <td className="py-4 text-[13px] font-medium text-slate-400">
+                  <td className="px-3 py-4 text-[13px] font-medium text-slate-400">
                     {client.date}
                   </td>
                   
                   {/* Columna: Acciones */}
-                  <td className="py-4">
+                  <td className="px-3 py-4">
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => handleOpenProfile(client)}
@@ -218,7 +218,7 @@ export default function GestionClientesPage() {
             </div>
 
             {/* Grid de Información en 2 Columnas */}
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
               {/* Teléfono */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold uppercase tracking-wide text-slate-400">

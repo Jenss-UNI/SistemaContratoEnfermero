@@ -95,17 +95,13 @@ export default function BookingServiceStep({
       {/* HEADER */}
       <div className="mb-8">
 
-        <h3 className="text-2xl font-bold text-slate-900">
-
+        <h3 className="text-xl md:text-2xl font-bold text-slate-900">
           Selecciona el tipo de servicio
-
         </h3>
 
-        <p className="text-slate-500 mt-2">
-
+        <p className="text-slate-500 mt-2 text-sm md:text-base">
           El precio varía según
           la complejidad del cuidado.
-
         </p>
 
       </div>
@@ -126,12 +122,11 @@ export default function BookingServiceStep({
                 setSelectedService(service)
               }
               className={`
-
                 w-full
                 text-left
                 rounded-3xl
                 border
-                p-6
+                p-4 md:p-6
                 transition-all
 
                 ${
@@ -151,39 +146,33 @@ export default function BookingServiceStep({
               `}
             >
 
-              <div className="flex justify-between gap-6">
+              <div className="flex flex-col lg:flex-row lg:justify-between gap-6">
 
                 {/* LEFT */}
-                <div className="flex gap-4">
+                <div className="flex flex-col sm:flex-row gap-4 flex-1 min-w-0">
 
-                  <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center">
+                  <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center shrink-0">
 
                     {getIcon(service.name)}
 
                   </div>
 
-                  <div>
+                  <div className="min-w-0">
 
                     <div className="flex items-center gap-3 flex-wrap">
 
-                      <h4 className="text-lg font-bold text-slate-900">
-
+                      <h4 className="text-base md:text-lg font-bold text-slate-900 break-words">
                         {service.name}
-
                       </h4>
 
                       <div className="px-3 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold">
-
                         {service.name}
-
                       </div>
 
                     </div>
 
-                    <p className="text-slate-500 mt-3 leading-7">
-
+                    <p className="text-sm md:text-base text-slate-500 mt-3 leading-6 md:leading-7">
                       {getDescription(service.name)}
-
                     </p>
 
                   </div>
@@ -191,18 +180,14 @@ export default function BookingServiceStep({
                 </div>
 
                 {/* RIGHT */}
-                <div className="text-right shrink-0">
+                <div className="text-center lg:text-right shrink-0 border-t lg:border-t-0 pt-4 lg:pt-0">
 
-                  <p className="text-4xl font-bold text-slate-900">
-
+                  <p className="text-2xl md:text-3xl lg:text-4xl font-bold text-slate-900">
                     S/ {service.price}
-
                   </p>
 
-                  <p className="text-slate-400 mt-1">
-
+                  <p className="text-slate-400 mt-1 text-sm md:text-base">
                     por hora
-
                   </p>
 
                 </div>
@@ -216,7 +201,7 @@ export default function BookingServiceStep({
       </div>
 
       {/* ACTIONS */}
-      <div className="flex gap-4 mt-10">
+      <div className="flex flex-col sm:flex-row gap-4 mt-10">
 
         <button
           onClick={onBack}
@@ -238,7 +223,6 @@ export default function BookingServiceStep({
           onClick={onNext}
           disabled={!isValid}
           className={`
-
             flex-1
             py-4
             rounded-2xl
