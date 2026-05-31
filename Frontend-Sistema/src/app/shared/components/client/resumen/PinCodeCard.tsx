@@ -1,107 +1,42 @@
-import { Copy, Eye, EyeOff, KeyRound, RefreshCw } from "lucide-react";
-import { useState } from "react";
+import { KeyRound, Lock } from "lucide-react";
 
-type PinCodeCardProps = {
-  pin?: string;
-  tiempoRestante?: string;
-  onPinRegenerado?: () => void;
-};
-
-function generarPin(): string {
-  return Array.from({ length: 6 }, () => Math.floor(Math.random() * 10)).join("");
-}
-
-export default function PinCodeCard({
-  pin: pinProp,
-  tiempoRestante = "8h 59m",
-  onPinRegenerado,
-}: PinCodeCardProps) {
-  const [pin, setPin] = useState(pinProp ?? "");
-  const [visible, setVisible] = useState(false);
-
-  const digits = (pin || "------").padEnd(6, "•").slice(0, 6).split("");
-  const tienePin = pin.length === 6 && /^\d{6}$/.test(pin);
-
-  const handleCopy = async () => {
-    if (!tienePin) return;
-    await navigator.clipboard.writeText(pin);
-  };
-
-  const handleRegenerar = () => {
-    setPin(generarPin());
-    setVisible(false);
-    onPinRegenerado?.();
-  };
-
+export default function PinCodeCard() {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex min-w-0 gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-50">
-            <KeyRound className="h-5 w-5 text-teal-600" />
-          </div>
-          <div className="min-w-0">
-            <h3 className="font-bold text-slate-900">Tu Código PIN de Servicio</h3>
-            <p className="text-sm text-slate-500">
-              Dicta este código al enfermero para validar su llegada
-            </p>
-          </div>
+    <div className="flex flex-col justify-center rounded-2xl border border-slate-100 bg-white p-4 sm:p-5 lg:p-6 shadow-sm transition-all duration-300">
+      <div className="flex items-center gap-3">
+        <div className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl bg-teal-100 transition-all">
+          <KeyRound className="h-5 w-5 sm:h-6 sm:w-6 text-teal-600" />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 lg:shrink-0">
-          <span className="rounded-full bg-orange-100 px-3 py-1 text-sm font-semibold text-orange-700">
-            {tiempoRestante} restantes
-          </span>
-          <button
-            type="button"
-            onClick={handleRegenerar}
-            className="inline-flex items-center gap-2 rounded-lg border border-teal-500 bg-white px-4 py-2 text-sm font-semibold text-teal-600 transition hover:bg-teal-50"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Generar nuevo
-          </button>
+        <div>
+          <h3 className="text-base sm:text-lg font-bold text-slate-900">
+            Código PIN de Servicio
+          </h3>
+          <p className="text-xs sm:text-sm text-slate-500">
+            Se activará automáticamente 10 min antes del servicio
+          </p>
         </div>
       </div>
 
-      <div className="mt-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex gap-1.5 sm:gap-2">
-            {digits.map((d, i) => (
-              <span
-                key={i}
-                className="flex h-14 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-xl font-bold text-slate-900 sm:h-16 sm:w-10"
-              >
-                {visible && tienePin ? d : "•"}
-              </span>
-            ))}
-          </div>
-
-          <div className="flex flex-col gap-2 border-l border-slate-100 pl-4">
-            <button
-              type="button"
-              onClick={() => setVisible((v) => !v)}
-              disabled={!tienePin}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-teal-600 hover:text-teal-700 disabled:opacity-40"
+      <div className="mt-4 sm:mt-6 flex flex-col items-center justify-center rounded-xl bg-slate-50/50 py-6 px-4 sm:py-8 sm:px-6 lg:py-10 transition-all duration-300">
+        <div className="flex gap-2 sm:gap-3">
+          {[1, 2, 3, 4, 5].map((_, i) => (
+            <div
+              key={i}
+              className="flex h-10 w-8 sm:h-12 sm:w-10 lg:h-14 lg:w-12 items-center justify-center rounded-lg border border-slate-200 bg-white transition-all"
             >
-              {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              {visible ? "Ocultar" : "Mostrar"}
-            </button>
-            <button
-              type="button"
-              onClick={handleCopy}
-              disabled={!tienePin}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-slate-700 disabled:opacity-40"
-            >
-              <Copy className="h-4 w-4" />
-              Copiar
-            </button>
-          </div>
+              <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-slate-300" />
+            </div>
+          ))}
         </div>
 
-        <p className="text-right text-xs leading-relaxed text-slate-400 md:max-w-[200px]">
-          Código temporal de 6 dígitos
-          <br />
-          Válido por 24 horas o hasta su uso
+        <p className="mt-4 text-center text-xs sm:text-sm text-slate-500">
+          Tu código PIN y QR de asistencia se activarán 10 minutos antes de tu
+          servicio
+        </p>
+
+        <p className="mt-1 text-center text-xs sm:text-sm font-semibold text-teal-600">
+          Activación: 11:50 p. m. · Carlos Sanchez Martinez
         </p>
       </div>
     </div>

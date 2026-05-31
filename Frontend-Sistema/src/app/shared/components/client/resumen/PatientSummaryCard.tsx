@@ -1,45 +1,44 @@
 import { MapPin } from "lucide-react";
 
 type PatientSummaryCardProps = {
-  nombre?: string;
-  detalle?: string;
-  etiquetas?: string[];
-  distrito?: string;
+  name?: string;
+  details?: string;
+  location?: string;
 };
 
 export default function PatientSummaryCard({
-  nombre = "—",
-  detalle = "—",
-  etiquetas = [],
-  distrito = "—",
+  name = "—",
+  details = "—",
+  location = "—",
 }: PatientSummaryCardProps) {
+  
+  // Función para obtener iniciales en caso de que no haya foto
+  const getInitials = (nombre: string) => {
+    if (!nombre || nombre === "—") return "?";
+    const parts = nombre.trim().split(" ");
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+
+    return nombre.substring(0, 2).toUpperCase();
+  };
+
   return (
-    <article className="rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
-      <div className="flex gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-pink-100 text-sm font-bold text-pink-600">
-          ?
+    <div className="flex flex-col justify-between rounded-2xl border border-slate-100 bg-white p-4 shadow-sm">
+      <div className="flex items-center gap-4">
+        {/* Avatar del paciente */}
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-teal-100 font-bold text-teal-700">
+          {getInitials(name)}
         </div>
-        <div className="min-w-0 flex-1">
-          <h3 className="font-bold text-slate-900">{nombre}</h3>
-          <p className="text-sm text-slate-500">{detalle}</p>
-          {etiquetas.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {etiquetas.map((tag) => (
-                <span
-                  key={tag}
-                  className="rounded-md bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-700"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          )}
-          <p className="mt-2 flex items-center gap-1 text-xs text-slate-500">
-            <MapPin className="h-3 w-3" />
-            {distrito}
-          </p>
+        
+        <div>
+          <h3 className="font-bold text-slate-900">{name}</h3>
+          <p className="text-sm text-slate-500">{details}</p>
         </div>
       </div>
-    </article>
+
+      <div className="mt-4 flex items-center gap-1.5 pt-4 text-sm text-teal-600">
+        <MapPin className="h-4 w-4" />
+        <span>{location}</span>
+      </div>
+    </div>
   );
 }

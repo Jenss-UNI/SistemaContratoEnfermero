@@ -1,53 +1,102 @@
 import { Bell, LogOut, Search } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, NavLink } from "react-router-dom";
 
-/** Cabecera del panel cliente (plantilla; datos vendrán del backend). */
 export default function ClientPanelHeader() {
   return (
-    <div className="border-b border-slate-100 bg-white px-4 py-5 sm:px-6 lg:px-8 lg:py-6">
-      <div className="mx-auto flex max-w-7xl flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex min-w-0 items-center gap-4">
-          <div
-            className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-teal-500 to-cyan-500 text-xl font-bold text-white sm:h-16 sm:w-16"
-            aria-hidden
-          >
-            C
-          </div>
-          <div className="min-w-0">
-            <p className="text-xs font-medium text-slate-500">Panel Cliente</p>
-            <h1 className="truncate text-xl font-bold text-slate-900 sm:text-2xl lg:text-3xl">
-              Bienvenida, Carmen
-            </h1>
-            <p className="mt-0.5 text-sm text-slate-500">
-              Tienes 1 servicio activo y 1 próximo
-            </p>
-          </div>
-        </div>
+    <header className="fixed top-0 w-full z-50 bg-white shadow-sm">
 
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <Link
-            to="/directorio"
-            className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-teal-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-600 sm:flex-none sm:px-5"
-          >
-            <Search className="h-4 w-4 shrink-0" />
-            Buscar Enfermero
+    
+      <div className="border-b border-slate-100">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-sky-400 flex items-center justify-center p-[2px]">
+              <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
+                <div className="w-2.5 h-2.5 bg-teal-500 rounded-full" />
+              </div>
+            </div>
+            <span className="text-xl font-bold tracking-tight text-slate-900">Cuidame</span>
           </Link>
-          <button
-            type="button"
-            className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-teal-200 hover:text-teal-600"
-            aria-label="Notificaciones"
-          >
-            <Bell className="h-5 w-5" />
-          </button>
-          <Link
-            to="/login"
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
-          >
-            <LogOut className="h-4 w-4 shrink-0" />
-            <span className="hidden sm:inline">Cerrar sesión</span>
-          </Link>
+
+          <nav className="hidden md:flex items-center gap-8">
+            {[
+              { to: "/", label: "Inicio" },
+              { to: "/directorio", label: "Directorio" },
+              { to: "/planes", label: "Planes" },
+            ].map(({ to, label }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={to === "/"}
+                className={({ isActive }) =>
+                  `text-base font-medium transition-colors hover:text-teal-500 ${
+                    isActive ? "text-teal-500" : "text-slate-700"
+                  }`
+                }
+              >
+                {label}
+              </NavLink>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-500 text-xs font-bold text-white">
+              C
+            </div>
+            <span className="hidden md:block text-sm font-medium text-slate-700">
+             Carmen López
+            </span>
+          </div>
         </div>
       </div>
-    </div>
+
+     
+      <div className="border-b border-slate-100">
+        <div className="mx-auto max-w-7xl px-6 py-5 lg:px-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-4">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-teal-600 text-xl font-bold text-white">
+                CL
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
+                  Panel Cliente
+                </p>
+                <h1 className="text-2xl font-bold text-slate-900 leading-tight">
+                  Bienvenida, Carmen López
+                </h1>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  Tienes 0 servicios activos y 10 pendientes
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Link
+                to="/directorio"
+                className="inline-flex items-center gap-2 rounded-full bg-teal-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-teal-600 transition-colors"
+              >
+                <Search className="h-4 w-4" />
+                Buscar Enfermero
+              </Link>
+              <button
+                type="button"
+                aria-label="Notificaciones"
+                className="flex h-10 w-10 items-center justify-center rounded-lg border border-slate-200 text-slate-500 hover:text-teal-600 hover:border-teal-200 transition-colors"
+              >
+                <Bell className="h-5 w-5" />
+              </button>
+              <Link
+                to="/login"
+                className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-600 hover:bg-slate-50 transition-colors"
+              >
+                <LogOut className="h-4 w-4" />
+                Cerrar sesión
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </header>
   );
 }

@@ -1,7 +1,6 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import ForgotPasswordPage from "./features/auth/forgot-password/ForgotPasswordPage";
 import LoginPage from "./features/auth/login/LoginPage";
-import PrivateDashboardPlaceholder from "./features/private/PrivateDashboardPlaceholder";
 import RegisterPage from "./features/auth/register/RegisterPage";
 import LandingPage from "./features/public/pages/LandingPage";
 
