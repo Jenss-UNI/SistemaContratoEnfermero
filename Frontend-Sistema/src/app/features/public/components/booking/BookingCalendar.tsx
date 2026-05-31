@@ -581,16 +581,13 @@ export default function BookingCalendar({
 
                           .filter((hour) => {
 
+                            const hourValue = parseHour(hour);
+                            const rangeStart = parseHour(daySchedule.start);
+                            const rangeEnd = parseHour(daySchedule.end);
+
                             return (
-
-                              parseHour(hour) >
-                                parseHour(item.start)
-
-                              &&
-
-                              parseHour(hour) <=
-                                parseHour(daySchedule.end)
-
+                              hourValue >= rangeStart &&
+                              hourValue <= rangeEnd
                             );
 
                           })
