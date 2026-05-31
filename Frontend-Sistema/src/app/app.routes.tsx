@@ -3,16 +3,19 @@ import ForgotPasswordPage from "./features/auth/forgot-password/ForgotPasswordPa
 import LoginPage from "./features/auth/login/LoginPage";
 import PrivateDashboardPlaceholder from "./features/private/PrivateDashboardPlaceholder";
 import RegisterPage from "./features/auth/register/RegisterPage";
-import ComingSoonPage from "./features/public/pages/ComingSoonPage";
 import LandingPage from "./features/public/pages/LandingPage";
 
 import { clientPanelRoutes } from "./features/private/client/client.routes";
 import { CLIENT_PANEL_BASE } from "./features/private/client/clientNav";
 import { adminPanelRoutes } from "./features/private/admin/admin.routes";
 import { ADMIN_PANEL_BASE } from "./features/private/admin/adminNav";
+import { enfermeroPanelRoutes } from "./features/private/enfermero/enfermero.routes";
+import { ENFERMERO_PANEL_BASE } from "./features/private/enfermero/enfermeroNav";
 
 import DirectorioPage from "./features/public/pages/DirectorioPage";
+
 import NurseProfilePage from "./features/public/pages/NurseProfilePage";
+import PlanesPage from "./features/public/pages/PlanesPage"; // ← NUEVO
 
 
 export function AppRoutes() {
@@ -24,8 +27,8 @@ export function AppRoutes() {
       <Route path="/register" element={<RegisterPage />} />
       <Route path="/directorio" element={<DirectorioPage />} />
       <Route path="/enfermero/:id" element={<NurseProfilePage />} />
-      
-      <Route path="/planes" element={<ComingSoonPage title="Planes" />} />
+
+      <Route path="/planes" element={<PlanesPage />} /> 
 
       {clientPanelRoutes}
 
@@ -40,8 +43,9 @@ export function AppRoutes() {
 
       <Route
         path="/panel-enfermero"
-        element={<PrivateDashboardPlaceholder title="Panel enfermero" />}
+        element={<Navigate to={`${ENFERMERO_PANEL_BASE}/resumen`} replace />}
       />
+      {enfermeroPanelRoutes}
       <Route
         path="/admin"
         element={<Navigate to={`${ADMIN_PANEL_BASE}/resumen`} replace />}

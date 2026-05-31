@@ -1,105 +1,125 @@
-import { Search, Users, Calendar, CreditCard, Star } from 'lucide-react';
+import { Search, UserCheck, CalendarCheck, ShieldCheck, Star, ChevronRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const steps = [
   {
-    number: '01',
     icon: Search,
+    number: '01',
     title: 'Busca y Filtra',
-    description: 'Ingresa tu distrito y el tipo de cuidado que necesitas. Filtra por precio, especialidad y nivel profesional.'
+    description: 'Ingresa tu distrito y el tipo de cuidado que necesitas. Filtra por precio, especialidad y nivel profesional.',
   },
   {
+    icon: UserCheck,
     number: '02',
-    icon: Users,
     title: 'Elige tu Profesional',
-    description: 'Revisa perfiles verificados, calificaciones reales y reseñas de otras familias antes de decidir.'
+    description: 'Revisa perfiles verificados, calificaciones reales y reseñas de otras familias antes de decidir.',
   },
   {
+    icon: CalendarCheck,
     number: '03',
-    icon: Calendar,
     title: 'Agenda el Servicio',
-    description: 'Selecciona los días y horarios que necesitas. El sistema calcula el costo total automáticamente.'
+    description: 'Selecciona los días y horarios que necesitas. El sistema calcula el costo total automáticamente.',
   },
   {
+    icon: ShieldCheck,
     number: '04',
-    icon: CreditCard,
     title: 'Pago Seguro',
-    description: 'Tu pago queda en custodia. El enfermero lo recibe solo cuando tú confirmas que el servicio fue satisfactorio.'
+    description: 'Tu pago queda en custodia. El enfermero lo recibe solo cuando confirmas que el servicio fue satisfactorio.',
   },
   {
-    number: '05',
     icon: Star,
+    number: '05',
     title: 'Califica la Experiencia',
-    description: 'Evalúa puntualidad, trato y conocimiento técnico. Tus reseñas ayudan a otras familias a elegir mejor.'
+    description: 'Evalúa puntualidad, trato y conocimiento técnico. Tus reseñas ayudan a otras familias a elegir mejor.',
   }
 ];
 
 export default function Benefits() {
+  
+  const navigate = useNavigate();
+
   return (
-    <div className="relative py-24 bg-slate-950 overflow-hidden">
-      <div className="absolute top-0 right-0 w-96 h-96 bg-teal-500/5 rounded-full blur-3xl"></div>
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-teal-500/5 rounded-full blur-3xl"></div>
-
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <p className="text-teal-400 text-xs font-bold uppercase tracking-widest mb-4">
+    <section className="py-24 md:py-32 bg-[#0a0a0a] text-white font-sans">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 w-full">
+        
+  
+        <div className="text-center mb-20 flex flex-col items-center">
+          <h3 className="text-gray-400 font-semibold tracking-[0.2em] uppercase mb-6 text-xs md:text-sm">
             PROCESO SIMPLE Y SEGURO
-          </p>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-normal text-white mb-1 leading-tight">
-            Conectamos familias con<br />
-            <span className="text-white font-bold">profesionales de salud</span>
+          </h3>
+          <h2 className="text-4xl md:text-5xl lg:text-[54px] font-light mb-12 tracking-tight leading-[1.15] max-w-5xl">
+            Conectamos familias con <br className="hidden md:block" />
+            <span className="font-bold text-white">profesionales de salud</span> <br className="hidden md:block" />
+            <span className="text-[#14b8a6] font-light">verificados en 5 pasos</span>
           </h2>
-          <p className="text-teal-400 text-3xl font-bold mt-2">
-            verificados en 5 pasos
-          </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mt-6">
-            <button type="button" className="px-7 py-2.5 bg-white text-slate-950 font-bold rounded-full hover:bg-gray-100 transition-colors shadow-lg text-sm">
+    
+          <div className="flex flex-col sm:flex-row gap-5 justify-center w-full sm:w-auto">
+            
+       
+            <button 
+              type="button" 
+              className="bg-white text-black border-2 border-white hover:bg-[#14b8a6] hover:text-white hover:border-[#14b8a6] font-bold px-10 py-4 rounded-full text-[15px] transition-all duration-300 w-full sm:w-auto"
+            >
               Buscar Enfermero
             </button>
-            <button type="button" className="px-7 py-2.5 bg-transparent border-2 border-white text-white font-bold rounded-full hover:bg-white/10 transition-colors text-sm">
+            
+           
+            <button 
+              type="button" 
+              onClick={() => navigate('/register')} 
+              className="bg-transparent text-white border-2 border-white/80 hover:bg-white hover:text-black font-bold px-10 py-4 rounded-full text-[15px] transition-all duration-300 w-full sm:w-auto"
+            >
               Registrarme como Profesional
             </button>
+
           </div>
         </div>
 
-        <div className="mt-12">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 auto-rows-fr">
+     
+        <div className="relative mt-24">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 lg:gap-8 relative z-10">
             {steps.map((step, index) => {
               const Icon = step.icon;
               return (
-                <div key={index} className="relative w-full h-full">
-                  <div className="relative h-full bg-gradient-to-br from-slate-800/50 to-slate-900/70 backdrop-blur-xl border border-slate-700/60 rounded-2xl p-6 hover:border-teal-500/70 hover:from-slate-800/70 hover:to-slate-900/90 hover:shadow-2xl hover:shadow-teal-500/15 transition-all duration-300 group flex flex-col justify-start overflow-hidden text-left">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-teal-500/8 rounded-full blur-2xl group-hover:bg-teal-500/15 transition-all duration-300"></div>
+                <div key={index} className="relative flex items-start">
+                  
+                
+                  <div className="bg-[#18181b] rounded-2xl p-8 flex flex-col h-full w-full relative overflow-hidden transition-transform duration-300 hover:-translate-y-2">
+                    
+                  
+                    <span className="absolute top-4 right-5 text-6xl md:text-[70px] font-black text-slate-800 tracking-tighter select-none">
+                      {step.number}
+                    </span>
 
-                    <div className="relative z-10 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br from-teal-500/30 to-teal-400/15 border border-teal-500/50 group-hover:from-teal-500/50 group-hover:to-teal-400/30 group-hover:border-teal-400/70 transition-all duration-300 shadow-lg shadow-teal-500/10">
-                          <Icon className="w-7 h-7 text-teal-300 group-hover:text-teal-100 transition-colors duration-300" />
-                        </div>
-                        <div className="text-5xl font-bold bg-gradient-to-br from-slate-400 to-slate-500 bg-clip-text text-transparent group-hover:from-teal-300 group-hover:to-teal-400 transition-all duration-300 leading-none">
-                          {step.number}
-                        </div>
-                      </div>
-
-                      <div className="h-px bg-gradient-to-r from-slate-700/60 via-slate-600/40 to-transparent group-hover:via-teal-500/30 transition-colors duration-300"></div>
-
-                      <div className="space-y-3">
-                        <h3 className="text-lg font-bold text-white leading-tight group-hover:text-teal-100 transition-colors duration-300">
-                          {step.title}
-                        </h3>
-                        <p className="text-sm text-slate-400 leading-relaxed group-hover:text-slate-300 transition-colors duration-300">
-                          {step.description}
-                        </p>
-                      </div>
+                    
+                    <div className="mb-10 relative z-10 mt-2">
+                      <Icon className="w-7 h-7 text-white" strokeWidth={2} />
                     </div>
+
+                    <h3 className="text-lg md:text-[19px] font-bold text-white mb-4 relative z-10 tracking-tight">
+                      {step.title}
+                    </h3>
+
+                   
+                    <p className="text-[14px] text-gray-400 leading-relaxed relative z-10 flex-grow font-light pr-2">
+                      {step.description}
+                    </p>
                   </div>
 
+             
+                  {index < steps.length - 1 && (
+                    <div className="absolute top-1/2 -right-4 xl:-right-5 -translate-y-1/2 z-20 hidden xl:block">
+                      <ChevronRight className="w-5 h-5 text-gray-600" strokeWidth={2} />
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
         </div>
+
       </div>
-    </div>
+    </section>
   );
 }

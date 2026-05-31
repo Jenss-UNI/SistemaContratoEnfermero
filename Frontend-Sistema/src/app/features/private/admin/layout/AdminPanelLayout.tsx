@@ -17,14 +17,14 @@ export default function AdminPanelLayout() {
   }, [location.pathname]);
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 font-sans text-slate-800">
+    <div className="min-h-screen w-full bg-slate-50 font-sans text-slate-800 relative">
       
       {/* --- CABECERA PRINCIPAL --- */}
       <header className="w-full border-b border-slate-200 bg-white">
         <div className="flex h-[72px] w-full items-center justify-between px-4 sm:px-6 lg:px-0">
           
           {/* ZONA IZQUIERDA: Menú y Logo */}
-          <div className="flex h-full items-center gap-3 lg:w-[260px] lg:flex-shrink-0 lg:border-r lg:border-slate-200 lg:px-6">
+          <div className="flex h-full items-center gap-3 lg:w-[260px] lg:flex-shrink-0 lg:px-6">
             
             {/* Botón Hamburguesa (Solo visible en Móvil) */}
             <button
@@ -41,9 +41,19 @@ export default function AdminPanelLayout() {
             </div>
           </div>
 
+          {/* LÍNEA DIVISORIA VERTICAL (Desktop) */}
+          <div className="hidden lg:block absolute left-[260px] top-0 bottom-0 w-px bg-slate-200" />
+
           {/* ZONA CENTRAL: Título de la página */}
-          <div className="flex min-w-0 flex-1 justify-center px-2">
-            <h2 className="w-full truncate text-center text-base font-semibold text-slate-900 sm:text-lg md:text-xl">
+          <div className="hidden lg:flex items-center min-w-0 flex-1 px-6">
+            <h2 className="truncate text-base font-semibold text-slate-900 sm:text-lg md:text-xl">
+              {pageTitle}
+            </h2>
+          </div>
+
+          {/* Título en Mobile - Zona Central */}
+          <div className="flex lg:hidden min-w-0 flex-1 justify-center px-2">
+            <h2 className="truncate text-center text-base font-semibold text-slate-900 sm:text-lg">
               {pageTitle}
             </h2>
           </div>
