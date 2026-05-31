@@ -1,6 +1,5 @@
 import { Users, User, FileText, Wallet, ShieldCheck, DollarSign } from "lucide-react";
 
-// Tipos de dados
 type ContractType = "Asistencial" | "Acompañamiento" | "Especializado";
 type StatusType = "Pendiente" | "Activo" | "Confirmado";
 
@@ -14,7 +13,6 @@ type Contract = {
   date: string;
 };
 
-// Dados de prova atualizados de acordo com a imagem
 const MOCK_CONTRACTS: Contract[] = [
   { id: "1", code: "CON-000039", patient: "Elena Rodriguez", type: "Asistencial", status: "Pendiente", amount: "S/ 120", date: "23/5/2026" },
   { id: "2", code: "CON-000038", patient: "Elena Rodriguez", type: "Acompañamiento", status: "Pendiente", amount: "S/ 75", date: "23/5/2026" },
@@ -25,7 +23,6 @@ const MOCK_CONTRACTS: Contract[] = [
   { id: "7", code: "CS-89634", patient: "Juana Lopez Casas", type: "Asistencial", status: "Confirmado", amount: "S/ 340", date: "21/5/2026" },
 ];
 
-// Configuração dos 6 cards superiores
 const MOCK_STATS = [
   { label: "Enfermeros activos", value: "2", icon: Users, colorClass: "text-[#0db39e]", bgClass: "bg-[#e5f9f4]" },
   { label: "Clientes registrados", value: "3", icon: User, colorClass: "text-rose-500", bgClass: "bg-rose-50" },
@@ -35,26 +32,23 @@ const MOCK_STATS = [
   { label: "Ingresos del mes", value: "S/ 100", icon: DollarSign, colorClass: "text-[#0db39e]", bgClass: "bg-[#e5f9f4]" },
 ];
 
-// Configuração dos 3 cards centrais
 const MOCK_SUMMARY = [
   { title: "Total en custodia", value: "S/ 1,577", detail: "Servicios activos y pendientes", valueColor: "text-[#0db39e]" },
   { title: "Ingresos del mes", value: "S/ 100", detail: "Servicios completados", valueColor: "text-[#0db39e]" },
   { title: "Comisión estimada (10%)", value: "S/ 10", detail: "Del mes actual", valueColor: "text-amber-500" },
 ];
 
-// Estilos das badges de status da tabela
 const statusStyle = {
-  Pendiente: "bg-[#fef3c7] text-[#b45309]", // Âmbar claro
-  Activo: "bg-[#ccfbf1] text-[#0f766e]",    // Verde água
-  Confirmado: "bg-[#dbeafe] text-[#1d4ed8]", // Azul claro
+  Pendiente: "bg-[#fef3c7] text-[#b45309]", 
+  Activo: "bg-[#ccfbf1] text-[#0f766e]",    
+  Confirmado: "bg-[#dbeafe] text-[#1d4ed8]", 
 };
 
 export default function ResumenPage() {
   return (
     <div className="w-full space-y-6">
       
-      {/* 1. Linha Superior: 6 Cards Pequenos */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
         {MOCK_STATS.map((item, index) => (
           <div key={index} className="rounded-3xl border border-slate-100 bg-white p-5 shadow-sm">
             <div className={`mb-3 inline-flex h-8 w-8 items-center justify-center rounded-xl ${item.bgClass}`}>
@@ -66,7 +60,6 @@ export default function ResumenPage() {
         ))}
       </div>
 
-      {/* 2. Linha Central: 3 Cards Largos */}
       <div className="grid gap-4 lg:grid-cols-3">
         {MOCK_SUMMARY.map((card, index) => (
           <div key={index} className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
@@ -77,36 +70,35 @@ export default function ResumenPage() {
         ))}
       </div>
 
-      {/* 3. Seção da Tabela: Contratos Recientes */}
       <section className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm md:p-8">
         <h2 className="mb-6 text-[15px] font-bold text-slate-900">Contratos Recientes</h2>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
+          <table className="min-w-[720px] table-auto w-full text-left text-sm whitespace-nowrap">
             <thead>
               <tr className="border-b border-slate-50 text-[13px] text-slate-500">
-                <th className="pb-4 pl-2 font-medium">Código</th>
-                <th className="pb-4 font-medium">Paciente</th>
-                <th className="pb-4 font-medium">Tipo</th>
-                <th className="pb-4 font-medium">Estado</th>
-                <th className="pb-4 font-medium">Monto</th>
-                <th className="pb-4 font-medium">Fecha</th>
+                <th className="px-3 pb-4 font-medium">Código</th>
+                <th className="px-3 pb-4 font-medium">Paciente</th>
+                <th className="px-3 pb-4 font-medium">Tipo</th>
+                <th className="px-3 pb-4 font-medium">Estado</th>
+                <th className="px-3 pb-4 font-medium">Monto</th>
+                <th className="px-3 pb-4 font-medium">Fecha</th>
               </tr>
             </thead>
             
             <tbody className="divide-y divide-slate-50">
               {MOCK_CONTRACTS.map((contract) => (
                 <tr key={contract.id} className="transition-colors hover:bg-slate-50/50">
-                  <td className="py-4 pl-2 text-[13px] font-medium text-slate-600">{contract.code}</td>
-                  <td className="py-4 text-[13px] font-medium text-slate-600">{contract.patient}</td>
-                  <td className="py-4 text-[13px] font-medium text-slate-600">{contract.type}</td>
-                  <td className="py-4">
+                  <td className="px-3 py-4 text-[13px] font-medium text-slate-600">{contract.code}</td>
+                  <td className="px-3 py-4 text-[13px] font-medium text-slate-600">{contract.patient}</td>
+                  <td className="px-3 py-4 text-[13px] font-medium text-slate-600">{contract.type}</td>
+                  <td className="px-3 py-4">
                     <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-bold ${statusStyle[contract.status]}`}>
                       {contract.status}
                     </span>
                   </td>
-                  <td className="py-4 text-[13px] font-bold text-slate-800">{contract.amount}</td>
-                  <td className="py-4 text-[13px] font-medium text-slate-500">{contract.date}</td>
+                  <td className="px-3 py-4 text-[13px] font-bold text-slate-800">{contract.amount}</td>
+                  <td className="px-3 py-4 text-[13px] font-medium text-slate-500">{contract.date}</td>
                 </tr>
               ))}
             </tbody>

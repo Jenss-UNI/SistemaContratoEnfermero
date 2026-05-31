@@ -53,7 +53,7 @@ export default function Modal({
         onClick={onClose}
       />
       <div
-        className={`relative flex max-h-[min(92vh,900px)] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-xl ${maxWidthClass}`}
+        className={`relative flex max-h-[min(92vh,900px)] w-full flex-col overflow-hidden rounded-2xl bg-white shadow-xl ${maxWidthClass} mx-auto`}
       >
         <div className="flex shrink-0 items-center justify-between border-b border-slate-100 px-5 py-4 sm:px-6">
           <h2 id="modal-title" className="text-lg font-bold text-slate-900 sm:text-xl">
