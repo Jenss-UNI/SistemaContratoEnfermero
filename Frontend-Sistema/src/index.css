@@ -1,13 +1,18 @@
 @import "tailwindcss";
 
 html {
+  font-size: 16px; 
   overflow-y: scroll;
   scrollbar-gutter: stable;
 }
 
+body {
+
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
 .custom-calendar .rdp {
   --rdp-cell-size: 46px;
-
   margin: 0;
 }
 
@@ -19,7 +24,6 @@ html {
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   margin-bottom: 20px;
 }
 
@@ -32,11 +36,8 @@ html {
 .custom-calendar .rdp-nav button {
   width: 38px;
   height: 38px;
-
   border-radius: 12px;
-
   background: #f1f5f9;
-
   color: #475569;
 }
 
@@ -48,9 +49,7 @@ html {
 
 .custom-calendar .rdp-day {
   border-radius: 14px;
-
   font-weight: 600;
-
   transition: all 0.2s;
 }
 
@@ -66,7 +65,6 @@ html {
 .custom-calendar .selected-day {
   background: #14b8a6 !important;
   color: white !important;
-
   border: none;
   border-radius: 14px;
 }

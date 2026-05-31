@@ -7,6 +7,8 @@ import MisPacientesPage from "./pages/MisPacientesPage";
 import PagosPage from "./pages/PagosPage";
 import ReportesPage from "./pages/ReportesPage";
 import ResumenPage from "./pages/ResumenPage";
+import ContratoPage from "./pages/ContratoPage"; 
+
 import { CLIENT_PANEL_BASE } from "./clientNav";
 
 export const clientPanelRoutes = (
@@ -19,5 +21,6 @@ export const clientPanelRoutes = (
     <Route path="pagos" element={<PagosPage />} />
     <Route path="calificaciones" element={<CalificacionesPage />} />
     <Route path="reportes" element={<ReportesPage />} />
+    <Route path="contrato/:id" element={<ContratoPage />} />
   </Route>
 );
