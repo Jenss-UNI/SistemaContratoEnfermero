@@ -26,6 +26,8 @@ export interface Nurse {
   name: string;
   photo?: string;
   title: string;
+  especialidad?: string;
+  nivel?: string;
 
   about?: string;
 

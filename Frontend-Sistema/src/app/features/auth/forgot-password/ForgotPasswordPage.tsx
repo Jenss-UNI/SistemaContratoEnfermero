@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { ArrowLeft, Lock, Mail, Key, ShieldCheck, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Lock, Mail, Key, ShieldCheck, Eye, EyeOff, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Header } from "../../../shared/layout";
+import { supabase } from "../../../core/services/supabase";
 import loginImage from "../../../../assets/login/inicarsesion.jpg";
 
 export default function ForgotPasswordPage() {
@@ -9,39 +10,151 @@ export default function ForgotPasswordPage() {
 	const [step, setStep] = useState(1);
 	
 	const [email, setEmail] = useState("");
-	const [generatedCode, setGeneratedCode] = useState("");
 	const [inputCode, setInputCode] = useState("");
 	const [newPassword, setNewPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
 	const [showNewPassword, setShowNewPassword] = useState(false);
 	const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+	const [isLoading, setIsLoading] = useState(false);
+	const [errorMsg, setErrorMsg] = useState("");
+	const [successMsg, setSuccessMsg] = useState("");
 
-	const handleSendCode = (e: React.FormEvent) => {
+	const handleSendCode = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!email) return;
 		
-		const code = Math.floor(100000 + Math.random() * 900000).toString();
-		console.log("Código generado:", code);
-		setGeneratedCode(code);
-		setStep(2);
-	};
+		setIsLoading(true);
+		setErrorMsg("");
+		try {
+			// 1. Verificar si el correo pertenece a un perfil registrado
+			const { data: profile, error: profileErr } = await supabase
+				.from("profiles")
+				.select("id")
+				.eq("correo", email.trim())
+				.maybeSingle();
 
-	const handleVerifyCode = (e: React.FormEvent) => {
-		e.preventDefault();
-		if (inputCode === generatedCode) {
-			setStep(3);
-		} else {
-			alert("El código ingresado es incorrecto. Por favor, verifica la consola.");
+			if (profileErr) throw profileErr;
+			if (!profile) {
+				setErrorMsg("El correo electrónico ingresado no se encuentra registrado en nuestro sistema.");
+				setIsLoading(false);
+				return;
+			}
+
+			// 2. Generar el código OTP de 6 dígitos
+			const code = Math.floor(100000 + Math.random() * 900000).toString();
+			const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+			// 3. Insertar el código OTP en la tabla verification_codes
+			const { error: dbError } = await supabase
+				.from("verification_codes")
+				.insert({
+					email: email.trim(),
+					code,
+					purpose: "password_reset",
+					expires_at: expiresAt
+				});
+
+			if (dbError) throw dbError;
+
+			// 4. Invocar la Deno Edge Function para enviar el correo usando Resend
+			const { error: funcError } = await supabase.functions.invoke("resend-email", {
+				body: { email: email.trim(), code, purpose: "password_reset" }
+			});
+
+			if (funcError) throw funcError;
+
+			setStep(2);
+		} catch (err: any) {
+			console.error("Error al enviar código:", err);
+			setErrorMsg(err.message || "Ocurrió un error al enviar el código de verificación.");
+		} finally {
+			setIsLoading(false);
 		}
 	};
 
-	const handleResetPassword = (e: React.FormEvent) => {
+	const handleVerifyCode = async (e: React.FormEvent) => {
 		e.preventDefault();
-		if (newPassword === confirmPassword && newPassword !== "") {
-			alert("Contraseña restablecida correctamente.");
-			navigate("/login");
-		} else {
-			alert("Las contraseñas no coinciden.");
+		if (!inputCode) return;
+
+		setIsLoading(true);
+		setErrorMsg("");
+		try {
+			// Consultar la base de datos para verificar que el código sea correcto, no usado y no expirado
+			const { data, error } = await supabase
+				.from("verification_codes")
+				.select("*")
+				.eq("email", email.trim())
+				.eq("code", inputCode.trim())
+				.eq("purpose", "password_reset")
+				.eq("used", false)
+				.gt("expires_at", new Date().toISOString())
+				.maybeSingle();
+
+			if (error) throw error;
+
+			if (!data) {
+				setErrorMsg("El código de seguridad ingresado es incorrecto o ha expirado.");
+				setIsLoading(false);
+				return;
+			}
+
+			// Avanzar al Paso 3 conservando el código ingresado para la ejecución atómica del RPC
+			setStep(3);
+		} catch (err: any) {
+			console.error("Error al verificar código:", err);
+			setErrorMsg(err.message || "Ocurrió un error al verificar el código.");
+		} finally {
+			setIsLoading(false);
+		}
+	};
+
+	const handleResetPassword = async (e: React.FormEvent) => {
+		e.preventDefault();
+		if (!newPassword || !confirmPassword) return;
+
+		if (newPassword !== confirmPassword) {
+			setErrorMsg("Las contraseñas ingresadas no coinciden.");
+			return;
+		}
+
+		if (newPassword.length < 6) {
+			setErrorMsg("La nueva contraseña debe tener al menos 6 caracteres.");
+			return;
+		}
+
+		if (!/[A-Za-z]/.test(newPassword) || !/\d/.test(newPassword)) {
+			setErrorMsg("La contraseña debe incluir al menos una letra y un número.");
+			return;
+		}
+
+		setIsLoading(true);
+		setErrorMsg("");
+		setSuccessMsg("");
+		try {
+			// Ejecutar el RPC para cambiar la contraseña de manera segura
+			const { data, error } = await supabase.rpc("reset_password_by_otp", {
+				p_email: email.trim(),
+				p_code: inputCode.trim(),
+				p_new_password: newPassword
+			});
+
+			if (error) throw error;
+
+			if (!data) {
+				setErrorMsg("No se pudo restablecer la contraseña. El código OTP podría haber expirado o ya haber sido usado.");
+				setIsLoading(false);
+				return;
+			}
+
+			setSuccessMsg("¡Contraseña restablecida correctamente! Redirigiendo al inicio de sesión...");
+			setTimeout(() => {
+				navigate("/login");
+			}, 3000);
+		} catch (err: any) {
+			console.error("Error al restablecer contraseña:", err);
+			setErrorMsg(err.message || "Ocurrió un error inesperado al actualizar la contraseña.");
+		} finally {
+			setIsLoading(false);
 		}
 	};
 
@@ -81,17 +194,30 @@ export default function ForgotPasswordPage() {
 									Volver al inicio de sesión
 								</Link>
 
+								{errorMsg && (
+									<div className="p-4 mb-4 bg-rose-50 border border-rose-200 text-rose-700 rounded-xl text-xs font-semibold flex items-start gap-2 animate-in fade-in duration-300">
+										<span className="mt-0.5">⚠</span>
+										<span>{errorMsg}</span>
+									</div>
+								)}
+
+								{successMsg && (
+									<div className="p-4 mb-4 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-semibold flex items-start gap-2 animate-in fade-in duration-300">
+										<span className="mt-0.5">✓</span>
+										<span>{successMsg}</span>
+									</div>
+								)}
+
 								{step === 1 && (
 									<>
-										<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 text-teal-500 mb-4">
+										<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 text-teal-500 mb-4 animate-in zoom-in duration-300">
 											<Lock className="h-5 w-5" />
 										</div>
-										<h1 className="mt-6 text-3xl font-bold text-slate-900 text-center">
+										<h1 className="mt-4 text-3xl font-bold text-slate-900 text-center">
 											¿Olvidaste tu contraseña?
 										</h1>
-										<p className="mt-4 text-sm text-slate-500 text-center">
-											Ingresa tu correo y te enviaremos un código para restablecer
-											tu contraseña.
+										<p className="mt-3 text-sm text-slate-500 text-center leading-relaxed">
+											Ingresa tu correo registrado y te enviaremos un código de seguridad para restablecer tu contraseña.
 										</p>
 
 										<form
@@ -111,20 +237,29 @@ export default function ForgotPasswordPage() {
 														id="email"
 														type="email"
 														required
+														disabled={isLoading}
 														value={email}
 														onChange={(e) => setEmail(e.target.value)}
 														autoComplete="email"
 														placeholder="tu@correo.com"
-														className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+														className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100 disabled:opacity-60"
 													/>
 												</div>
 											</div>
 
 											<button
 												type="submit"
-												className="w-full rounded-xl bg-teal-500 py-3 font-semibold text-white transition hover:bg-teal-600"
+												disabled={isLoading || !email}
+												className="w-full rounded-xl bg-teal-500 py-3 font-semibold text-white transition hover:bg-teal-600 flex items-center justify-center gap-2 disabled:opacity-55 disabled:cursor-not-allowed"
 											>
-												Enviar código de recuperación
+												{isLoading ? (
+													<>
+														<Loader2 className="h-4 w-4 animate-spin" />
+														Enviando código...
+													</>
+												) : (
+													"Enviar código de recuperación"
+												)}
 											</button>
 										</form>
 									</>
@@ -132,15 +267,15 @@ export default function ForgotPasswordPage() {
 
 								{step === 2 && (
 									<>
-										<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 text-teal-500 mb-4">
+										<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 text-teal-500 mb-4 animate-in zoom-in duration-300">
 											<Key className="h-5 w-5" />
 										</div>
-										<h1 className="mt-6 text-3xl font-bold text-slate-900 text-center">
+										<h1 className="mt-4 text-3xl font-bold text-slate-900 text-center">
 											Verificar código
 										</h1>
-										<p className="mt-4 text-sm text-slate-500 text-center">
-											Ingresa el código de 6 dígitos que enviamos a <br />
-											<span className="font-medium text-slate-900">{email}</span>
+										<p className="mt-3 text-sm text-slate-500 text-center leading-relaxed">
+											Ingresa el código de seguridad de 6 dígitos enviado a <br />
+											<span className="font-semibold text-slate-800">{email}</span>
 										</p>
 
 										<form
@@ -159,18 +294,27 @@ export default function ForgotPasswordPage() {
 													type="text"
 													maxLength={6}
 													required
+													disabled={isLoading}
 													value={inputCode}
 													onChange={(e) => setInputCode(e.target.value.replace(/\D/g, ''))}
 													placeholder="000000"
-													className="w-full rounded-xl border border-slate-200 bg-white py-3 px-4 text-center text-2xl tracking-[0.5em] text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100 placeholder:text-slate-300 placeholder:tracking-normal"
+													className="w-full rounded-xl border border-slate-200 bg-white py-3 px-4 text-center text-2xl tracking-[0.5em] text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100 placeholder:text-slate-300 placeholder:tracking-normal disabled:opacity-60"
 												/>
 											</div>
 
 											<button
 												type="submit"
-												className="w-full rounded-xl bg-teal-500 py-3 font-semibold text-white transition hover:bg-teal-600"
+												disabled={isLoading || inputCode.length !== 6}
+												className="w-full rounded-xl bg-teal-500 py-3 font-semibold text-white transition hover:bg-teal-600 flex items-center justify-center gap-2 disabled:opacity-55 disabled:cursor-not-allowed"
 											>
-												Verificar código
+												{isLoading ? (
+													<>
+														<Loader2 className="h-4 w-4 animate-spin" />
+														Verificando...
+													</>
+												) : (
+													"Verificar código"
+												)}
 											</button>
 										</form>
 									</>
@@ -178,14 +322,14 @@ export default function ForgotPasswordPage() {
 
 								{step === 3 && (
 									<>
-										<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 text-teal-500 mb-4">
+										<div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-teal-50 text-teal-500 mb-4 animate-in zoom-in duration-300">
 											<ShieldCheck className="h-5 w-5" />
 										</div>
-										<h1 className="mt-6 text-3xl font-bold text-slate-900 text-center">
+										<h1 className="mt-4 text-3xl font-bold text-slate-900 text-center">
 											Nueva contraseña
 										</h1>
-										<p className="mt-4 text-sm text-slate-500 text-center">
-											Crea una nueva contraseña segura para tu cuenta.
+										<p className="mt-3 text-sm text-slate-500 text-center leading-relaxed">
+											Crea una contraseña segura para proteger tu cuenta de enfermería.
 										</p>
 
 										<form
@@ -205,10 +349,11 @@ export default function ForgotPasswordPage() {
 														id="newPassword"
 														type={showNewPassword ? "text" : "password"}
 														required
+														disabled={isLoading}
 														value={newPassword}
 														onChange={(e) => setNewPassword(e.target.value)}
 														placeholder="••••••••"
-														className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-11 text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+														className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-11 text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100 disabled:opacity-60"
 													/>
 													<button
 														type="button"
@@ -237,10 +382,11 @@ export default function ForgotPasswordPage() {
 														id="confirmPassword"
 														type={showConfirmPassword ? "text" : "password"}
 														required
+														disabled={isLoading}
 														value={confirmPassword}
 														onChange={(e) => setConfirmPassword(e.target.value)}
 														placeholder="••••••••"
-														className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-11 text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
+														className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-11 text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100 disabled:opacity-60"
 													/>
 													<button
 														type="button"
@@ -258,9 +404,17 @@ export default function ForgotPasswordPage() {
 
 											<button
 												type="submit"
-												className="w-full rounded-xl bg-teal-500 py-3 font-semibold text-white transition hover:bg-teal-600"
+												disabled={isLoading || !newPassword || !confirmPassword}
+												className="w-full rounded-xl bg-teal-500 py-3 font-semibold text-white transition hover:bg-teal-600 flex items-center justify-center gap-2 disabled:opacity-55 disabled:cursor-not-allowed"
 											>
-												Restablecer contraseña
+												{isLoading ? (
+													<>
+														<Loader2 className="h-4 w-4 animate-spin" />
+														Restableciendo contraseña...
+													</>
+												) : (
+													"Restablecer contraseña"
+												)}
 											</button>
 										</form>
 									</>
