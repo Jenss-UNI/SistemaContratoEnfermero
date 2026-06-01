@@ -77,24 +77,36 @@ export default function StepDatos({ formData, onChange, onNext, errors = {} }: S
 
    
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Field label="Nombres" error={errors.nombres}>
+        <div className="sm:col-span-2">
+          <Field label="Nombres" error={errors.nombres}>
+            <input
+              name="nombres"
+              value={formData.nombres}
+              onChange={onChange}
+              placeholder="Juan"
+              autoComplete="given-name"
+              className={inputCls(errors.nombres)}
+            />
+          </Field>
+        </div>
+        <Field label="Apellido Paterno" error={errors.apellidos_pa}>
           <input
-            name="nombres"
-            value={formData.nombres}
-            onChange={onChange}
-            placeholder="Juan"
-            autoComplete="given-name"
-            className={inputCls(errors.nombres)}
-          />
-        </Field>
-        <Field label="Apellidos" error={errors.apellidos}>
-          <input
-            name="apellidos"
-            value={formData.apellidos}
+            name="apellidos_pa"
+            value={formData.apellidos_pa}
             onChange={onChange}
             placeholder="Pérez"
             autoComplete="family-name"
-            className={inputCls(errors.apellidos)}
+            className={inputCls(errors.apellidos_pa)}
+          />
+        </Field>
+        <Field label="Apellido Materno" error={errors.apellidos_ma}>
+          <input
+            name="apellidos_ma"
+            value={formData.apellidos_ma}
+            onChange={onChange}
+            placeholder="Gómez"
+            autoComplete="additional-name"
+            className={inputCls(errors.apellidos_ma)}
           />
         </Field>
       </div>

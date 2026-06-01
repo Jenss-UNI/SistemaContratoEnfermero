@@ -1,8 +1,15 @@
 import { useState } from "react";
 import { ArrowLeft, Check, CheckCircle2 } from "lucide-react";
 
+export interface SelectedPlanInfo {
+    id: string;
+    name: string;
+    price: string;
+    billing: "mensual" | "anual";
+}
+
 interface StepPlanProps {
-    onNext: () => void;
+    onNext: (plan: SelectedPlanInfo) => void;
     onBack: () => void;
 }
 
@@ -149,7 +156,15 @@ export default function StepPlan({ onNext, onBack }: StepPlanProps) {
                     <ArrowLeft size={18} /> Volver
                 </button>
                 <button
-                    onClick={onNext}
+                    onClick={() => {
+                        const found = plans.find(p => p.id === selectedPlan)!;
+                        onNext({
+                            id: found.id,
+                            name: found.name,
+                            price: billingCycle === "mensual" ? found.priceMonthly : found.priceAnnual,
+                            billing: billingCycle,
+                        });
+                    }}
                     className="flex-[2] py-3 rounded-xl font-bold transition-all bg-teal-500 text-white shadow-lg shadow-teal-100 hover:bg-teal-600"
                 >
                     Continuar al Pago →

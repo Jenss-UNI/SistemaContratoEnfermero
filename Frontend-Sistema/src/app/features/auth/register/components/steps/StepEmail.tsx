@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Mail, Send, Check, RefreshCw, ArrowLeft, ArrowRight, Loader2 } from "lucide-react";
+import { supabase } from "../../../../../core/services/supabase";
 
 interface StepEmailProps {
   email: string;
@@ -12,44 +13,80 @@ type Estado = "idle" | "enviando" | "enviado" | "verificado";
 
 export default function StepEmail({ email, onNext, onBack }: StepEmailProps) {
   const [estado, setEstado]           = useState<Estado>("idle");
-  const [codigoSimulado, setCodigoSimulado] = useState("");
   const [inputCodigo, setInputCodigo]  = useState("");
   const [errorCodigo, setErrorCodigo]  = useState("");
   const [reenviando, setReenviando]    = useState(false);
 
  
   const enviarCodigo = async () => {
-
     setEstado("enviando");
-    
+    try {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+      const { error: dbError } = await supabase.from("verification_codes").insert({
+        email,
+        code,
+        purpose: "email_verification",
+        expires_at: expiresAt
+      });
 
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // 3. Generar código y completar el envío
-    const nuevo = Math.floor(100000 + Math.random() * 900000).toString();
-    setCodigoSimulado(nuevo);
-    setEstado("enviado");
-    setInputCodigo("");
-    setErrorCodigo("");
-    
+      if (dbError) throw dbError;
 
-    console.info(`[DEV] Código de verificación: ${nuevo}`);
+      const { error: funcError } = await supabase.functions.invoke("resend-email", {
+        body: { email, code, purpose: "email_verification" }
+      });
+
+      if (funcError) throw funcError;
+
+      setEstado("enviado");
+      setInputCodigo("");
+      setErrorCodigo("");
+    } catch (err: any) {
+      console.error(err);
+      setErrorCodigo("Error al enviar el código de verificación.");
+      setEstado("idle");
+    }
   };
 
   const reenviarCodigo = async () => {
     setReenviando(true);
-    await new Promise((r) => setTimeout(r, 800));
-    enviarCodigo();
+    await enviarCodigo();
     setReenviando(false);
   };
 
   
-  const verificar = () => {
-    if (inputCodigo.trim() === codigoSimulado) {
+  const verificar = async () => {
+    setErrorCodigo("");
+    try {
+      const { data, error } = await supabase
+        .from("verification_codes")
+        .select("*")
+        .eq("email", email)
+        .eq("code", inputCodigo.trim())
+        .eq("purpose", "email_verification")
+        .eq("used", false)
+        .gt("expires_at", new Date().toISOString())
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!data) {
+        setErrorCodigo("Código incorrecto o expirado.");
+        return;
+      }
+
+      const { error: updateError } = await supabase
+        .from("verification_codes")
+        .update({ used: true })
+        .eq("id", data.id);
+
+      if (updateError) throw updateError;
+
       setEstado("verificado");
-      setErrorCodigo("");
-    } else {
-      setErrorCodigo("Código incorrecto. Revisa el código o reenvíalo.");
+    } catch (err: any) {
+      console.error(err);
+      setErrorCodigo("Error al verificar el código.");
     }
   };
 

@@ -21,9 +21,11 @@ export interface StepEmailProps {
 export interface StepDniProps {
   dni: string;
   nombres: string;
-  apellidos: string;
+  apellidos_pa: string;
+  apellidos_ma: string;
   onNext: () => void;
   onBack: () => void;
+  onVerified?: (nombres: string, apellidos_pa: string, apellidos_ma: string) => void;
 }
 
 export interface StepProProps {
@@ -40,7 +42,8 @@ export interface StepProProps {
 export interface StepSuccessProps {
   formData: {
     nombres: string;
-    apellidos: string;
+    apellidos_pa: string;
+    apellidos_ma: string;
     dni: string;
   };
 }
