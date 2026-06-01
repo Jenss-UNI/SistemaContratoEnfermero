@@ -22,13 +22,16 @@ export default function StepProProfesional({ formData, onChange, onNext, errors 
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     
     const strength = getPasswordStrength(formData.password);
-    const distritos = ["Selecciona tu distrito", "Miraflores", "San Isidro", "Surco", "La Molina", "San Borja", "Barranco", "Jesús María", "Pueblo Libre", "Lince", "Callao", "Los Olivos", "San Martín de Porres", "Ate", "La Victoria"];
-    const niveles = ["Selecciona tu tipo", "Estudiante de Enfermería", "Técnico Titulado", "Licenciado en Enfermería", "Licenciado con Especialidad"];
+    const distritos = ["Miraflores", "San Isidro", "Surco", "La Molina", "San Borja", "Barranco", "Jesús María", "Pueblo Libre", "Lince", "Callao", "Los Olivos", "San Martín de Porres", "Ate", "La Victoria"];
+    const niveles = ["Técnico Titulado", "Licenciado en Enfermería", "Licenciado con Especialidad"];
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5 animate-in slide-in-from-bottom-4 duration-500">
-            <InputField label="Nombres *" icon={User} name="nombres" value={formData.nombres} onChange={onChange} error={errors.nombres} placeholder="Juan" />
-            <InputField label="Apellidos *" icon={User} name="apellidos" value={formData.apellidos} onChange={onChange} error={errors.apellidos} placeholder="Pérez" />
+            <div className="md:col-span-2">
+                <InputField label="Nombres *" icon={User} name="nombres" value={formData.nombres} onChange={onChange} error={errors.nombres} placeholder="Juan" />
+            </div>
+            <InputField label="Apellido Paterno *" icon={User} name="apellidos_pa" value={formData.apellidos_pa} onChange={onChange} error={errors.apellidos_pa} placeholder="Pérez" />
+            <InputField label="Apellido Materno *" icon={User} name="apellidos_ma" value={formData.apellidos_ma} onChange={onChange} error={errors.apellidos_ma} placeholder="Gómez" />
             <div className="md:col-span-2">
                 <InputField label="Correo electrónico *" icon={Mail} type="email" name="correo" value={formData.correo} onChange={onChange} error={errors.correo} placeholder="tu@email.com" />
             </div>

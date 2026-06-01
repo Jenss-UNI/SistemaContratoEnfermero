@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { UserPlus, Stethoscope, ShieldCheck, Wallet, FileText, CreditCard } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Header, Footer } from "../../../shared/layout";
+import { Header } from "../../../shared/layout";
 import ClienteForm from "./components/ClientForm";
 import ProfesionalForm from "./components/ProfesionalForm";
 
@@ -22,11 +22,11 @@ export default function RegisterPage() {
     <>
       <Header />
 
-      <main className="min-h-screen bg-white pt-[56px] flex flex-col">
-        <section className="flex flex-1 min-h-[calc(100dvh-56px)]">
+      <main className="h-screen bg-white pt-[56px] overflow-hidden">
+        <section className="grid md:grid-cols-[38%_62%] lg:grid-cols-[40%_60%] xl:grid-cols-[42%_58%] w-full h-[calc(100dvh-56px)]">
 
    
-          <div className="relative hidden md:flex flex-col md:w-[38%] lg:w-[40%] xl:w-[42%] shrink-0 overflow-hidden">
+          <div className="relative hidden md:flex flex-col w-full h-full overflow-hidden">
             <img
               src={HERO_IMAGE}
               alt="Enfermera cuidando a paciente mayor"
@@ -56,10 +56,8 @@ export default function RegisterPage() {
           </div>
 
         
-          <div className="flex-1 flex items-start md:items-center justify-center px-4 sm:px-8 md:px-10 lg:px-14 py-8 bg-white overflow-y-auto">
+          <div className="flex items-start md:items-center justify-center px-4 sm:px-8 md:px-10 lg:px-14 py-8 bg-white overflow-y-auto w-full h-full">
             <div className="w-full max-w-[500px] my-auto">
-
-           ¿
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-slate-900">Crear cuenta</h2>
                 <p className="text-sm text-slate-500 mt-1">
@@ -70,7 +68,6 @@ export default function RegisterPage() {
                 </p>
               </div>
 
-           ¿
               <div className="bg-slate-100 p-1 rounded-2xl flex mb-7">
                 {(["cliente", "profesional"] as const).map((tipo) => (
                   <button
@@ -99,8 +96,6 @@ export default function RegisterPage() {
           </div>
 
         </section>
-
-        <Footer />
       </main>
     </>
   );

@@ -5,8 +5,6 @@ import { useNavigate } from "react-router-dom";
 export default function StepProSuccess({ formData }: { formData: any }) {
     const navigate = useNavigate();
     const [redirectDots, setRedirectDots] = useState("");
-   
-    const codigoGenerado = `CS-${Math.floor(100000 + Math.random() * 900000)}`;
 
     useEffect(() => {
     
@@ -16,8 +14,8 @@ export default function StepProSuccess({ formData }: { formData: any }) {
 
         // Redirección al panel después de 5 segundos
         const redirectTimer = setTimeout(() => {
-            navigate("/profesional/dashboard"); 
-        }, 5000);
+            navigate("/panel-enfermero/resumen"); 
+        }, 3000);
 
         return () => {
             clearInterval(dotInterval);
@@ -44,7 +42,7 @@ export default function StepProSuccess({ formData }: { formData: any }) {
                 <div className="space-y-3 text-sm">
                     <div className="flex justify-between border-b border-slate-200 pb-2">
                         <span className="text-slate-500">Nombre</span>
-                        <span className="font-semibold text-slate-800">{formData.nombres} {formData.apellidos}</span>
+                        <span className="font-semibold text-slate-800">{formData.nombres} {formData.apellidos_pa} {formData.apellidos_ma}</span>
                     </div>
                     <div className="flex justify-between border-b border-slate-200 pb-2">
                         <span className="text-slate-500">Correo</span>
@@ -65,10 +63,6 @@ export default function StepProSuccess({ formData }: { formData: any }) {
                         <span className="font-bold text-teal-600">Sí</span>
                     </div>
 
-                    <div className="flex justify-between">
-                        <span className="text-slate-500">Código</span>
-                        <span className="font-mono font-semibold text-slate-800">{codigoGenerado}</span>
-                    </div>
                 </div>
             </div>
 

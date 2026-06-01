@@ -3,14 +3,23 @@ import ProgressTracker from "./ProgressTracker";
 import StepDatos from "./steps/StepDatos";
 import StepEmail from "./steps/StepEmail";
 import StepDni from "./steps/StepDni";
-import StepPlan from "./steps/stepPlan"; 
+import StepPlan from "./steps/stepPlan";
+import StepPayment from "./steps/StepPayment";
+import type { PaymentMethodData } from "./steps/StepPayment";
 import StepSuccess from "./steps/StepSuccess";
-
+import { supabase } from "../../../../core/services/supabase";
+import type { SelectedPlanInfo } from "./steps/stepPlan";
 
 const SOLO_LETRAS   = /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'-]+$/;
 const EMAIL_RE      = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const TELEFONO_RE   = /^9\d{8}$/;                   // 9 dígitos, empieza con 9
+const TELEFONO_RE   = /^9\d{8}$/;
 const SOLO_NUMEROS  = /^\d*$/;
+
+const PLAN_DB_IDS: Record<string, number> = {
+  basico: 1,
+  premium: 2,
+  familiar: 3,
+};
 
 function validarNombre(v: string, campo: string) {
   if (!v.trim())            return `${campo} es requerido`;
@@ -61,7 +70,8 @@ function validarConfirmPassword(pwd: string, confirm: string) {
 
 export type FormData = {
   nombres:         string;
-  apellidos:       string;
+  apellidos_pa:    string;
+  apellidos_ma:    string;
   correo:          string;
   dni:             string;
   telefono:        string;
@@ -75,7 +85,8 @@ export default function ClienteForm() {
 
   const [formData, setFormData] = useState<FormData>({
     nombres:         "",
-    apellidos:       "",
+    apellidos_pa:    "",
+    apellidos_ma:    "",
     correo:          "",
     dni:             "",
     telefono:        "",
@@ -85,6 +96,113 @@ export default function ClienteForm() {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Plan selected from StepPlan
+  const [selectedPlan, setSelectedPlan] = useState<SelectedPlanInfo | null>(null);
+  // Payment method used (to show in StepSuccess)
+  const [usedPaymentTipo, setUsedPaymentTipo] = useState<string | undefined>(undefined);
+
+  // ─── PASO 4 → 5: guardar plan elegido y avanzar ─────────────────────────────
+  const handlePlanSelected = (plan: SelectedPlanInfo) => {
+    setSelectedPlan(plan);
+    setUsedPaymentTipo(undefined);
+    setStep(5);
+  };
+
+  // ─── PASO 5 → 6: registrar cuenta, suscripción y método de pago ─────────────
+  const handlePaymentConfirm = async (paymentData: PaymentMethodData) => {
+    if (!selectedPlan) return;
+    setIsLoading(true);
+
+    try {
+      // 1. Crear usuario en Supabase Auth
+      const { data, error: authError } = await supabase.auth.signUp({
+        email: formData.correo,
+        password: formData.password,
+      });
+
+      if (authError) throw authError;
+      if (!data.user) throw new Error("No se pudo crear la cuenta de usuario.");
+
+      const userId = data.user.id;
+
+      // 2. Crear perfil
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .upsert({
+          id: userId,
+          nombres: formData.nombres,
+          apellidos_pa: formData.apellidos_pa,
+          apellidos_ma: formData.apellidos_ma,
+          correo: formData.correo,
+          telefono: formData.telefono,
+          dni: formData.dni,
+          distrito: formData.distrito,
+          role: "cliente",
+          dni_verified: true,
+          email_verified: true,
+        });
+
+      if (profileError) throw profileError;
+
+      // 3. Calcular fecha de vencimiento
+      const hoy = new Date();
+      const fechaInicio = hoy.toISOString().split("T")[0];
+      let fechaVence: string;
+      if (selectedPlan.billing === "mensual") {
+        const vence = new Date(hoy);
+        vence.setMonth(vence.getMonth() + 1);
+        fechaVence = vence.toISOString().split("T")[0];
+      } else {
+        const vence = new Date(hoy);
+        vence.setMonth(vence.getMonth() + 14); // 12 + 2 meses gratis
+        fechaVence = vence.toISOString().split("T")[0];
+      }
+
+      // 4. Crear suscripción
+      const { error: subError } = await supabase.from("subscriptions").insert({
+        client_id: userId,
+        plan_id: PLAN_DB_IDS[selectedPlan.id] ?? 1,
+        ciclo: selectedPlan.billing,
+        fecha_inicio: fechaInicio,
+        fecha_vence: fechaVence,
+        status: "active",
+        activo: true,
+      });
+
+      if (subError) throw subError;
+
+      // 5. Guardar tipo de pago usado
+      setUsedPaymentTipo(paymentData.tipo);
+
+      // 6. Guardar método de pago
+      const paymentInsert: Record<string, any> = {
+        client_id: userId,
+        tipo: paymentData.tipo,
+        es_principal: true,
+      };
+
+      if (paymentData.tipo === "tarjeta") {
+        paymentInsert.terminacion  = paymentData.terminacion;
+        paymentInsert.marca        = paymentData.marca;
+        paymentInsert.nombre_tarjeta = paymentData.nombre_tarjeta;
+      } else {
+        paymentInsert.telefono = paymentData.telefono;
+      }
+
+      const { error: pmError } = await supabase.from("payment_methods").insert(paymentInsert);
+      if (pmError) throw pmError;
+
+      // 7. Todo OK → mostrar éxito
+      setStep(6);
+    } catch (err: any) {
+      console.error(err);
+      alert("Error al registrarse: " + (err.message || "Inténtalo de nuevo"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
 
   const handleChange = (
@@ -92,7 +210,6 @@ export default function ClienteForm() {
   ) => {
     const { name, value } = e.target;
 
-  
     if ((name === "dni" || name === "telefono") && value && !SOLO_NUMEROS.test(value)) return;
 
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -101,7 +218,6 @@ export default function ClienteForm() {
       setErrors((prev) => { const n = { ...prev }; delete n[name]; return n; });
     }
 
-    
     if (name === "password" && formData.confirmPassword) {
       const confErr = validarConfirmPassword(value, formData.confirmPassword);
       setErrors((prev) => ({ ...prev, confirmPassword: confErr || "" }));
@@ -114,7 +230,8 @@ export default function ClienteForm() {
 
     const checks: [string, string][] = [
       ["nombres",         validarNombre(formData.nombres, "Nombres")],
-      ["apellidos",       validarNombre(formData.apellidos, "Apellidos")],
+      ["apellidos_pa",    validarNombre(formData.apellidos_pa, "Apellido Paterno")],
+      ["apellidos_ma",    validarNombre(formData.apellidos_ma, "Apellido Materno")],
       ["correo",          validarCorreo(formData.correo)],
       ["telefono",        validarTelefono(formData.telefono)],
       ["dni",             validarDni(formData.dni)],
@@ -133,15 +250,23 @@ export default function ClienteForm() {
   const prevStep = () => setStep((p) => p - 1);
 
   return (
-    <div className="w-full">
-     
-      {step <= 5 && (
-        <div className="mb-7">
-          <ProgressTracker currentStep={step} />
+    <div className="w-full relative">
+      {isLoading && (
+        <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex flex-col items-center justify-center z-50 rounded-2xl animate-in fade-in duration-300 min-h-[400px]">
+          <div className="flex flex-col items-center gap-3 text-center p-6">
+            <div className="animate-spin rounded-full h-10 w-10 border-4 border-teal-500 border-t-transparent"></div>
+            <p className="text-sm font-bold text-slate-700">Activando tu cuenta...</p>
+            <p className="text-xs text-slate-400">Guardando suscripción y método de pago</p>
+          </div>
         </div>
       )}
 
-  
+      {step < 6 && (
+        <div className="mb-7">
+          <ProgressTracker currentStep={Math.min(step, 5)} />
+        </div>
+      )}
+
       {step === 1 && (
         <StepDatos
           formData={formData}
@@ -155,20 +280,38 @@ export default function ClienteForm() {
       )}
       {step === 3 && (
         <StepDni
-          {...({
-            dni: formData.dni,
-            nombres: formData.nombres,
-            apellidos: formData.apellidos,
-            onNext: nextStep,
-            onBack: prevStep,
-          } as any)}
+          dni={formData.dni}
+          nombres={formData.nombres}
+          apellidos_pa={formData.apellidos_pa}
+          apellidos_ma={formData.apellidos_ma}
+          onNext={nextStep}
+          onBack={prevStep}
+          onVerified={(nombres, apellidos_pa, apellidos_ma) => {
+            setFormData((prev) => ({ ...prev, nombres, apellidos_pa, apellidos_ma }));
+          }}
         />
       )}
       {step === 4 && (
-        <StepPlan onNext={nextStep} onBack={prevStep} />
+        <StepPlan onNext={handlePlanSelected} onBack={prevStep} />
       )}
-      {step === 5 && (
-        <StepSuccess formData={formData} />
+      {step === 5 && selectedPlan && (
+        <StepPayment
+          plan={selectedPlan}
+          onConfirm={handlePaymentConfirm}
+          onBack={() => setStep(4)}
+          isLoading={isLoading}
+        />
+      )}
+      {step === 6 && (
+        <StepSuccess
+          formData={formData}
+          planInfo={selectedPlan ? {
+            name: selectedPlan.name,
+            billing: selectedPlan.billing,
+            price: selectedPlan.price,
+            paymentTipo: usedPaymentTipo,
+          } : undefined}
+        />
       )}
     </div>
   );

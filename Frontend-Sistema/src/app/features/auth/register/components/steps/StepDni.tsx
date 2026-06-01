@@ -1,34 +1,80 @@
 import { ShieldCheck, ArrowLeft, RefreshCw, CheckCircle2 } from "lucide-react";
 import { useState } from "react";
 import type { StepDniProps } from "../register-ui.types";
+import { consultarDni } from "../../../../../core/services/reniec";
 
 type LoadingStep = 0 | 1 | 2 | 3;
 
-export default function StepDni({ dni, nombres, apellidos, onNext, onBack }: StepDniProps) {
+export default function StepDni({ dni, nombres, apellidos_pa, apellidos_ma, onNext, onBack, onVerified }: StepDniProps) {
     const [isValidating, setIsValidating] = useState(false);
     const [isDniVerified, setIsDniVerified] = useState(false);
-    
-   
+    const [verifiedData, setVerifiedData] = useState({
+        nombres: nombres,
+        apellidos_pa: apellidos_pa,
+        apellidos_ma: apellidos_ma
+    });
+    const [errorMsg, setErrorMsg] = useState("");
     const [loadingStep, setLoadingStep] = useState<LoadingStep>(0);
 
-    const handleVerifyDni = () => {
+    // Función de normalización de cadenas para una comparación robusta
+    const normalizeText = (text: string) => {
+        return (text || "")
+            .toLowerCase()
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "") // Remueve tildes
+            .replace(/\s+/g, " ") // Remueve espacios dobles
+            .trim();
+    };
+
+    const handleVerifyDni = async () => {
         setIsValidating(true);
         setLoadingStep(1); 
+        setErrorMsg("");
 
-        
-        setTimeout(() => {
+        try {
+            await new Promise((resolve) => setTimeout(resolve, 600));
             setLoadingStep(2); 
 
-            setTimeout(() => {
-                setLoadingStep(3); 
-                
-                // Finaliza
-                setTimeout(() => {
-                    setIsValidating(false);
-                    setIsDniVerified(true);
-                }, 800);
-            }, 800);
-        }, 800);
+            const result = await consultarDni(dni);
+            await new Promise((resolve) => setTimeout(resolve, 600));
+            setLoadingStep(3); 
+
+            await new Promise((resolve) => setTimeout(resolve, 600));
+
+            // Guardar temporalmente en el estado los datos de RENIEC
+            setVerifiedData({
+                nombres: result.nombres,
+                apellidos_pa: result.apellidos_pa,
+                apellidos_ma: result.apellidos_ma
+            });
+
+            // Normalización para comparación
+            const officialNombres = normalizeText(result.nombres);
+            const officialPa = normalizeText(result.apellidos_pa);
+            const officialMa = normalizeText(result.apellidos_ma);
+
+            const inputNombres = normalizeText(nombres);
+            const inputPa = normalizeText(apellidos_pa);
+            const inputMa = normalizeText(apellidos_ma);
+
+            if (officialNombres !== inputNombres || officialPa !== inputPa || officialMa !== inputMa) {
+                setErrorMsg("Los datos oficiales de la RENIEC no coinciden con los nombres y apellidos ingresados en el formulario de registro. Por favor, regresa al primer paso y corrígelos.");
+                setIsDniVerified(false);
+                return;
+            }
+
+            setIsDniVerified(true);
+            setErrorMsg("");
+
+            if (onVerified) {
+                onVerified(result.nombres, result.apellidos_pa, result.apellidos_ma);
+            }
+        } catch (err: any) {
+            console.error(err);
+            setErrorMsg(err.message || "Error al conectar con el servicio de consulta de DNI. Inténtalo de nuevo.");
+        } finally {
+            setIsValidating(false);
+        }
     };
 
     return (
@@ -75,6 +121,38 @@ export default function StepDni({ dni, nombres, apellidos, onNext, onBack }: Ste
                         )}
                     </div>
                 </div>
+
+                {errorMsg && (
+                    <div className="mb-6 bg-rose-50 border border-rose-200 text-rose-700 p-4 rounded-xl flex gap-3 text-pretty animate-in fade-in slide-in-from-top-2 duration-300">
+                        <div className="text-rose-500 h-fit shrink-0 mt-0.5">
+                            <ShieldCheck size={18} strokeWidth={2.5} />
+                        </div>
+                        <div className="flex-1">
+                            <h4 className="font-bold text-rose-900 text-sm">Discrepancia de datos</h4>
+                            <p className="text-xs text-rose-700 mt-1 leading-relaxed">
+                                {errorMsg}
+                            </p>
+                            <div className="mt-3 bg-white/70 p-2.5 rounded-lg border border-rose-100 grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px] leading-relaxed">
+                                <div>
+                                    <span className="font-bold text-rose-900">Ingresado en Formulario:</span>
+                                    <ul className="list-disc pl-4 mt-1 text-rose-800 space-y-0.5">
+                                        <li>Nombres: <span className="font-semibold">{nombres}</span></li>
+                                        <li>Ape. Paterno: <span className="font-semibold">{apellidos_pa}</span></li>
+                                        <li>Ape. Materno: <span className="font-semibold">{apellidos_ma}</span></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <span className="font-bold text-rose-900">Registrado en RENIEC:</span>
+                                    <ul className="list-disc pl-4 mt-1 text-rose-800 space-y-0.5">
+                                        <li>Nombres: <span className="font-semibold">{verifiedData.nombres || "—"}</span></li>
+                                        <li>Ape. Paterno: <span className="font-semibold">{verifiedData.apellidos_pa || "—"}</span></li>
+                                        <li>Ape. Materno: <span className="font-semibold">{verifiedData.apellidos_ma || "No registra"}</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
           
                 {!isValidating && !isDniVerified && (
@@ -139,12 +217,20 @@ export default function StepDni({ dni, nombres, apellidos, onNext, onBack }: Ste
                             </div>
                         </div>
 
-                        <div className="flex gap-2">
-                            <div className="bg-white p-3 rounded-lg border border-teal-100 flex-1">
-                                <p className="text-[10px] text-slate-400 font-bold mb-1 uppercase">Nombre completo</p>
-                                <p className="text-sm font-bold text-slate-700 capitalize">{nombres || "paola"} {apellidos || "tereza"}</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <div className="bg-white p-3 rounded-lg border border-teal-100">
+                                <p className="text-[10px] text-slate-400 font-bold mb-1 uppercase">Nombres</p>
+                                <p className="text-sm font-bold text-slate-700 capitalize">{verifiedData.nombres || "paola"}</p>
                             </div>
-                            <div className="bg-white p-3 rounded-lg border border-teal-100 flex-1">
+                            <div className="bg-white p-3 rounded-lg border border-teal-100">
+                                <p className="text-[10px] text-slate-400 font-bold mb-1 uppercase">Apellido Paterno</p>
+                                <p className="text-sm font-bold text-slate-700 capitalize">{verifiedData.apellidos_pa || "tereza"}</p>
+                            </div>
+                            <div className="bg-white p-3 rounded-lg border border-teal-100">
+                                <p className="text-[10px] text-slate-400 font-bold mb-1 uppercase">Apellido Materno</p>
+                                <p className="text-sm font-bold text-slate-700 capitalize">{verifiedData.apellidos_ma || ""}</p>
+                            </div>
+                            <div className="bg-white p-3 rounded-lg border border-teal-100">
                                 <p className="text-[10px] text-slate-400 font-bold mb-1 uppercase">DNI</p>
                                 <p className="text-sm font-bold text-slate-700">{dni || "43324234"}</p>
                             </div>
