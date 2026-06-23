@@ -1,6 +1,8 @@
 import { useState } from "react";
 
 interface Props {
+  selectedPatient: string;
+  setSelectedPatient: (id: string) => void;
   onBack: () => void;
   onNext: () => void;
 }
@@ -30,12 +32,12 @@ const patients = [
 ];
 
 export default function BookingPatientStep({
+  selectedPatient,
+  setSelectedPatient,
   onBack,
   onNext
 }: Props) {
-
-  const [selectedPatient, setSelectedPatient] =
-    useState("1");
+ 
 
   const [notes, setNotes] =
     useState("");
