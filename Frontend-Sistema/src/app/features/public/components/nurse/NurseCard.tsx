@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Star, Award, MapPin, Clock, CheckCircle, Lock, Eye, Heart, Stethoscope} from "lucide-react";
+import { Star, Award, MapPin, Clock, CheckCircle, Lock, Eye, Heart, Stethoscope } from "lucide-react";
 import type { Nurse } from "../../../../core/models/nurse.model";
 
 interface NurseCardProps {
@@ -28,10 +28,10 @@ export default function NurseCard({ nurse, isAuthenticated = false }: NurseCardP
                     <Star
                         key={i}
                         className={`w-4 h-4 ${i < fullStars
-                                ? "text-yellow-400 fill-yellow-400"
-                                : i === fullStars && hasHalfStar
-                                    ? "text-yellow-400 fill-yellow-400/50"
-                                    : "text-slate-200 fill-slate-200"
+                            ? "text-yellow-400 fill-yellow-400"
+                            : i === fullStars && hasHalfStar
+                                ? "text-yellow-400 fill-yellow-400/50"
+                                : "text-slate-200 fill-slate-200"
                             }`}
                     />
                 ))}
@@ -62,6 +62,9 @@ export default function NurseCard({ nurse, isAuthenticated = false }: NurseCardP
 
     const currentService =
         nurse.serviceType[activeService];
+
+    const primaryService =
+    nurse.serviceType[0];
 
     const getBadgeStyle = (serviceName: string) => {
 
@@ -100,7 +103,7 @@ export default function NurseCard({ nurse, isAuthenticated = false }: NurseCardP
     };
 
     const badgeStyle =
-        getBadgeStyle(currentService.name);
+        getBadgeStyle(primaryService.name);
 
     return (
         <div
@@ -163,12 +166,12 @@ export default function NurseCard({ nurse, isAuthenticated = false }: NurseCardP
                 )}
 
                 <span
-    className={`px-3 py-1 rounded-full text-xs font-semibold
-    ${badgeStyle.bg}
-    ${badgeStyle.text}`}
->
-    {currentService.name}
-</span>
+                    className={`px-3 py-1 rounded-full text-xs font-semibold
+                        ${badgeStyle.bg}
+                        ${badgeStyle.text}`}
+                >
+                    {primaryService.name}
+                </span>
 
             </div>
 

@@ -29,6 +29,7 @@ export default function BookingModal({
 }: Props) {
 
   const [step, setStep] = useState(1);
+  const [selectedPatient, setSelectedPatient] = useState<string>("1");
 
   const [selectedDays, setSelectedDays] =
     useState<SelectedDay[]>([]);
@@ -135,6 +136,8 @@ export default function BookingModal({
           {step === 3 && (
 
             <BookingPatientStep
+              selectedPatient={selectedPatient}
+  setSelectedPatient={setSelectedPatient}
               onBack={() => setStep(2)}
               onNext={() => setStep(4)}
             />
@@ -148,6 +151,7 @@ export default function BookingModal({
               nurse={nurse}
               selectedService={selectedService}
               selectedDays={selectedDays}
+              selectedPatient={selectedPatient}
               onBack={() => setStep(3)}
               onNext={() => setStep(5)}
             />

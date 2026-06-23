@@ -1,7 +1,8 @@
-import { useMemo } from "react";
-import { Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { Trash2, Info } from "lucide-react";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
+import { es } from "react-day-picker/locale/es";
 
 interface Props {
   selectedDays: SelectedDay[];
@@ -97,43 +98,11 @@ export default function BookingCalendar({
     "8:00 pm"
   ];
 
-  {/* agregar día */}
-  const handleSelect = (
-    date?: Date
-  ) => {
+  {/* agregar día */ }
 
-    if (!date) return;
+  const [month, setMonth] = useState(new Date());
 
-    const exists =
-      selectedDays.find(
-        (d) =>
-          d.date.toDateString() ===
-          date.toDateString()
-      );
-
-    if (exists) return;
-
-    const daySchedule =
-      schedules[
-        date.getDay() as keyof typeof schedules
-      ];
-
-    if (!daySchedule) return;
-
-    setSelectedDays([
-
-      ...selectedDays,
-
-      {
-        date,
-        start: daySchedule.start,
-        end: daySchedule.end
-      }
-
-    ]);
-  };
-
-  {/* actualizar horarios */}
+  {/* actualizar horarios */ }
   const updateTime = (
 
     index: number,
@@ -152,17 +121,12 @@ export default function BookingCalendar({
     setSelectedDays(copy);
   };
 
-  {/* eliminar día */}
-  const removeDay = (
-    index: number
-  ) => {
+  {/* eliminar día */ }
+  const removeDay = (date: Date) => {
+    const key = date.toDateString();
 
-    setSelectedDays(
-
-      selectedDays.filter(
-        (_, i) => i !== index
-      )
-
+    setSelectedDays((prev) =>
+      prev.filter((d) => d.date.toDateString() !== key)
     );
   };
 
@@ -185,7 +149,7 @@ export default function BookingCalendar({
     );
   };
 
-  {/* validar horarios */}
+  {/* validar horarios */ }
   const validateRange = (
 
     start: string,
@@ -269,63 +233,119 @@ export default function BookingCalendar({
     <div>
 
       {/* CALENDARIO */}
-      <div className="custom-calendar border border-slate-100 rounded-3xl p-6">
+      <div className="custom-calendar w-full max-w-6xl mx-auto rounded-3xl border border-slate-100 bg-white p-10 shadow-md">
 
-        <div className="flex justify-center">
+        <div className="mb-5 flex items-center gap-2 rounded-2xl bg-teal-50 px-4 py-3 text-sm text-teal-700">
+          <Info className="w-4 h-4" />
 
-          <DayPicker
+          <span>
+            Selecciona uno o más días disponibles. Puedes asignar horarios diferentes para cada día.
+          </span>
+        </div>
 
-            mode="multiple"
+        <div className="w-full flex justify-center">
+  <div className="w-full max-w-[95vw] sm:max-w-3xl md:max-w-5xl lg:max-w-6xl overflow-x-auto">
 
-            selected={
-              selectedDays.map(
-                d => d.date
-              )
-            }
+            <DayPicker
+  mode="multiple"
+  locale={es}
+  month={month}
+  onMonthChange={setMonth}
+  selected={selectedDays.map((d) => d.date)}
 
-            modifiers={{
+  onSelect={(days) => {
+    const validDays = days ?? [];
 
-              available: {
-                dayOfWeek: [4, 5, 6]
-              }
+    setSelectedDays((prev) => {
+      const map = new Map(prev.map(d => [d.date.toDateString(), d]));
 
-            }}
+      const newDates = validDays.map(date => date.toDateString());
 
-            modifiersClassNames={{
+      // eliminar los quitados
+      const filtered = Array.from(map.values()).filter(
+        d => newDates.includes(d.date.toDateString())
+      );
 
-              available:
-                "available-day",
+      // agregar nuevos
+      validDays.forEach(date => {
+        const key = date.toDateString();
 
-              selected:
-                "selected-day"
+        if (!map.has(key)) {
+          const schedule = schedules[date.getDay() as keyof typeof schedules];
 
-            }}
+          if (schedule) {
+            filtered.push({
+              date,
+              start: schedule.start,
+              end: schedule.end
+            });
+          }
+        }
+      });
 
-            onSelect={(dates) => {
+      return filtered;
+    });
+  }}
 
-              if (!dates) return;
+  disabled={[
+    { before: today },
+    { dayOfWeek: unavailableWeekDays }
+  ]}
 
-              const last =
-                dates[dates.length - 1];
+  modifiers={{
+    selected: selectedDays.map(d => d.date),
+    unavailable: (date) =>
+      unavailableWeekDays.includes(date.getDay()) ||
+      date < today
+  }}
 
-              handleSelect(last);
+  classNames={{
+    months: "w-full flex justify-center",
+    month: "w-full",
 
-            }}
+    caption_label:
+      "text-lg sm:text-xl md:text-2xl font-bold text-slate-900",
 
-            disabled={[
+    weekdays:
+      "grid grid-cols-7 text-center text-xs sm:text-sm font-semibold text-slate-500 mb-2",
 
-              {
-                dayOfWeek:
-                  unavailableWeekDays
-              },
+    week:
+      "grid grid-cols-7 gap-1 sm:gap-2",
 
-              {
-                before: today
-              }
+    day: "flex justify-center",
 
-            ]}
-          />
+    day_button: `
+      w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14
+      rounded-xl flex items-center justify-center
+      transition text-sm sm:text-base font-medium
+    `,
 
+    // 🔵 seleccionado
+    selected: `
+      bg-teal-500 text-white rounded-xl shadow-md
+      scale-95
+    `,
+
+    // 🔴 hoy
+    today: `
+      border border-teal-500 text-teal-700 bg-teal-50 rounded-xl
+    `,
+
+    // ⚫ deshabilitado
+    disabled: `
+      text-slate-300 bg-slate-100 opacity-60 cursor-not-allowed
+    `,
+
+    button_previous:
+      "h-10 w-10 rounded-full border flex items-center justify-center hover:bg-teal-50",
+
+    button_next:
+      "h-10 w-10 rounded-full border flex items-center justify-center hover:bg-teal-50",
+  }}
+
+            />
+
+          </div>
         </div>
 
       </div>
@@ -361,30 +381,33 @@ export default function BookingCalendar({
 
               const daySchedule =
                 schedules[
-                  item.date.getDay() as keyof typeof schedules
+                item.date.getDay() as keyof typeof schedules
                 ];
 
               return (
 
                 <div
 
-                  key={index}
+                  key={item.date.toISOString()}
 
                   className={`
 
-                    rounded-3xl
-                    p-5
-                    border
+                    rounded-2xl
+border
+border-teal-200
+bg-teal-50/40
+p-5
+shadow-sm
+transition-all
 
-                    ${
-                      validation.valid
+                    ${validation.valid
 
-                        ? `
+                      ? `
                           bg-slate-50
                           border-slate-200
                         `
 
-                        : `
+                      : `
                           bg-red-50
                           border-red-200
                         `
@@ -419,15 +442,14 @@ export default function BookingCalendar({
                           text-xs
                           font-semibold
 
-                          ${
-                            validation.valid
+                          ${validation.valid
 
-                              ? `
+                            ? `
                                 bg-teal-100
                                 text-teal-700
                               `
 
-                              : `
+                            : `
                                 bg-red-100
                                 text-red-700
                               `
@@ -443,15 +465,20 @@ export default function BookingCalendar({
 
                     <button
 
-                      onClick={() =>
-                        removeDay(index)
-                      }
+                      onClick={() => removeDay(item.date)}
 
                       className="
-                        text-slate-400
-                        hover:text-red-500
-                        transition
-                      "
+w-8
+h-8
+rounded-full
+flex
+items-center
+justify-center
+text-slate-400
+hover:bg-red-100
+hover:text-red-500
+transition
+"
                     >
 
                       <Trash2 className="w-4 h-4" />
@@ -461,7 +488,7 @@ export default function BookingCalendar({
                   </div>
 
                   {/* HORARIOS */}
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                     {/* ENTRADA */}
                     <div>
@@ -484,8 +511,8 @@ export default function BookingCalendar({
 
                         className="
                           w-full
-                          h-14
-                          rounded-2xl
+                          h-12
+                          rounded-xl
                           border
                           border-slate-200
                           px-4
@@ -503,12 +530,12 @@ export default function BookingCalendar({
                             return (
 
                               parseHour(hour) >=
-                                parseHour(daySchedule.start)
+                              parseHour(daySchedule.start)
 
                               &&
 
                               parseHour(hour) <
-                                parseHour(daySchedule.end)
+                              parseHour(daySchedule.end)
 
                             );
 
@@ -553,23 +580,22 @@ export default function BookingCalendar({
                         className={`
 
                           w-full
-                          h-14
-                          rounded-2xl
+                          h-12
+                          rounded-xl
                           border
                           px-4
                           bg-white
                           focus:outline-none
                           focus:ring-2
 
-                          ${
-                            validation.valid
+                          ${validation.valid
 
-                              ? `
+                            ? `
                                 border-slate-200
                                 focus:ring-teal-500
                               `
 
-                              : `
+                            : `
                                 border-red-300
                                 focus:ring-red-400
                               `
@@ -647,7 +673,7 @@ export default function BookingCalendar({
           </div>
 
           {/* RESUMEN */}
-          <div className="mt-6 bg-teal-50 rounded-3xl p-6">
+          <div className="mt-6 rounded-2xl border border-teal-100 bg-teal-50 p-5">
 
             <div className="space-y-3">
 
@@ -704,20 +730,21 @@ export default function BookingCalendar({
           </div>
 
           {/* ACTIONS */}
-          <div className="flex gap-4 mt-6">
+          <div className="flex flex-col sm:flex-row gap-4 mt-6">
 
             {/* BACK */}
             <button
               onClick={onBack}
               className="
       flex-1
-      h-14
-      rounded-2xl
+      h-12
+      rounded-xl
       border
       border-slate-200
       font-semibold
       hover:bg-slate-50
       transition
+      text-sm
     "
             >
               Atrás
@@ -736,11 +763,12 @@ export default function BookingCalendar({
               className={`
 
       flex-1
-      h-14
-      rounded-2xl
+      h-12
+      rounded-xl
       transition
       text-lg
       font-bold
+      text-sm
 
       ${selectedDays.length > 0 &&
                   !hasErrors

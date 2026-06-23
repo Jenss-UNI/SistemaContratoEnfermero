@@ -20,6 +20,8 @@ interface Props {
     price: number;
   };
 
+  selectedPatient: string;
+
   selectedDays: SelectedDay[];
 
   onBack: () => void;
@@ -31,9 +33,31 @@ export default function BookingSummaryStep({
   nurse,
   selectedService,
   selectedDays,
+  selectedPatient,
   onBack,
   onNext
 }: Props) {
+
+  const patients = [
+    {
+      id: "1",
+      name: "Elena Rodríguez",
+      age: 78,
+      relation: "Madre",
+      address: "Av. Larco 1234, Dpto 502, Miraflores"
+    },
+    {
+      id: "2",
+      name: "Mateo Rodríguez",
+      age: 6,
+      relation: "Hijo",
+      address: "Av. Larco 1234, Dpto 502, Miraflores"
+    }
+  ];
+
+  const patient = patients.find(p => p.id === selectedPatient);
+
+
 
   const parseHour = (value: string) => {
 
@@ -96,17 +120,29 @@ export default function BookingSummaryStep({
 
           {/* ENFERMERO */}
           <div className="flex items-center justify-between">
-
             <span className="text-slate-500">
               Enfermero
             </span>
 
             <span className="font-semibold text-slate-900">
-
               {nurse.name}
-
             </span>
+          </div>
 
+          {/* PACIENTE */}
+          <div className="flex items-center justify-between">
+            <span className="text-slate-500">Paciente</span>
+            <span className="font-semibold text-slate-900">
+              {patient?.name}
+            </span>
+          </div>
+
+          {/* DIRECCIÓN */}
+          <div className="flex items-center justify-between">
+            <span className="text-slate-500">Dirección</span>
+            <span className="font-semibold text-slate-900">
+              {patient?.address}
+            </span>
           </div>
 
           {/* SERVICIO */}
