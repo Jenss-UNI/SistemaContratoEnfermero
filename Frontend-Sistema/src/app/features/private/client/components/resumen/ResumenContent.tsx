@@ -2,7 +2,7 @@ import { Calendar, Heart, UserRound, Wallet } from "lucide-react";
 import { CLIENT_PANEL_BASE } from "../../clientNav";
 import {
   PatientSummaryCard,
-  PinCodeCard,     // <-- ¡Aquí importamos la tarjeta del PIN!
+  PinCodeCard,
   PlanSummaryCard,
   SectionHeader,
   ServiceCard,
@@ -96,8 +96,6 @@ export default function ResumenContent() {
 
   return (
     <div className="space-y-8 w-full">
-      
-      
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
         <PinCodeCard />
         <PlanSummaryCard {...planData} />
@@ -108,23 +106,25 @@ export default function ResumenContent() {
           label="Servicios Activos"
           value={stats.activos}
           icon={Heart}
+          iconClassName="bg-teal-50 text-teal-500"
         />
         <StatCard
           label="Próximos Servicios"
           value={stats.proximos}
           icon={Calendar}
-          iconClassName="bg-amber-50 text-amber-600"
+          iconClassName="bg-amber-50 text-amber-500"
         />
         <StatCard
           label="Mis Pacientes"
           value={stats.pacientes}
           icon={UserRound}
-          iconClassName="bg-pink-50 text-pink-600"
+          iconClassName="bg-pink-50 text-pink-500"
         />
         <StatCard
           label="Total Invertido"
           value={stats.invertido}
           icon={Wallet}
+          iconClassName="bg-teal-50 text-teal-500"
         />
       </div>
 

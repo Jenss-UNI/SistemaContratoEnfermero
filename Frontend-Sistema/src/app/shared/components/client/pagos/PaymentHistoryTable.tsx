@@ -1,4 +1,3 @@
-import { FileText } from "lucide-react";
 import type { PaymentHistoryItem } from "../../../../core/models/payment.model";
 import PaymentStatusBadge from "./PaymentStatusBadge";
 
@@ -18,7 +17,6 @@ export default function PaymentHistoryTable({ items }: PaymentHistoryTableProps)
               <th className="px-4 py-3 font-semibold text-slate-600">Tipo</th>
               <th className="px-4 py-3 font-semibold text-slate-600">Monto</th>
               <th className="px-4 py-3 font-semibold text-slate-600">Estado</th>
-              <th className="px-4 py-3 font-semibold text-slate-600">Factura</th>
             </tr>
           </thead>
           <tbody>
@@ -32,15 +30,6 @@ export default function PaymentHistoryTable({ items }: PaymentHistoryTableProps)
                 </td>
                 <td className="px-4 py-3.5">
                   <PaymentStatusBadge status={row.estado} />
-                </td>
-                <td className="px-4 py-3.5">
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1.5 text-teal-600 transition hover:text-teal-700"
-                  >
-                    <FileText className="h-4 w-4" />
-                    <span className="font-medium">{row.factura}</span>
-                  </button>
                 </td>
               </tr>
             ))}

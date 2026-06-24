@@ -111,15 +111,15 @@ export default function ContratacionCard({
         />
 
         <div className="flex flex-wrap gap-2 sm:justify-end">
-          {estado === "pendiente" && (
-            <>
-              <button type="button" onClick={onCancelar} className={outlineRed}>
-                <X className="h-4 w-4" />
-                Cancelar solicitud
-              </button>
-              <button type="button" onClick={onVerDetalle} className={outlineTeal}>
-                Ver detalle
-              </button>
+         {estado === "pendiente" && (
+  <>
+    <button type="button" onClick={onCancelar} className={outlineRed}>
+      <X className="h-4 w-4" />
+      Cancelar  
+    </button>
+    <button type="button" onClick={onVerDetalle} className={outlineTeal}>
+      Ver detalle
+    </button>
             </>
           )}
           {estado === "confirmado" && (

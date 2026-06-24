@@ -55,12 +55,7 @@ export default function MisContratacionesContent() {
     const invertido = contrataciones
       .filter((c) => c.estado === "completado")
       .reduce((sum, c) => sum + c.montoTotal, 0);
-    return {
-      total: contrataciones.length,
-      activos,
-      enCustodia,
-      invertido,
-    };
+    return { total: contrataciones.length, activos, enCustodia, invertido };
   }, [contrataciones]);
 
   const conteos = useMemo(
@@ -85,12 +80,7 @@ export default function MisContratacionesContent() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">Mis Contrataciones</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          Gestiona tus solicitudes, contratos activos y servicios completados
-        </p>
-      </div>
+   
 
       <ContratacionStats
         totalContratos={stats.total}
@@ -104,38 +94,48 @@ export default function MisContratacionesContent() {
         Notificaciones en tiempo real activas
       </p>
 
-      <div className="space-y-3">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="relative max-w-xl flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
-            <input
-              type="search"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              placeholder="Buscar por enfermero, paciente, código..."
-              className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none ring-teal-500 focus:border-teal-500 focus:ring-2"
-            />
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {FILTROS.map(({ id, label }) => {
-              const count = id === "todos" ? conteos.todos : conteos[id];
-              const active = filtro === id;
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  onClick={() => setFiltro(id)}
-                  className={`rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        {/* Buscador */}
+        <div className="relative max-w-xl flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+          <input
+            type="search"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar por enfermero, paciente, código..."
+            className="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-10 pr-4 text-sm outline-none ring-teal-500 focus:border-teal-500 focus:ring-2"
+          />
+        </div>
+
+        {/* Filtros con badge numérico separado */}
+        <div className="flex flex-wrap gap-2">
+          {FILTROS.map(({ id, label }) => {
+            const count = id === "todos" ? conteos.todos : conteos[id];
+            const active = filtro === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setFiltro(id)}
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition ${
+                  active
+                    ? "border-teal-500 bg-teal-50 text-teal-700"
+                    : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                }`}
+              >
+                {label}
+                <span
+                  className={`rounded-full px-1.5 py-0.5 text-xs font-semibold ${
                     active
-                      ? "border-teal-500 bg-teal-50 text-teal-700"
-                      : "border-slate-200 bg-white text-slate-600 hover:border-slate-300"
+                      ? "bg-teal-600 text-white"
+                      : "bg-slate-100 text-slate-500"
                   }`}
                 >
-                  {label} ({count})
-                </button>
-              );
-            })}
-          </div>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -153,10 +153,10 @@ export default function MisContratacionesContent() {
               onCancelar={() => handleCancelar(c)}
               onFirmarContrato={() => handleFirmar(c)}
               onVerJornadas={() =>
-                window.alert("Ver jornadas (simulación) — disponible próximamente.")
+                window.alert("Ver jornadas — disponible próximamente.")
               }
               onVerContrato={() =>
-                window.alert("Ver contrato (simulación) — disponible próximamente.")
+                window.alert("Ver contrato — disponible próximamente.")
               }
             />
           ))}
