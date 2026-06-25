@@ -1,13 +1,22 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseUrl     = import.meta.env.VITE_SUPABASE_URL     ?? "";
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim() ?? "";
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim() ?? "";
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    persistSession:     true,  // guarda sesión en localStorage
-    autoRefreshToken:   true,  // refresca el token automáticamente
-    detectSessionInUrl: true,  // necesario para magic links / OAuth
-    // ⚠️ NO sobreescribir storageKey — Supabase usa su propia clave por defecto
-  },
-});
+if (!supabaseUrl || !supabaseAnonKey) {
+  console.error(
+    "[Supabase] Falta VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY. Revisa el archivo .env en la raíz del proyecto."
+  );
+}
+
+export const supabase = createClient(
+  supabaseUrl || "https://example.supabase.co",
+  supabaseAnonKey || "public-anon-key",
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
+  }
+);

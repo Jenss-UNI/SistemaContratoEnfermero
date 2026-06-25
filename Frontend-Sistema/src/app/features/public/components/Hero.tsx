@@ -6,15 +6,13 @@ export default function Hero() {
   const [tiposCuidado, setTiposCuidado] = useState('');
 
   return (
-    <section 
+    <section
       className="relative min-h-screen pt-24 flex items-center overflow-hidden bg-[url('https://readdy.ai/api/search-image?query=warm%20and%20caring%20nurse%20helping%20elderly%20patient%20at%20home%20in%20Peru%2C%20cozy%20living%20room%20setting%2C%20soft%20natural%20light%20coming%20through%20window%2C%20professional%20healthcare%20worker%20in%20white%20uniform%2C%20emotional%20and%20trustworthy%20atmosphere%2C%20high%20quality%20photography%2C%20warm%20tones&width=1440&height=900&seq=hero-bg&orientation=landscape')] bg-cover bg-center bg-no-repeat"
     >
       <div className="absolute inset-0 bg-black/60 z-0"></div>
 
-      {/* Contenedor principal ampliado a max-w-[1400px] */}
       <div className="relative z-10 max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          
           <div>
             <div className="flex items-center gap-4 mb-6">
               <div className="flex -space-x-2">
@@ -27,19 +25,16 @@ export default function Hero() {
               </span>
             </div>
 
-            {/* Título mucho más grande en pantallas de PC */}
             <h1 className="text-white text-5xl md:text-6xl lg:text-[70px] font-light mb-6 leading-[1.05] tracking-tight">
               Cuidamos a quienes<br />
               <span className="font-extrabold text-[#14b8a6]">MÁS AMAS</span>
             </h1>
 
-            {/* Párrafo con texto más grande */}
             <p className="text-gray-300 text-base md:text-[18px] lg:text-[20px] mb-10 leading-relaxed font-light max-w-[600px]">
               Profesionales verificados por SUNEDU y MINEDU. Contratación segura.<br />
               Pago protegido en custodia.
             </p>
 
-            {/* Caja de cristal ampliada a max-w-[680px] y con más padding (p-8) */}
             <div className="bg-[#3a3532]/40 border border-white/20 backdrop-blur-md rounded-3xl p-6 lg:p-8 mb-10 max-w-[680px] shadow-2xl">
               <h3 className="text-white text-sm lg:text-base font-bold mb-5 uppercase tracking-widest opacity-90">
                 Busca tu enfermero ideal
@@ -73,14 +68,12 @@ export default function Hero() {
                 </div>
               </div>
 
-              {/* Botón principal más grande */}
               <button type="button" className="w-full bg-[#14b8a6] hover:bg-[#0d9488] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-colors text-[16px] lg:text-[18px] shadow-lg">
                 <Search className="w-5 h-5" />
                 Buscar Enfermero Ahora
               </button>
             </div>
 
-            {/* Badges de confianza escalados */}
             <div className="flex flex-wrap items-center gap-8 md:gap-12 mb-8">
               <div className="flex items-center gap-3">
                 <ShieldCheck className="w-7 h-7 lg:w-8 lg:h-8 text-[#14b8a6]" strokeWidth={2} />
@@ -106,7 +99,6 @@ export default function Hero() {
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       </div>

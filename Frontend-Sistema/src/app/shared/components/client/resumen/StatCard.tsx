@@ -11,21 +11,20 @@ export default function StatCard({
   label,
   value,
   icon: Icon,
-  iconClassName = "bg-teal-50 text-teal-600",
+  iconClassName = "bg-teal-50 text-teal-500",
 }: StatCardProps) {
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white p-4 sm:p-5 lg:p-6 shadow-sm transition-all duration-300">
-      <div className="flex flex-col">   
-        <span className="text-xs sm:text-sm font-medium text-slate-500">{label}</span>
- 
-        <span className="mt-1 sm:mt-2 text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 transition-all">
+    <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-white px-5 py-4 shadow-sm">
+      <div className="flex flex-col">
+        <span className="text-sm text-slate-400">{label}</span>
+        <span className="mt-1 text-3xl font-extrabold tracking-tight text-slate-900">
           {value}
         </span>
       </div>
       <div
-        className={`flex h-10 w-10 sm:h-12 sm:w-12 lg:h-14 lg:w-14 shrink-0 items-center justify-center rounded-xl transition-all ${iconClassName}`}
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${iconClassName}`}
       >
-        <Icon className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7" />
+        <Icon className="h-5 w-5" />
       </div>
     </div>
   );

@@ -115,7 +115,7 @@ export default function ContratacionCard({
             <>
               <button type="button" onClick={onCancelar} className={outlineRed}>
                 <X className="h-4 w-4" />
-                Cancelar solicitud
+                Cancelar 
               </button>
               <button type="button" onClick={onVerDetalle} className={outlineTeal}>
                 Ver detalle
