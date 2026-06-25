@@ -1,12 +1,17 @@
 ﻿import { useMemo, useState } from "react";
-import { Outlet, useLocation } from "react-router-dom";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import AdminPanelSidebar from "./AdminPanelSidebar";
 import { ADMIN_NAV_ITEMS, ADMIN_PANEL_BASE } from "../adminNav";
-import { Menu, X, RefreshCw, ShieldCheck } from "lucide-react";
+import { Menu, RefreshCw, ShieldCheck, LogOut } from "lucide-react";
+import { useAuth } from "../../../../core/contexts/AuthContext";
 
 export default function AdminPanelLayout() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const pageTitle = useMemo(() => {
     const cleanPath = location.pathname.replace(/\/$/, "");
@@ -16,110 +21,114 @@ export default function AdminPanelLayout() {
     return "Panel administrativo";
   }, [location.pathname]);
 
+  const handleSignOut = async () => {
+    try {
+      setIsLoggingOut(true);
+      await signOut();
+      setShowLogoutConfirm(false);
+      navigate("/");
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+      setIsLoggingOut(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen w-full bg-slate-50 font-sans text-slate-800 relative">
-      
-      {/* --- CABECERA PRINCIPAL --- */}
-      <header className="w-full border-b border-slate-200 bg-white">
-        <div className="flex h-[72px] w-full items-center justify-between px-4 sm:px-6 lg:px-0">
-          
-          {/* ZONA IZQUIERDA: Menú y Logo */}
-          <div className="flex h-full items-center gap-3 lg:w-[260px] lg:flex-shrink-0 lg:px-6">
-            
-            {/* Botón Hamburguesa (Solo visible en Móvil) */}
+    <div className="flex h-screen w-full bg-slate-50 font-sans text-slate-800 relative overflow-hidden">
+      <div
+        className={`fixed inset-0 z-20 bg-slate-900/40 transition-opacity duration-300 lg:hidden ${
+          sidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setSidebarOpen(false)}
+      />
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-30 w-[260px] flex-shrink-0 transform border-r border-slate-200 bg-white shadow-xl transition-transform duration-300 lg:static lg:translate-x-0 lg:shadow-none ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <AdminPanelSidebar 
+          closeSidebar={() => setSidebarOpen(false)}
+          onLogoutClick={() => setShowLogoutConfirm(true)}
+        />
+      </aside>
+
+      <div className="flex flex-1 flex-col min-w-0 overflow-hidden">
+        <header className="flex h-[72px] flex-shrink-0 w-full items-center justify-between border-b border-slate-200 bg-white px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center gap-4">
             <button
               type="button"
               className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 lg:hidden"
-              onClick={() => setSidebarOpen((current) => !current)}
-              aria-label="Mostrar navegación"
+              onClick={() => setSidebarOpen(true)}
             >
-              {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              <Menu className="h-5 w-5" />
             </button>
-
-            <div className="text-base font-bold text-[#0f766e]">
-              Cuídame
-            </div>
-          </div>
-
-          {/* LÍNEA DIVISORIA VERTICAL (Desktop) */}
-          <div className="hidden lg:block absolute left-[260px] top-0 bottom-0 w-px bg-slate-200" />
-
-          {/* ZONA CENTRAL: Título de la página */}
-          <div className="hidden lg:flex items-center min-w-0 flex-1 px-6">
-            <h2 className="truncate text-base font-semibold text-slate-900 sm:text-lg md:text-xl">
+            <h2 className="truncate text-lg font-bold text-slate-900 md:text-xl">
               {pageTitle}
             </h2>
           </div>
 
-          {/* Título en Mobile - Zona Central */}
-          <div className="flex lg:hidden min-w-0 flex-1 justify-center px-2">
-            <h2 className="truncate text-center text-base font-semibold text-slate-900 sm:text-lg">
-              {pageTitle}
-            </h2>
-          </div>
-
-          {/* ZONA DERECHA: Controles */}
-          <div className="flex items-center gap-2 pr-0 sm:gap-3 lg:pr-8">
-            
-            {/* Etiqueta de Fecha */}
-            <div className="hidden h-10 items-center justify-center rounded-2xl bg-slate-50 px-4 text-[13px] font-medium text-slate-500 sm:flex">
-              31 de mayo de 2026
+          <div className="flex items-center gap-3">
+            <div className="hidden h-10 items-center justify-center rounded-xl bg-slate-50 px-4 text-[13px] font-medium text-slate-500 sm:flex">
+              24 de junio de 2026
             </div>
-
-            {/* Botón Refrescar */}
-            <button className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700">
+            <button className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700">
               <RefreshCw className="h-4 w-4" strokeWidth={2.5} />
             </button>
-
-            {/* Badge Administrador */}
             <div className="inline-flex h-10 items-center gap-1.5 rounded-full bg-[#f0fdfa] px-4 text-[13px] font-bold text-[#0f766e]">
               <ShieldCheck className="h-4 w-4" strokeWidth={2.5} />
               <span className="hidden sm:inline">Administrador</span>
             </div>
           </div>
-          
-        </div>
-      </header>
+        </header>
 
-      {/* --- CUERPO DE LA APLICACIÓN --- */}
-      <div className="relative flex min-h-[calc(100vh-72px)] overflow-hidden">
-        
-        <div
-          className={`fixed inset-0 z-20 bg-slate-900/40 transition-opacity duration-300 lg:hidden ${
-            sidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-          }`}
-          onClick={() => setSidebarOpen(false)}
-        />
-
-        {/* Barra Lateral Izquierda (Sidebar) */}
-        <aside
-          className={`fixed inset-y-0 left-0 z-30 w-[260px] transform border-r border-slate-200 bg-white shadow-xl transition-transform duration-300 lg:static lg:translate-x-0 lg:shadow-none ${
-            sidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
-        >
-          <div className="flex h-full flex-col">
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-4 lg:hidden">
-              <span className="text-sm font-semibold text-slate-900">Menú</span>
-              <button
-                type="button"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 text-slate-600 transition-colors hover:bg-slate-50"
-                onClick={() => setSidebarOpen(false)}
-                aria-label="Cerrar menú"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            
-            <AdminPanelSidebar closeSidebar={() => setSidebarOpen(false)} />
-          </div>
-        </aside>
-
-        {/* Área de Contenido Dinámico */}
-        <main className="flex-1 min-w-0 overflow-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <Outlet />
         </main>
       </div>
-      
+
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setShowLogoutConfirm(false)}
+          ></div>
+          <div className="relative bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="text-center mb-5">
+              <div className="w-12 h-12 flex items-center justify-center bg-rose-50 rounded-full mx-auto mb-3">
+                <LogOut className="text-rose-500 h-6 w-6" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800">¿Cerrar sesión?</h3>
+              <p className="text-sm text-slate-500 mt-1">
+                Tu sesión actual se cerrará y deberás volver a iniciar sesión.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowLogoutConfirm(false)}
+                disabled={isLoggingOut}
+                className="flex-1 border border-slate-200 text-slate-600 font-semibold py-2.5 rounded-xl hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-sm transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSignOut}
+                disabled={isLoggingOut}
+                className="flex-1 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-semibold py-2.5 rounded-xl disabled:cursor-not-allowed cursor-pointer text-sm transition-colors flex items-center justify-center gap-2"
+              >
+                {isLoggingOut ? (
+                  <>
+                    <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    Cerrando...
+                  </>
+                ) : (
+                  "Cerrar sesión"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

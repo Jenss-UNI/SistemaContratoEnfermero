@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Check, Eye, X, FileText, CheckCircle2, ShieldCheck } from "lucide-react";
+import { Check, Eye, X, FileText, CheckCircle2, ShieldCheck, Shield } from "lucide-react";
 import Modal from "../../../../shared/components/client/mis-pacientes/Modal";
 
 type Nurse = {
@@ -8,7 +8,7 @@ type Nurse = {
   name: string;
   role: string;
   statusBadge: string;
-  statusColor: "green" | "red";
+  statusColor: "green" | "red" | "yellow";
   date: string;
 };
 
@@ -21,40 +21,33 @@ type DocumentField = {
 
 const NURSES: Nurse[] = [
   {
-    id: "andrea",
-    initials: "AP",
-    name: "Lic. Andrea Palomino",
-    role: "Geriatría y Adulto Mayor",
-    statusBadge: "Listo para aprobar",
+    id: "jens",
+    initials: "JL",
+    name: "Jens Jeremies Luna Levita",
+    role: "Enfermero Especializado · Miraflores",
+    statusBadge: "Publicado",
     statusColor: "green",
-    date: "2026-04-11",
+    date: "12/6/2026",
   },
   {
-    id: "marco",
-    initials: "MV",
-    name: "Tec. Marco Villanueva",
-    role: "Signos Vitales y Medicación",
-    statusBadge: "Tiene rechazados",
-    statusColor: "red",
-    date: "2026-04-10",
-  },
-  {
-    id: "sofia",
-    initials: "SR",
-    name: "Lic. Sofía Ramírez",
-    role: "Pediatría y Cuidado Infantil",
-    statusBadge: "Listo para aprobar",
-    statusColor: "green",
-    date: "2026-04-09",
+    id: "luura",
+    initials: "LP",
+    name: "Luura Perez Tello",
+    role: "Técnico en Enfermería · Surco",
+    statusBadge: "1 pendientes",
+    statusColor: "yellow",
+    date: "10/6/2026",
   },
 ];
 
 const INITIAL_FIELDS: DocumentField[] = [
-  { id: "dni-frontal", label: "DNI Frontal", status: "approved" },
-  { id: "dni-posterior", label: "DNI Posterior", status: "approved" },
-  { id: "titulo-profesional", label: "Título Profesional", status: "pending" },
-  { id: "registro-sunedu", label: "Registro SUNEDU", status: "pending" },
-  { id: "antecedentes-penales", label: "Antecedentes Penales", status: "rejected" },
+  { id: "especialidad_rne", label: "especialidad_rne", status: "approved" },
+  { id: "colegiatura", label: "Colegiatura", status: "approved" },
+  { id: "sunedu", label: "sunedu", status: "pending" },
+  { id: "titulo_uni", label: "titulo_uni", status: "pending" },
+  { id: "antecedentes_policiales", label: "antecedentes_policiales", status: "rejected" },
+  { id: "antecedentes_penales", label: "antecedentes_penales", status: "pending" },
+  { id: "dni_back", label: "dni_back", status: "approved" },
 ];
 
 const initialStatusByNurse = NURSES.reduce<Record<string, DocumentField[]>>(
@@ -66,7 +59,7 @@ const initialStatusByNurse = NURSES.reduce<Record<string, DocumentField[]>>(
 );
 
 export default function VerificacionesPage() {
-  const [selectedNurseId, setSelectedNurseId] = useState(NURSES[1].id);
+  const [selectedNurseId, setSelectedNurseId] = useState<string | null>(null);
   const [fieldStatuses, setFieldStatuses] = useState<Record<string, DocumentField[]>>(initialStatusByNurse);
   
   const [visiblePdfFieldId, setVisiblePdfFieldId] = useState<string | null>(null);
@@ -74,15 +67,16 @@ export default function VerificacionesPage() {
   const [rejectReason, setRejectReason] = useState("");
   const [showPublishSuccess, setShowPublishSuccess] = useState(false);
 
-  const selectedNurse = NURSES.find((nurse) => nurse.id === selectedNurseId) ?? NURSES[0];
-  const fields = fieldStatuses[selectedNurseId] ?? INITIAL_FIELDS;
+  const selectedNurse = NURSES.find((nurse) => nurse.id === selectedNurseId) ?? null;
+  const fields = selectedNurseId ? (fieldStatuses[selectedNurseId] ?? INITIAL_FIELDS) : [];
 
-  const allApproved = fields.every((field) => field.status === "approved");
+  const allApproved = fields.length > 0 && fields.every((field) => field.status === "approved");
 
   const currentPdfField = fields.find((field) => field.id === visiblePdfFieldId) ?? null;
   const currentRejectField = fields.find((field) => field.id === visibleRejectFieldId) ?? null;
 
   const handleApproveField = (fieldId: string) => {
+    if (!selectedNurseId) return;
     setFieldStatuses((current) => ({
       ...current,
       [selectedNurseId]: current[selectedNurseId].map((field) =>
@@ -92,6 +86,7 @@ export default function VerificacionesPage() {
   };
 
   const handleApproveAll = () => {
+    if (!selectedNurseId) return;
     setFieldStatuses((current) => ({
       ...current,
       [selectedNurseId]: current[selectedNurseId].map((field) => ({
@@ -103,7 +98,7 @@ export default function VerificacionesPage() {
   };
 
   const handleRejectSubmit = () => {
-    if (!currentRejectField) return;
+    if (!currentRejectField || !selectedNurseId) return;
     setFieldStatuses((current) => ({
       ...current,
       [selectedNurseId]: current[selectedNurseId].map((field) =>
@@ -117,14 +112,14 @@ export default function VerificacionesPage() {
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
+    <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
       
       {/* --- COLUMNA IZQUIERDA: LISTA DE SOLICITUDES --- */}
       <aside>
         <h3 className="mb-3 text-sm font-bold text-slate-900">
-          Solicitudes Pendientes ({NURSES.length})
+          Solicitudes de Enfermeros ({NURSES.length})
         </h3>
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {NURSES.map((nurse) => {
             const isSelected = selectedNurseId === nurse.id;
             return (
@@ -132,30 +127,30 @@ export default function VerificacionesPage() {
                 key={nurse.id}
                 type="button"
                 onClick={() => setSelectedNurseId(nurse.id)}
-                className={`flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition-all ${
+                className={`flex w-full items-start gap-3 rounded-lg border p-3.5 text-left transition-all ${
                   isSelected
-                    ? "border-[#00c59e] bg-[#f2fdfa]"
+                    ? "border-[#0db39e] bg-white shadow-sm"
                     : "border-slate-100 bg-white hover:border-slate-200"
                 }`}
               >
-                {/* Iniciales más pequeñas */}
-                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-teal-100 text-sm font-bold text-teal-700">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#f0fdfa] text-sm font-bold text-[#0db39e]">
                   {nurse.initials}
                 </div>
-                <div className="flex-1 overflow-hidden">
-                  <p className="truncate text-sm font-bold text-slate-900">{nurse.name}</p>
-                  <p className="mt-0.5 truncate text-xs text-slate-400">{nurse.role}</p>
-                  <div className="mt-2 flex items-center justify-between">
+                <div className="flex-1 overflow-hidden pt-0.5">
+                  <p className="truncate text-[13px] font-bold text-slate-900">{nurse.name}</p>
+                  <p className="mt-0.5 truncate text-[11px] font-medium text-slate-400">{nurse.role}</p>
+                  <div className="mt-2 flex items-center">
                     <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      className={`inline-flex rounded-lg px-2 py-0.5 text-[10px] font-bold ${
                         nurse.statusColor === "green"
-                          ? "bg-[#e5f9f4] text-[#00a884]"
-                          : "bg-[#ffeef0] text-[#f43f5e]"
+                          ? "bg-[#ccfbf1] text-[#0f766e]"
+                          : nurse.statusColor === "yellow"
+                          ? "bg-[#fef3c7] text-[#d97706]"
+                          : "bg-rose-100 text-rose-600"
                       }`}
                     >
                       {nurse.statusBadge}
                     </span>
-                    <span className="text-[11px] font-medium text-slate-400">{nurse.date}</span>
                   </div>
                 </div>
               </button>
@@ -165,142 +160,153 @@ export default function VerificacionesPage() {
       </aside>
 
       {/* --- COLUMNA DERECHA: REVISIÓN DE DOCUMENTOS --- */}
-      <section className="rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
-        
-        {/* Cabecera del Perfil a Revisar */}
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-teal-100 text-base font-bold text-teal-700">
-              {selectedNurse.initials}
+      <section>
+        {!selectedNurse ? (
+          <div className="flex min-h-[400px] flex-col items-center justify-center rounded-[2rem] border border-slate-100 bg-white p-8 shadow-sm">
+            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-50 text-slate-300">
+              <Shield className="h-8 w-8" strokeWidth={1.5} />
             </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-900">{selectedNurse.name}</h2>
-              <p className="text-xs text-slate-500">
-                {selectedNurse.role} · Enviado: {selectedNurse.date}
-              </p>
-            </div>
+            <p className="text-[14px] font-medium text-slate-500">
+              Selecciona un enfermero para revisar sus documentos
+            </p>
           </div>
-          <button
-            type="button"
-            onClick={handleApproveAll}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#0db39e] px-4 py-2 text-xs font-bold text-white transition hover:bg-[#0aa38f]"
-          >
-            <Check className="h-4 w-4" strokeWidth={2.5} />
-            Aprobar Todo
-          </button>
-        </div>
-
-        {/* Lista de Documentos */}
-        <div className="space-y-3">
-          {fields.map((field) => {
-            const isApproved = field.status === "approved";
-            const isRejected = field.status === "rejected";
-            const isPending = field.status === "pending";
-
-            return (
-              <div
-                key={field.id}
-                className={`flex flex-col gap-3 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between transition-colors ${
-                  isApproved
-                    ? "border-[#a5edd9] bg-[#f2fdfa]"
-                    : isRejected
-                    ? "border-[#fbcfe8] bg-[#fff5f6]"
-                    : "border-slate-200 bg-[#fafafa]"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${
-                      isApproved
-                        ? "bg-[#d1f4eb] text-[#0db39e]"
-                        : isRejected
-                        ? "bg-[#ffe4e6] text-[#f43f5e]"
-                        : "bg-slate-200 text-slate-500"
-                    }`}
-                  >
-                    {isApproved ? (
-                      <Check className="h-4 w-4" strokeWidth={2.5} />
-                    ) : isRejected ? (
-                      <X className="h-4 w-4" strokeWidth={2.5} />
-                    ) : (
-                      <FileText className="h-4 w-4" strokeWidth={2.5} />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-bold text-slate-900">{field.label}</p>
-                    <p
-                      className={`text-xs font-medium ${
-                        isApproved
-                          ? "text-[#0db39e]"
-                          : isRejected
-                          ? "text-[#f43f5e]"
-                          : "text-slate-400"
-                      }`}
-                    >
-                      {isApproved
-                        ? "Aprobado"
-                        : isRejected
-                        ? "Rechazado"
-                        : "Pendiente de revisión"}
-                    </p>
-                  </div>
+        ) : (
+          <div className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm md:p-8">
+            
+            {/* Cabecera del Perfil a Revisar */}
+            <div className="mb-6 flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3.5">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#f0fdfa] text-sm font-bold text-[#0db39e]">
+                  {selectedNurse.initials}
                 </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setVisiblePdfFieldId(field.id)}
-                    className="inline-flex items-center justify-center gap-1 rounded-lg border border-[#a5edd9] bg-white px-3 py-1.5 text-xs font-bold text-[#0db39e] transition hover:bg-[#f2fdfa]"
-                  >
-                    <Eye className="h-3.5 w-3.5" />
-                    Ver
-                  </button>
-
-                  {(isPending || isRejected) && (
-                    <button
-                      type="button"
-                      onClick={() => handleApproveField(field.id)}
-                      className="inline-flex items-center justify-center gap-1 rounded-lg bg-[#0db39e] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#0aa38f]"
-                    >
-                      <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
-                      Aprobar
-                    </button>
-                  )}
-
-                  {(isPending || isApproved) && (
-                    <button
-                      type="button"
-                      onClick={() => setVisibleRejectFieldId(field.id)}
-                      className="inline-flex items-center justify-center gap-1 rounded-lg bg-[#f43f5e] px-3 py-1.5 text-xs font-bold text-white transition hover:bg-[#e11d48]"
-                    >
-                      <X className="h-3.5 w-3.5" strokeWidth={2.5} />
-                      Rechazar
-                    </button>
-                  )}
+                <div>
+                  <h2 className="text-base font-bold text-slate-900">{selectedNurse.name}</h2>
+                  <p className="mt-0.5 text-[12px] font-medium text-slate-500">
+                    {selectedNurse.role} · Registrado: {selectedNurse.date}
+                  </p>
                 </div>
               </div>
-            );
-          })}
-        </div>
+              <button
+                type="button"
+                onClick={handleApproveAll}
+                className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#0db39e] px-3.5 py-2 text-xs font-bold text-white transition hover:bg-[#0aa38f]"
+              >
+                <Check className="h-4 w-4" strokeWidth={2.5} />
+                Aprobar Todo
+              </button>
+            </div>
 
-        {/* Botón de Publicación compacto */}
-        {allApproved && (
-          <div className="mt-6 border-t border-slate-100 pt-5">
-            <button
-              type="button"
-              onClick={() => setShowPublishSuccess(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#14b8a6] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#0f9788]"
-            >
-              <ShieldCheck className="h-4 w-4" strokeWidth={2.5} />
-              Publicar Perfil en Directorio
-            </button>
+            {/* Lista de Documentos */}
+            <div className="space-y-2.5">
+              {fields.map((field) => {
+                const isApproved = field.status === "approved";
+                const isRejected = field.status === "rejected";
+                const isPending = field.status === "pending";
+
+                return (
+                  <div
+                    key={field.id}
+                    className={`flex flex-col gap-2.5 rounded-lg border p-3.5 sm:flex-row sm:items-center sm:justify-between transition-colors ${
+                      isApproved
+                        ? "border-[#a5edd9] bg-white"
+                        : isRejected
+                        ? "border-rose-200 bg-[#fff1f2]"
+                        : "border-slate-100 bg-white"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div
+                        className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg ${
+                          isApproved
+                            ? "bg-[#ccfbf1] text-[#0db39e]"
+                            : isRejected
+                            ? "bg-rose-100 text-rose-500"
+                            : "bg-slate-100 text-slate-400"
+                        }`}
+                      >
+                        {isApproved ? (
+                          <Check className="h-4 w-4" strokeWidth={3} />
+                        ) : isRejected ? (
+                          <X className="h-4 w-4" strokeWidth={3} />
+                        ) : (
+                          <FileText className="h-4 w-4" strokeWidth={2.5} />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-[13px] font-bold text-slate-900">{field.label}</p>
+                        <p
+                          className={`mt-0.5 text-[11px] font-medium ${
+                            isApproved
+                              ? "text-[#0db39e]"
+                              : isRejected
+                              ? "text-rose-500"
+                              : "text-slate-400"
+                          }`}
+                        >
+                          {isApproved
+                            ? "Aprobado"
+                            : isRejected
+                            ? "Rechazado"
+                            : "Pendiente de revisión"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setVisiblePdfFieldId(field.id)}
+                        className="inline-flex items-center justify-center gap-1 rounded-lg border border-[#a5edd9] bg-[#f0fdfa] px-3 py-1.5 text-[11px] font-bold text-[#0db39e] transition hover:bg-[#ccfbf1]"
+                      >
+                        <Eye className="h-3.5 w-3.5" strokeWidth={2.5} />
+                        Ver
+                      </button>
+
+                      {(isPending || isRejected) && (
+                        <button
+                          type="button"
+                          onClick={() => handleApproveField(field.id)}
+                          className="inline-flex items-center justify-center gap-1 rounded-lg bg-[#0db39e] px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-[#0aa38f]"
+                        >
+                          <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+                          Aprobar
+                        </button>
+                      )}
+
+                      {(isPending || isApproved) && (
+                        <button
+                          type="button"
+                          onClick={() => setVisibleRejectFieldId(field.id)}
+                          className="inline-flex items-center justify-center gap-1 rounded-lg bg-rose-500 px-3 py-1.5 text-[11px] font-bold text-white transition hover:bg-rose-600"
+                        >
+                          <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                          Rechazar
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Botón de Publicación */}
+            {allApproved && (
+              <div className="mt-6 border-t border-slate-100 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowPublishSuccess(true)}
+                  className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#0f766e] px-3.5 py-2.5 text-[13px] font-bold text-white transition hover:bg-[#0d655d]"
+                >
+                  <ShieldCheck className="h-4 w-4" strokeWidth={2.5} />
+                  Publicar Perfil en Directorio
+                </button>
+              </div>
+            )}
           </div>
         )}
       </section>
 
       {/* --- MODALES --- */}
-      {/* (Los modales se mantienen similares, pero he ajustado ligeramente sus fuentes para que hagan juego) */}
-
       {currentPdfField && (
         <Modal 
           title={`Documento: ${currentPdfField.label}`} 
@@ -308,13 +314,13 @@ export default function VerificacionesPage() {
           maxWidthClass="max-w-4xl"
         >
           <div className="flex flex-col h-[70vh]">
-            <p className="mb-3 text-xs text-slate-500">
+            <p className="mb-2.5 text-xs text-slate-500">
               Visualizando el documento subido por el profesional.
             </p>
             <iframe
               src="https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
               title="Visor PDF"
-              className="w-full flex-1 rounded-xl border border-slate-200 bg-slate-50"
+              className="w-full flex-1 rounded-lg border border-slate-200 bg-slate-50"
             />
           </div>
         </Modal>
@@ -337,7 +343,7 @@ export default function VerificacionesPage() {
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               rows={4}
-              className="w-full rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm outline-none transition focus:border-[#0db39e] focus:bg-white"
+              className="w-full rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs outline-none transition focus:border-[#0db39e] focus:bg-white"
               placeholder="Explica aquí el motivo..."
             />
             <div className="flex gap-2 pt-2">
@@ -368,16 +374,16 @@ export default function VerificacionesPage() {
           maxWidthClass="max-w-xs"
         >
           <div className="text-center pb-2">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#d1f4eb] text-[#0db39e]">
-              <CheckCircle2 className="h-6 w-6" strokeWidth={2.5} />
+            <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-[#d1f4eb] text-[#0db39e]">
+              <CheckCircle2 className="h-5.5 w-5.5" strokeWidth={2.5} />
             </div>
-            <h3 className="mb-1 text-lg font-bold text-slate-900">¡Perfil Publicado!</h3>
+            <h3 className="mb-1 text-sm font-bold text-slate-900">¡Perfil Publicado!</h3>
             <p className="text-xs text-slate-500">
-              El perfil de {selectedNurse.name} ha sido verificado.
+              El perfil de {selectedNurse?.name} ha sido verificado.
             </p>
             <button
               onClick={() => setShowPublishSuccess(false)}
-              className="mt-5 w-full rounded-lg bg-slate-900 py-2.5 text-sm font-bold text-white hover:bg-slate-800"
+              className="mt-4 w-full rounded-lg bg-slate-900 py-2 text-xs font-bold text-white hover:bg-slate-800"
             >
               Aceptar
             </button>
