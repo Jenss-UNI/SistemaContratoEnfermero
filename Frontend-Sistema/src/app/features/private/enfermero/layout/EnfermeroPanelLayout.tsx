@@ -3,13 +3,16 @@ import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import EnfermeroPanelSidebar from "./EnfermeroPanelSidebar";
 import { ENFERMERO_NAV_ITEMS } from "../enfermeroNav";
 import { Bell, Menu, X, LogOut } from "lucide-react";
+import { useAuth } from "../../../../core/contexts/AuthContext";
 
 export default function EnfermeroPanelLayout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { signOut } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Obtener el título dinámico según la ruta activa
   const activeNavItem = ENFERMERO_NAV_ITEMS.find((item) =>
@@ -24,10 +27,17 @@ export default function EnfermeroPanelLayout() {
     year: "numeric",
   });
 
-  const handleSignOut = () => {
-    setShowLogoutConfirm(false);
-    // Simular el cierre de sesión y redirigir
-    navigate("/login");
+  const handleSignOut = async () => {
+    try {
+      setIsLoggingOut(true);
+      await signOut();
+      setShowLogoutConfirm(false);
+      // Redirigir al landing page
+      navigate("/");
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error);
+      setIsLoggingOut(false);
+    }
   };
 
   return (
@@ -179,15 +189,24 @@ export default function EnfermeroPanelLayout() {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowLogoutConfirm(false)}
-                className="flex-1 border border-slate-200 text-slate-600 font-semibold py-2.5 rounded-xl hover:bg-slate-50 cursor-pointer text-sm transition-colors"
+                disabled={isLoggingOut}
+                className="flex-1 border border-slate-200 text-slate-600 font-semibold py-2.5 rounded-xl hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer text-sm transition-colors"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleSignOut}
-                className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-semibold py-2.5 rounded-xl cursor-pointer text-sm transition-colors"
+                disabled={isLoggingOut}
+                className="flex-1 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 text-white font-semibold py-2.5 rounded-xl disabled:cursor-not-allowed cursor-pointer text-sm transition-colors flex items-center justify-center gap-2"
               >
-                Cerrar sesión
+                {isLoggingOut ? (
+                  <>
+                    <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    Cerrando...
+                  </>
+                ) : (
+                  "Cerrar sesión"
+                )}
               </button>
             </div>
           </div>
