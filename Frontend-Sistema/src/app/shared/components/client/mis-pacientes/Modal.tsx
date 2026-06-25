@@ -8,6 +8,7 @@ type ModalProps = {
   children: React.ReactNode;
   maxWidthClass?: string;
   footer?: React.ReactNode;
+  hideCloseIcon?: boolean;
 };
 
 export default function Modal({
@@ -16,6 +17,7 @@ export default function Modal({
   children,
   maxWidthClass = "max-w-2xl",
   footer,
+  hideCloseIcon = false,
 }: ModalProps) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -59,14 +61,16 @@ export default function Modal({
           <h2 id="modal-title" className="text-lg font-bold text-slate-900 sm:text-xl">
             {title}
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-            aria-label="Cerrar modal"
-          >
-            <X className="h-5 w-5" />
-          </button>
+          {!hideCloseIcon && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              aria-label="Cerrar modal"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          )}
         </div>
         <div className="flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
           {children}
