@@ -1,17 +1,28 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Header } from "../../../shared/layout";
+import { useAuth } from "../../../core/contexts/AuthContext";
 import { supabase } from "../../../core/services/supabase";
 import loginImage from "../../../../assets/login/inicarsesion.jpg";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoggingIn, setIsLoggingIn] = useState(false);
-  const [errorMsg, setErrorMsg] = useState("");
-  const navigate = useNavigate();
+  const [email, setEmail]               = useState("");
+  const [password, setPassword]         = useState("");
+  const [isLoggingIn, setIsLoggingIn]   = useState(false);
+  const [errorMsg, setErrorMsg]         = useState("");
+  const navigate                        = useNavigate();
+  const { user, role, loading }         = useAuth();
+
+  // Si ya hay sesión activa → redirigir al panel correspondiente
+  useEffect(() => {
+    if (loading) return;
+    if (!user)   return;
+    if (role === "admin")      navigate("/admin",           { replace: true });
+    else if (role === "enfermero") navigate("/panel-enfermero", { replace: true });
+    else                       navigate("/panel-cliente",   { replace: true });
+  }, [user, role, loading, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();

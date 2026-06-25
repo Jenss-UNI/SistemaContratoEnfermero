@@ -1,21 +1,40 @@
-import type { ReactNode } from "react";
-import { Navigate, useLocation } from "react-router-dom";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
-type ProtectedRouteProps = {
-  children: ReactNode;
-  /** Cuando exista auth real, reemplazar por contexto o store. */
-  isAuthenticated?: boolean;
-};
+interface ProtectedRouteProps {
+  /** Roles que pueden acceder. Si no se pasa, solo requiere estar autenticado. */
+  allowedRoles?: string[];
+}
 
 /**
- * Envuelve rutas que requieren sesión. Por ahora no hay auth: pasar isAuthenticated cuando lo integres.
+ * Layout route de React Router v6.
+ * Úsalo como <Route element={<ProtectedRoute allowedRoles={["cliente"]} />}>
+ *   <Route ... />   ← Estas rutas usan <Outlet /> internamente
+ * </Route>
  */
-export function ProtectedRoute({ children, isAuthenticated = false }: ProtectedRouteProps) {
+export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
+  const { user, role, loading } = useAuth();
   const location = useLocation();
 
-  if (!isAuthenticated) {
+  // Mientras Supabase recupera la sesión del localStorage → spinner
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-teal-500 border-t-transparent" />
+      </div>
+    );
+  }
+
+  // Sin usuario → redirigir al login conservando la ruta de origen
+  if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  return <>{children}</>;
+  // Rol no permitido → redirigir al inicio
+  if (allowedRoles && role && !allowedRoles.includes(role)) {
+    return <Navigate to="/" replace />;
+  }
+
+  // Autenticado y con rol correcto → renderizar las rutas hijas
+  return <Outlet />;
 }
