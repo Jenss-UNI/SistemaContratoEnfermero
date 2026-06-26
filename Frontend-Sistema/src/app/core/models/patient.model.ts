@@ -12,9 +12,8 @@ export type Patient = {
   alergias: string[];            // patient_allergies
   contactoEmergencia: string;    // emergency_contact
   telefonoEmergencia: string;    // emergency_phone
-  direccion: string;             // address
   distrito: string;              // district
-  referencia: string;            // address_reference
+  googleMapsUrl: string;         // google_maps_url
   notasCuidado: string;          // notes
 };
 
@@ -28,8 +27,9 @@ export type PatientFormData = {
   alergias: string[];
   contactoEmergencia: string;
   telefonoEmergencia: string;
-  direccion: string;
   distrito: string;
-  referencia: string;
+  googleMapsUrl: string;
   notasCuidado: string;
+  fotoUrl?: string;
+  photoFile?: File | null;
 };

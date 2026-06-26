@@ -19,7 +19,7 @@ export type ClientNavItem = {
 
 export const CLIENT_NAV_ITEMS: ClientNavItem[] = [
   { label: "Resumen", path: `${CLIENT_PANEL_BASE}/resumen`, icon: LayoutGrid },
-  { label: "Mis Pacientes", path: `${CLIENT_PANEL_BASE}/mis-pacientes`, icon: UserRound },
+  { label: "Mis Familiares", path: `${CLIENT_PANEL_BASE}/mis-familiares`, icon: UserRound },
   { label: "Mis Contrataciones", path: `${CLIENT_PANEL_BASE}/mis-contrataciones`, icon: FileText },
   { label: "Pagos", path: `${CLIENT_PANEL_BASE}/pagos`, icon: CreditCard },
   { label: "Calificaciones", path: `${CLIENT_PANEL_BASE}/calificaciones`, icon: Star },

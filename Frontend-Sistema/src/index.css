@@ -4,11 +4,12 @@ html {
   font-size: 16px; 
   overflow-y: scroll;
   scrollbar-gutter: stable;
+  background-color: #f8fafc;
 }
 
 body {
-
   font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: #f8fafc;
 }
 
 .custom-calendar .rdp {

@@ -69,11 +69,6 @@ function toDateStr(d: Date) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
-function addDays(d: Date, days: number) {
-  const result = new Date(d);
-  result.setDate(result.getDate() + days);
-  return result;
-}
 
 function formatHour(h: number) {
   const suffix = h >= 12 ? "pm" : "am";
@@ -98,9 +93,7 @@ const defaultWeekly: WeeklySlot[] = [
   { dayOfWeek: 6, startHour: 8, endHour: 13, enabled: true },  // Sábado 8am - 1pm
 ];
 
-// Forzar la fecha inicial de la cuadrícula a ser exactamente el Domingo 24 de Mayo de 2026
-// para calzar al 100% con los números e interacciones de tus imágenes de referencia.
-const mockStartDate = new Date(2026, 4, 24); // 24 de Mayo 2026
+
 
 export default function MiAgendaPage() {
   const [view, setView] = useState<"calendar" | "weekly">("calendar");
@@ -113,8 +106,7 @@ export default function MiAgendaPage() {
     { id: "exc-3", date: "2026-06-12", type: "block" },                          // viernes, 12 de junio
   ]);
 
-  // Citas confirmadas iniciales coincidiendo con la captura y adicionando días marcados en rojo
-  const [bookings, setBookings] = useState<Booking[]>([
+  const bookings: Booking[] = [
     {
       id: "svc-3",
       date: "2026-05-27", // Miércoles 27 de Mayo
@@ -150,12 +142,12 @@ export default function MiAgendaPage() {
       date: "2026-05-30", // Sábado 30 de Mayo (Marca punto rojo)
       startHour: 8,
       endHour: 12,
-      patientName: "Alberto Fujimori",
+      patientName: "Keiko Fujimori",
       clientName: "Keiko Fujimori",
       serviceId: "2",
       status: "confirmed",
     },
-  ]);
+  ];
 
   const [selectedDate, setSelectedDate] = useState<string | null>("2026-05-27"); // miércoles 27 seleccionado por defecto
   const [showExceptionModal, setShowExceptionModal] = useState(false);

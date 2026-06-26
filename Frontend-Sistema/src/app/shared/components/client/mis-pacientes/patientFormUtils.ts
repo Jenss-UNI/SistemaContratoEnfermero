@@ -1,6 +1,5 @@
 import type { Patient, PatientFormData } from "../../../../core/models/patient.model";
 import {
-  validateAddress,
   validateAge,
   validateBloodType,
   validateDistrito,
@@ -9,7 +8,6 @@ import {
   validateNotes,
   validateParentesco,
   validatePhone,
-  validateReference,
 } from "../../../utils/validation";
 
 export const EMPTY_PATIENT_FORM: PatientFormData = {
@@ -22,33 +20,72 @@ export const EMPTY_PATIENT_FORM: PatientFormData = {
   alergias: [],
   contactoEmergencia: "",
   telefonoEmergencia: "",
-  direccion: "",
   distrito: "",
-  referencia: "",
+  googleMapsUrl: "",
   notasCuidado: "",
+  fotoUrl: undefined,
 };
 
 export const PARENTESCO_OPTIONS = [
+  "Yo mismo",
   "Madre",
   "Padre",
-  "Esposo/a",
-  "Hijo/a",
-  "Hermano/a",
-  "Abuelo/a",
+  "Hijo",
+  "Hija",
+  "Cónyuge",
+  "Abuelo",
+  "Abuela",
+  "Hermano",
+  "Hermana",
   "Otro",
 ];
 
 export const BLOOD_TYPE_OPTIONS = ["O+", "O-", "A+", "A-", "B+", "B-", "AB+", "AB-"];
 
 export const DISTRITOS_PACIENTE = [
-  "Miraflores",
-  "San Isidro",
-  "Surco",
-  "San Borja",
-  "La Molina",
-  "Pueblo Libre",
-  "Lince",
+  "Ancón",
+  "Ate",
   "Barranco",
+  "Breña",
+  "Carabayllo",
+  "Chaclacayo",
+  "Chorrillos",
+  "Cieneguilla",
+  "Comas",
+  "El Agustino",
+  "Independencia",
+  "Jesús María",
+  "La Molina",
+  "La Victoria",
+  "Lima",
+  "Lince",
+  "Los Olivos",
+  "Lurigancho",
+  "Lurín",
+  "Magdalena del Mar",
+  "Miraflores",
+  "Pachacámac",
+  "Pucusana",
+  "Pueblo Libre",
+  "Puente Piedra",
+  "Punta Hermosa",
+  "Punta Negra",
+  "Rímac",
+  "San Bartolo",
+  "San Borja",
+  "San Isidro",
+  "San Juan de Lurigancho",
+  "San Juan de Miraflores",
+  "San Luis",
+  "San Martín de Porres",
+  "San Miguel",
+  "Santa Anita",
+  "Santa María del Mar",
+  "Santa Rosa",
+  "Santiago de Surco",
+  "Surquillo",
+  "Villa El Salvador",
+  "Villa María del Triunfo"
 ];
 
 export function patientToForm(patient: Patient): PatientFormData {
@@ -62,16 +99,16 @@ export function patientToForm(patient: Patient): PatientFormData {
     alergias: [...patient.alergias],
     contactoEmergencia: patient.contactoEmergencia,
     telefonoEmergencia: patient.telefonoEmergencia,
-    direccion: patient.direccion,
     distrito: patient.distrito,
-    referencia: patient.referencia,
+    googleMapsUrl: patient.googleMapsUrl || "",
     notasCuidado: patient.notasCuidado,
+    fotoUrl: patient.fotoUrl,
   };
 }
 
 export function validatePatientForm(form: PatientFormData): {
   errors: Record<string, string>;
-  data: Omit<Patient, "id" | "fotoUrl"> | null;
+  data: Omit<Patient, "id" | "clientId" | "fotoUrl"> | null;
 } {
   const errors: Record<string, string> = {};
 
@@ -81,9 +118,7 @@ export function validatePatientForm(form: PatientFormData): {
   const sangreErr = validateBloodType(form.tipoSangre);
   const contactoErr = validateEmergencyContact(form.contactoEmergencia);
   const telErr = validatePhone(form.telefonoEmergencia);
-  const dirErr = validateAddress(form.direccion);
   const distritoErr = validateDistrito(form.distrito);
-  const refErr = validateReference(form.referencia);
   const notasErr = validateNotes(form.notasCuidado);
 
   if (nombreErr) errors.nombreCompleto = nombreErr;
@@ -92,10 +127,15 @@ export function validatePatientForm(form: PatientFormData): {
   if (sangreErr) errors.tipoSangre = sangreErr;
   if (contactoErr) errors.contactoEmergencia = contactoErr;
   if (telErr) errors.telefonoEmergencia = telErr;
-  if (dirErr) errors.direccion = dirErr;
   if (distritoErr) errors.distrito = distritoErr;
-  if (refErr) errors.referencia = refErr;
   if (notasErr) errors.notasCuidado = notasErr;
+
+  const url = form.googleMapsUrl.trim();
+  if (!url) {
+    errors.googleMapsUrl = "Link de Google Maps obligatorio";
+  } else if (!/^https?:\/\//i.test(url)) {
+    errors.googleMapsUrl = "El link debe comenzar con http:// o https://";
+  }
 
   if (Object.keys(errors).length > 0) {
     return { errors, data: null };
@@ -113,9 +153,8 @@ export function validatePatientForm(form: PatientFormData): {
       alergias: form.alergias,
       contactoEmergencia: form.contactoEmergencia.trim(),
       telefonoEmergencia: form.telefonoEmergencia.replace(/\D/g, ""),
-      direccion: form.direccion.trim(),
       distrito: form.distrito.trim(),
-      referencia: form.referencia.trim(),
+      googleMapsUrl: url,
       notasCuidado: form.notasCuidado.trim(),
     },
   };
