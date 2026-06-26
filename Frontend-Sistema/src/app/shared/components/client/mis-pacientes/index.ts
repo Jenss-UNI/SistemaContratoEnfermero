@@ -1,4 +1,3 @@
-export { default as GoogleMapPlaceholder } from "./GoogleMapPlaceholder";
 export { default as Modal } from "./Modal";
 export { default as PatientCard } from "./PatientCard";
 export { default as PatientDetailModal } from "./PatientDetailModal";

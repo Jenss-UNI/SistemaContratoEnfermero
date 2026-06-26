@@ -1,39 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  CheckCircle2,
-  Loader2,
   AlertCircle,
   Camera,
   ShieldCheck,
+  Info,
+  CheckCircle2,
 } from "lucide-react";
 import { useClienteProfile } from "../../hooks/useClienteProfile";
 import type { ClienteProfileUpdate } from "../../services/clienteProfile.service";
 import { useAuth } from "../../../../../core/contexts/AuthContext";
 import { supabase } from "../../../../../core/services/supabase";
+import { cancelSubscription } from "../../services/subscription.service";
 import {
-  allowDigitsOnly,
-  blockNonDigitKey,
-  sanitizeText,
-  validateDistrito,
-  validateEmail,
-  validateName,
-  validatePhone,
-} from "../../../../../shared/utils/validation";
-import {
-  DistritoCombobox,
   FormField,
   PlanCard,
 } from "../../../../../shared/components/client/mi-perfil";
-
-const LIMA_DISTRICTS = [
-  "Ancón", "Ate", "Barranco", "Breña", "Carabayllo", "Chaclacayo", "Chorrillos", "Cieneguilla",
-  "Comas", "El Agustino", "Independencia", "Jesús María", "La Molina", "La Victoria", "Lima",
-  "Lince", "Los Olivos", "Lurigancho", "Lurín", "Magdalena del Mar", "Miraflores", "Pachacámac",
-  "Pucusana", "Pueblo Libre", "Puente Piedra", "Punta Hermosa", "Punta Negra", "Rímac", "San Bartolo",
-  "San Borja", "San Isidro", "San Juan de Lurigancho", "San Juan de Miraflores", "San Luis", "San Martín de Porres",
-  "San Miguel", "Santa Anita", "Santa María del Mar", "Santa Rosa", "Santiago de Surco", "Surquillo", "Villa El Salvador",
-  "Villa María del Triunfo"
-];
 
 // ---------------------------------------------------------------------------
 // Helpers locales
@@ -53,16 +34,6 @@ function toTitleCase(str: string): string {
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
 }
-
-/** Convierte un archivo File a su representación base64 */
-const convertToBase64 = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-  });
-};
 
 // ---------------------------------------------------------------------------
 // Skeleton animado para carga
@@ -94,10 +65,17 @@ function ProfileSkeleton() {
 // Componente principal
 // ---------------------------------------------------------------------------
 export default function MiPerfilForm() {
-  const { profile, subscription, loading, saving, error, saveError, saved, save } =
+  const { profile, subscription, loading, saving, error, saveError, save, refetch } =
     useClienteProfile();
 
   const { refetchAuthProfile } = useAuth();
+
+  const handleCancelSubscription = async () => {
+    if (!profile?.id) return;
+    await cancelSubscription(profile.id);
+    await refetch();
+    await refetchAuthProfile();
+  };
 
   // ── Estado del formulario ─────────────────────────────────────────────────
   const [form, setForm] = useState({
@@ -110,14 +88,12 @@ export default function MiPerfilForm() {
     direccion:    "",
   });
 
-  const [errors, setErrors]             = useState<Record<string, string>>({});
   const [photoPreview, setPhotoPreview] = useState<string | undefined>();
-  const [photoFile, setPhotoFile]       = useState<File | null>(null);
   const [photoError, setPhotoError]     = useState<string | undefined>();
+  const [photoSuccess, setPhotoSuccess] = useState<string | undefined>();
   const [isPhotoUploading, setIsPhotoUploading] = useState(false);
 
   // ── Pre-rellenar formulario con datos de Supabase ─────────────────────────
-  // Se ejecuta cuando el perfil llega de la BD y lo formatea a Title Case
   useEffect(() => {
     if (!profile) return;
     setForm({
@@ -136,139 +112,73 @@ export default function MiPerfilForm() {
     [form.nombres, form.apellidos_pa]
   );
 
-  // ── Manejo de cambios ──────────────────────────────────────────────────────
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    let next = value;
-
-    if (name === "telefono") {
-      next = allowDigitsOnly(value, 9);
-    } else if (
-      name === "nombres" ||
-      name === "apellidos_pa" ||
-      name === "apellidos_ma"
-    ) {
-      next = sanitizeText(
-        value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]/g, ""),
-        60
-      );
-    } else if (name === "correo") {
-      next = value.replace(/[^a-zA-Z0-9@._+-]/g, "").slice(0, 120);
-    } else if (name === "direccion") {
-      next = sanitizeText(value, 200);
-    }
-
-    setForm((prev) => ({ ...prev, [name]: next }));
-    if (errors[name]) {
-      setErrors((prev) => {
-        const copy = { ...prev };
-        delete copy[name];
-        return copy;
-      });
-    }
-  };
-
   // ── Foto de perfil ─────────────────────────────────────────────────────────
-  const handlePhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 5 * 1024 * 1024) {
       setPhotoError("La imagen no puede superar 5 MB");
+      setPhotoSuccess(undefined);
       return;
     }
     if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
       setPhotoError("Solo se aceptan JPG, PNG o WebP");
+      setPhotoSuccess(undefined);
       return;
     }
     setPhotoError(undefined);
-    setPhotoFile(file);
+    setPhotoSuccess(undefined);
     if (photoPreview) URL.revokeObjectURL(photoPreview);
     setPhotoPreview(URL.createObjectURL(file));
-  };
 
-  // ── Validación ─────────────────────────────────────────────────────────────
-  const validate = (): ClienteProfileUpdate | null => {
-    const next: Record<string, string> = {};
+    setIsPhotoUploading(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `clientes/${profile?.id}/${fileName}`;
 
-    const nombresErr  = validateName(form.nombres,      "Nombres");
-    const apePatErr   = validateName(form.apellidos_pa, "Apellido Paterno");
-    const apeMatErr   = validateName(form.apellidos_ma, "Apellido Materno");
-    const correoErr   = validateEmail(form.correo);
-    const telErr      = validatePhone(form.telefono);
-    const distritoErr = validateDistrito(form.distrito);
+      // Subir a Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from("foto_perfil")
+        .upload(filePath, file, { upsert: true });
 
-    if (nombresErr)  next.nombres      = nombresErr;
-    if (apePatErr)   next.apellidos_pa = apePatErr;
-    if (apeMatErr)   next.apellidos_ma = apeMatErr;
-    if (correoErr)   next.correo       = correoErr;
-    if (telErr)      next.telefono     = telErr;
-    if (distritoErr) next.distrito     = distritoErr;
+      if (uploadError) throw uploadError;
 
-    setErrors(next);
-    if (Object.keys(next).length > 0) return null;
+      // Obtener URL pública
+      const { data } = supabase.storage
+        .from("foto_perfil")
+        .getPublicUrl(filePath);
 
-    return {
-      nombres:      form.nombres.trim(),
-      apellidos_pa: form.apellidos_pa.trim(),
-      apellidos_ma: form.apellidos_ma.trim(),
-      correo:       form.correo.trim(),
-      telefono:     form.telefono || null,
-      distrito:     form.distrito || null,
-      direccion:    form.direccion || null,
-    };
+      const uploadedFotoUrl = data.publicUrl;
+
+      // Guardar en la base de datos inmediatamente
+      const payload: ClienteProfileUpdate = {
+        nombres:      form.nombres.trim(),
+        apellidos_pa: form.apellidos_pa.trim(),
+        apellidos_ma: form.apellidos_ma.trim(),
+        correo:       form.correo.trim(),
+        telefono:     form.telefono.trim() || null,
+        distrito:     form.distrito.trim() || null,
+        direccion:    form.direccion.trim() || null,
+        foto_url:     uploadedFotoUrl,
+      };
+
+      const success = await save(payload);
+      if (success) {
+        await refetchAuthProfile();
+        setPhotoSuccess("Foto actualizada correctamente");
+      }
+    } catch (uploadErr: any) {
+      console.error("Error al subir o guardar la foto de perfil:", uploadErr);
+      setPhotoError("Error al guardar la imagen de perfil");
+    } finally {
+      setIsPhotoUploading(false);
+    }
   };
 
   // ── Guardar ────────────────────────────────────────────────────────────────
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = validate();
-    if (!payload) return;
-
-    let uploadedFotoUrl: string | null = null;
-    if (photoFile) {
-      setIsPhotoUploading(true);
-      try {
-        const fileExt = photoFile.name.split(".").pop();
-        const fileName = `${profile?.id}-${Date.now()}.${fileExt}`;
-        const filePath = `clientes/${fileName}`;
-
-        // Intentar subir a Supabase Storage
-        const { error: uploadError } = await supabase.storage
-          .from("avatars")
-          .upload(filePath, photoFile, { upsert: true });
-
-        if (uploadError) throw uploadError;
-
-        // Obtener URL pública
-        const { data } = supabase.storage
-          .from("avatars")
-          .getPublicUrl(filePath);
-
-        uploadedFotoUrl = data.publicUrl;
-      } catch (uploadErr) {
-        console.warn("Storage upload failed, falling back to base64 inside DB:", uploadErr);
-        // Si falla por permisos o bucket inexistente, usamos Base64 como fallback robusto
-        try {
-          uploadedFotoUrl = await convertToBase64(photoFile);
-        } catch (base64Err) {
-          setPhotoError("Error al procesar la imagen de perfil");
-          setIsPhotoUploading(false);
-          return;
-        }
-      } finally {
-        setIsPhotoUploading(false);
-      }
-      
-      payload.foto_url = uploadedFotoUrl;
-    }
-
-    const success = await save(payload);
-    if (success) {
-      await refetchAuthProfile();
-      setPhotoFile(null); // Limpiar archivo cargado
-    }
   };
 
   const isSaving = saving || isPhotoUploading;
@@ -326,8 +236,17 @@ export default function MiPerfilForm() {
           <div>
             <p className="text-sm font-semibold text-slate-800">Foto de perfil</p>
             <p className="text-xs text-slate-500 mt-1">JPG, PNG o WebP - máx. 5 MB</p>
+            {photoSuccess && (
+              <p className="text-xs text-teal-600 mt-1.5 font-semibold flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5 text-teal-500" />
+                {photoSuccess}
+              </p>
+            )}
             {photoError && (
-              <p className="text-xs text-red-500 mt-1 font-medium">{photoError}</p>
+              <p className="text-xs text-red-500 mt-1.5 font-semibold flex items-center gap-1">
+                <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+                {photoError}
+              </p>
             )}
           </div>
         </div>
@@ -339,8 +258,7 @@ export default function MiPerfilForm() {
             label="Nombres"
             name="nombres"
             value={form.nombres}
-            onChange={handleChange}
-            error={errors.nombres}
+            readOnly
             required
           />
 
@@ -348,8 +266,7 @@ export default function MiPerfilForm() {
             label="Apellido Paterno"
             name="apellidos_pa"
             value={form.apellidos_pa}
-            onChange={handleChange}
-            error={errors.apellidos_pa}
+            readOnly
             required
           />
 
@@ -357,8 +274,7 @@ export default function MiPerfilForm() {
             label="Apellido Materno"
             name="apellidos_ma"
             value={form.apellidos_ma}
-            onChange={handleChange}
-            error={errors.apellidos_ma}
+            readOnly
           />
 
           <FormField
@@ -366,8 +282,7 @@ export default function MiPerfilForm() {
             name="correo"
             type="email"
             value={form.correo}
-            onChange={handleChange}
-            error={errors.correo}
+            readOnly
             required
           />
 
@@ -375,10 +290,7 @@ export default function MiPerfilForm() {
             label="Teléfono"
             name="telefono"
             value={form.telefono}
-            onChange={handleChange}
-            onKeyDown={blockNonDigitKey}
-            error={errors.telefono}
-            maxLength={9}
+            readOnly
             required
           />
 
@@ -389,7 +301,6 @@ export default function MiPerfilForm() {
               name="dni"
               value={profile?.dni ?? ""}
               readOnly
-              className="bg-slate-50 text-slate-500 cursor-not-allowed select-none"
             />
             {profile?.dni_verified && (
               <div className="absolute right-3 top-[38px] flex items-center text-teal-600" title="Verificado con RENIEC">
@@ -401,33 +312,12 @@ export default function MiPerfilForm() {
             </p>
           </div>
 
-          <DistritoCombobox
-            label="Distrito"
-            value={form.distrito}
-            onChange={(val) => {
-              setForm((prev) => ({ ...prev, distrito: val }));
-              if (errors.distrito) {
-                setErrors((prev) => {
-                  const copy = { ...prev };
-                  delete copy.distrito;
-                  return copy;
-                });
-              }
-            }}
-            options={LIMA_DISTRICTS}
-            error={errors.distrito}
-            required
-          />
-
           <FormField
-            label="Dirección"
-            name="direccion"
-            value={form.direccion}
-            onChange={handleChange}
-            error={errors.direccion}
-            placeholder="Av. Canto Grande 123"
-            maxLength={200}
-            className="sm:col-span-2"
+            label="Distrito"
+            name="distrito"
+            value={form.distrito}
+            readOnly
+            required
           />
 
         </div>
@@ -436,7 +326,18 @@ export default function MiPerfilForm() {
         <PlanCard
           planNombre={subscription?.plan_nombre}
           planVence={subscription?.fecha_vence}
+          ciclo={subscription?.ciclo}
+          status={subscription?.status}
+          onCancelSubscription={handleCancelSubscription}
         />
+
+        <p className="text-xs text-slate-500 flex items-center gap-1.5 mt-2">
+          <Info className="w-4 h-4 text-slate-400 shrink-0" />
+          Para modificar datos sensibles como DNI o correo, contacta a{" "}
+          <a href="mailto:soporte@cuidame.pe" className="text-teal-600 hover:underline font-medium">
+            soporte@cuidame.pe
+          </a>
+        </p>
 
         {/* ── Error al guardar ── */}
         {saveError && (
@@ -446,29 +347,7 @@ export default function MiPerfilForm() {
           </div>
         )}
 
-        {/* ── Footer ── */}
-        <div className="flex flex-col items-stretch gap-3 border-t border-slate-100 pt-6 sm:flex-row sm:items-center sm:justify-end">
-          {saved && (
-            <p className="flex items-center gap-1.5 text-sm font-medium text-teal-700 sm:mr-auto">
-              <CheckCircle2 className="w-4 h-4" />
-              Cambios guardados correctamente
-            </p>
-          )}
-          <button
-            type="submit"
-            disabled={isSaving}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-500 px-8 py-3 text-sm font-semibold text-white transition hover:bg-teal-600 disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Guardando...
-              </>
-            ) : (
-              "Guardar Cambios"
-            )}
-          </button>
-        </div>
+
 
       </form>
     </div>

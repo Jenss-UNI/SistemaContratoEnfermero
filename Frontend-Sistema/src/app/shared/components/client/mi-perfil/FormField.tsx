@@ -20,8 +20,10 @@ export default function FormField({
   disabled,
   ...props
 }: FormFieldProps) {
+  const isReadOnly = props.readOnly || disabled;
+
   const inputClass = `h-11 w-full rounded-xl border px-4 text-sm outline-none transition focus:ring-2 ${
-    disabled
+    isReadOnly
       ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-500"
       : error
         ? "border-red-400 text-red-900 focus:ring-red-100"
@@ -56,7 +58,7 @@ export default function FormField({
           {...(props as React.TextareaHTMLAttributes<HTMLTextAreaElement>)}
           disabled={disabled}
           className={`min-h-[100px] w-full resize-y rounded-xl border px-4 py-3 text-sm outline-none transition focus:ring-2 ${
-            disabled
+            isReadOnly
               ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-500"
               : error
                 ? "border-red-400 text-red-900 focus:ring-red-100"

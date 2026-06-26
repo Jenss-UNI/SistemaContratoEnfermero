@@ -232,12 +232,8 @@ export default function VerificacionPage() {
   const uploadedCount = requiredDocs.filter(
     (d) => getDocStatus(d.id) !== "not_submitted"
   ).length;
-  const approvedCount = requiredDocs.filter(
-    (d) => getDocStatus(d.id) === "approved"
-  ).length;
   
   const allUploaded = uploadedCount === requiredDocs.length;
-  const allApproved = approvedCount === requiredDocs.length;
 
   // Manejar cambio/subida simulada de archivos (usando input nativo)
   const handleFileChange = (docId: string, e: React.ChangeEvent<HTMLInputElement>) => {

@@ -591,7 +591,6 @@ export default function MisServiciosPage() {
             const completed = completedCount(service);
             const total = service.service_days.length;
             const todayIdx = getTodaysPendingDay(service);
-            const activeIdx = getActiveDayIndex(service);
             const firstDay = service.service_days[0];
             const lastDay = service.service_days[service.service_days.length - 1];
 
