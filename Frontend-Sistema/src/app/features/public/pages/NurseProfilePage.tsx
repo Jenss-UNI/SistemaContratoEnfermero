@@ -123,7 +123,7 @@ export default function NurseProfilePage() {
           {/* RIGHT */}
           <div className="space-y-6">
 
-            <NurseAvailability />
+            <NurseAvailability nurseId={nurse.id} />
 
               <NursePriceCard
                 nurse={nurse}

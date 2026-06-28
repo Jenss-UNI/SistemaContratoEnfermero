@@ -1,10 +1,14 @@
-import { useState } from "react";
-
+import { useState, useEffect } from "react";
+import { useAuth } from "../../../../core/contexts/AuthContext";
+import { supabase } from "../../../../core/services/supabase";
 import {
   ShieldCheck,
   Lock,
-  CheckCircle
+  CheckCircle,
+  Loader2
 } from "lucide-react";
+
+import { createHiring } from "../../../private/client/services/hiring.service";
 
 import type { Nurse } from "../../../../core/models/nurse.model";
 
@@ -15,18 +19,15 @@ interface SelectedDay {
 }
 
 interface Props {
-
   nurse: Nurse;
-
   selectedService: {
     name: string;
     price: number;
   };
-
   selectedDays: SelectedDay[];
-
+  selectedPatient: string;
+  bookingNotes: string;
   onBack: () => void;
-
   onNext: () => void;
 }
 
@@ -39,46 +40,105 @@ interface Card {
 }
 
 export default function BookingPaymentStep({
-
   nurse,
   selectedService,
   selectedDays,
+  selectedPatient,
+  bookingNotes,
   onBack,
   onNext
-
 }: Props) {
+  const { user } = useAuth();
+  const [showNewCard, setShowNewCard] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedCard, setSelectedCard] = useState<string | null>(null);
+  const [cards, setCards] = useState<Card[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const [showNewCard, setShowNewCard] =
-    useState(false);
+  const [cardName, setCardName] = useState("");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCVV, setCardCVV] = useState("");
 
-  const [isProcessing, setIsProcessing] =
-    useState(false);
+  useEffect(() => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
+    const loadCards = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("payment_methods")
+          .select("id, marca, terminacion, nombre_tarjeta, created_at")
+          .eq("client_id", user.id)
+          .eq("tipo", "tarjeta");
 
-  const [selectedCard, setSelectedCard] =
-    useState<string | null>("1");
-
-  const [cards, setCards] =
-    useState<Card[]>([
-      {
-        id: "1",
-        brand: "VISA",
-        last4: "4242",
-        holder: "CARMEN RODRIGUEZ",
-        expiry: "12/27"
+        if (error) throw error;
+        const loadedCards = (data || []).map((c: any) => ({
+          id: String(c.id),
+          brand: c.marca || "VISA",
+          last4: c.terminacion || "4242",
+          holder: c.nombre_tarjeta || "Titular",
+          expiry: "12/29",
+        }));
+        setCards(loadedCards);
+        if (loadedCards.length > 0) {
+          setSelectedCard(loadedCards[0].id);
+        }
+      } catch (err) {
+        console.error("Error loading payment methods:", err);
+      } finally {
+        setLoading(false);
       }
-    ]);
+    };
+    loadCards();
+  }, [user?.id]);
 
-  const [cardName, setCardName] =
-    useState("");
+  const handleSaveCard = async () => {
+    if (!user?.id) return;
+    if (!isCardValid) return;
 
-  const [cardNumber, setCardNumber] =
-    useState("");
+    try {
+      const cleanNumber = cardNumber.replace(/\s/g, "");
+      const brand = cleanNumber.startsWith("5") ? "Mastercard" : "VISA";
+      const last4 = cleanNumber.slice(-4);
 
-  const [cardExpiry, setCardExpiry] =
-    useState("");
+      const { data, error } = await supabase
+        .from("payment_methods")
+        .insert({
+          client_id: user.id,
+          tipo: "tarjeta",
+          es_principal: cards.length === 0,
+          terminacion: last4,
+          marca: brand,
+          nombre_tarjeta: cardName,
+        })
+        .select()
+        .single();
 
-  const [cardCVV, setCardCVV] =
-    useState("");
+      if (error) throw error;
+
+      const newCard = {
+        id: String(data.id),
+        brand: data.marca || "VISA",
+        last4: data.terminacion || last4,
+        holder: data.nombre_tarjeta || cardName,
+        expiry: "12/29",
+      };
+
+      setCards((prev) => [...prev, newCard]);
+      setSelectedCard(newCard.id);
+      setShowNewCard(false);
+      setCardName("");
+      setCardNumber("");
+      setCardExpiry("");
+      setCardCVV("");
+    } catch (err: any) {
+      console.error("Error saving card:", err);
+      alert(`Error al guardar la tarjeta: ${err.message}`);
+    }
+  };
+
 
   const parseHour = (value: string) => {
 
@@ -180,6 +240,15 @@ export default function BookingPaymentStep({
     validateExpiry() &&
 
     cardCVV.length === 3;
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <Loader2 className="w-10 h-10 animate-spin text-teal-600" />
+        <p className="text-sm text-slate-500 font-medium">Cargando métodos de pago...</p>
+      </div>
+    );
+  }
 
   return (
 
@@ -558,16 +627,12 @@ export default function BookingPaymentStep({
             <button
 
               onClick={() => {
-
                 setShowNewCard(false);
-
-                setSelectedCard("1");
-
+                setSelectedCard(cards.length > 0 ? cards[0].id : null);
                 setCardName("");
                 setCardNumber("");
                 setCardExpiry("");
                 setCardCVV("");
-
               }}
 
               className="
@@ -586,37 +651,7 @@ export default function BookingPaymentStep({
 
               disabled={!isCardValid}
 
-              onClick={() => {
-
-                if (!isCardValid)
-                  return;
-
-                const newCard = {
-                  id: Date.now().toString(),
-                  brand: "VISA",
-                  last4:
-                    cardNumber.slice(-4),
-                  holder: cardName,
-                  expiry: cardExpiry
-                };
-
-                setCards([
-                  ...cards,
-                  newCard
-                ]);
-
-                setSelectedCard(
-                  newCard.id
-                );
-
-                setShowNewCard(false);
-
-                setCardName("");
-                setCardNumber("");
-                setCardExpiry("");
-                setCardCVV("");
-
-              }}
+              onClick={handleSaveCard}
 
               className={`
 
@@ -691,18 +726,38 @@ export default function BookingPaymentStep({
 
         <button
 
-          onClick={() => {
-
+          onClick={async () => {
+            if (!user?.id) return;
             setIsProcessing(true);
+            try {
+              const totalHoursVal = selectedDays.reduce((acc, item) => {
+                return acc + (parseHour(item.end) - parseHour(item.start));
+              }, 0);
+              const totalAmountVal = totalHoursVal * selectedService.price;
 
-            setTimeout(() => {
+              await createHiring({
+                clientId: user.id,
+                nurseId: nurse.id,
+                patientId: selectedPatient,
+                serviceType: selectedService.name,
+                hourlyRate: selectedService.price,
+                totalHours: totalHoursVal,
+                totalAmount: totalAmountVal,
+                notes: bookingNotes || "",
+                days: selectedDays.map((d) => ({
+                  date: d.date,
+                  start: d.start,
+                  end: d.end,
+                })),
+              });
 
               setIsProcessing(false);
-
               onNext();
-
-            }, 2500);
-
+            } catch (err: any) {
+              console.error("Error creating hiring record:", err);
+              alert(`Error al procesar la contratación: ${err.message || err}`);
+              setIsProcessing(false);
+            }
           }}
 
           disabled={

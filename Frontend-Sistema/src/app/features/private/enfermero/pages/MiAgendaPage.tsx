@@ -211,9 +211,9 @@ export default function MiAgendaPage() {
     return slot ? { startHour: slot.startHour, endHour: slot.endHour } : null;
   };
 
-  // Obtener citas de un día
+  // Obtener citas de un día (cualquier cita activa bloquea el horario)
   const getDayBookings = (dateStr: string) => {
-    return bookings.filter((b) => b.date === dateStr && b.status === "confirmed");
+    return bookings.filter((b) => b.date === dateStr && ["pending", "confirmed", "active"].includes(b.status));
   };
 
   // Calcular horas disponibles en un día (excluyendo horas ocupadas por reservas)

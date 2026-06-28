@@ -29,7 +29,8 @@ export default function BookingModal({
 }: Props) {
 
   const [step, setStep] = useState(1);
-  const [selectedPatient, setSelectedPatient] = useState<string>("1");
+  const [selectedPatient, setSelectedPatient] = useState<string>("");
+  const [bookingNotes, setBookingNotes] = useState<string>("");
 
   const [selectedDays, setSelectedDays] =
     useState<SelectedDay[]>([]);
@@ -41,17 +42,13 @@ export default function BookingModal({
     } | null>(null);
 
   useEffect(() => {
-
     if (!open) {
-
       setStep(1);
-
       setSelectedDays([]);
-
       setSelectedService(null);
-
+      setSelectedPatient("");
+      setBookingNotes("");
     }
-
   }, [open]);
 
   useEffect(() => {
@@ -126,22 +123,23 @@ export default function BookingModal({
               selectedDays={selectedDays}
               setSelectedDays={setSelectedDays}
               pricePerHour={selectedService.price}
+              nurseId={nurse.id}
               onBack={() => setStep(1)}
               onContinue={() => setStep(3)}
             />
 
           )}
 
-          {/* STEP 3 — PACIENTE */}
+          {/* STEP 3 — FAMILIAR */}
           {step === 3 && (
-
             <BookingPatientStep
               selectedPatient={selectedPatient}
-  setSelectedPatient={setSelectedPatient}
+              setSelectedPatient={setSelectedPatient}
+              bookingNotes={bookingNotes}
+              setBookingNotes={setBookingNotes}
               onBack={() => setStep(2)}
               onNext={() => setStep(4)}
             />
-
           )}
 
           {/* STEP 4 — RESUMEN */}
@@ -165,6 +163,8 @@ export default function BookingModal({
               nurse={nurse}
               selectedService={selectedService}
               selectedDays={selectedDays}
+              selectedPatient={selectedPatient}
+              bookingNotes={bookingNotes}
               onBack={() => setStep(4)}
               onNext={() => setStep(6)}
             />
@@ -178,6 +178,8 @@ export default function BookingModal({
               nurse={nurse}
               selectedService={selectedService}
               selectedDays={selectedDays}
+              selectedPatient={selectedPatient}
+              bookingNotes={bookingNotes}
             />
 
           )}

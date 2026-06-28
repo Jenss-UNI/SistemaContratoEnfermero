@@ -5,7 +5,7 @@ interface Props {
 const steps = [
   "Servicio",
   "Fecha",
-  "Paciente",
+  "Familiar",
   "Resumen",
   "Pago",
   "Confirmación"

@@ -1,7 +1,10 @@
+import { useEffect, useState } from "react";
 import {
   ShieldCheck,
-  CalendarDays
+  CalendarDays,
+  Loader2
 } from "lucide-react";
+import { supabase } from "../../../../core/services/supabase";
 
 import type { Nurse } from "../../../../core/models/nurse.model";
 
@@ -37,25 +40,39 @@ export default function BookingSummaryStep({
   onBack,
   onNext
 }: Props) {
+  const [patient, setPatient] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const patients = [
-    {
-      id: "1",
-      name: "Elena Rodríguez",
-      age: 78,
-      relation: "Madre",
-      address: "Av. Larco 1234, Dpto 502, Miraflores"
-    },
-    {
-      id: "2",
-      name: "Mateo Rodríguez",
-      age: 6,
-      relation: "Hijo",
-      address: "Av. Larco 1234, Dpto 502, Miraflores"
+  useEffect(() => {
+    if (!selectedPatient) {
+      setLoading(false);
+      return;
     }
-  ];
+    const loadPatient = async () => {
+      try {
+        const { data, error } = await supabase
+          .from("patients")
+          .select("full_name, age, relationship, address, district")
+          .eq("id", selectedPatient)
+          .single();
 
-  const patient = patients.find(p => p.id === selectedPatient);
+        if (error) throw error;
+        if (data) {
+          setPatient({
+            name: data.full_name,
+            age: data.age,
+            relation: data.relationship,
+            address: data.address || `Distrito: ${data.district}` || "Dirección registrada",
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching patient details for summary:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadPatient();
+  }, [selectedPatient]);
 
 
 
@@ -101,6 +118,15 @@ export default function BookingSummaryStep({
   const subtotal =
     totalHours *
     selectedService.price;
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <Loader2 className="w-10 h-10 animate-spin text-teal-600" />
+        <p className="text-sm text-slate-500 font-medium">Cargando resumen del servicio...</p>
+      </div>
+    );
+  }
 
   return (
 

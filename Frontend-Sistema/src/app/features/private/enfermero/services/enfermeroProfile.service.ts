@@ -857,7 +857,7 @@ export async function fetchNurseBookings(userId: string): Promise<{
   patientName: string;
   clientName: string;
   serviceId: string;
-  status: "confirmed" | "pending";
+  status: "pending" | "confirmed" | "active";
 }[]> {
   const { data, error } = await supabase
     .from("service_days")
@@ -879,7 +879,7 @@ export async function fetchNurseBookings(userId: string): Promise<{
       )
     `)
     .eq("services.nurse_id", userId)
-    .in("services.status", ["confirmed", "active"]);
+    .in("services.status", ["pending", "confirmed", "active"]);
 
   if (error) throw error;
 
@@ -900,5 +900,147 @@ export async function fetchNurseBookings(userId: string): Promise<{
       status: s.status === "confirmed" ? "confirmed" : "confirmed",
     };
   });
+}
+
+/**
+ * Obtiene todas las solicitudes de servicio asignadas al enfermero.
+ */
+export async function fetchNurseServices(nurseId: string): Promise<any[]> {
+  const { data, error } = await supabase
+    .from("services")
+    .select(`
+      id,
+      client_id,
+      status,
+      payment_status,
+      service_type,
+      total_hours,
+      total_amount,
+      hourly_rate,
+      notes,
+      contract_code,
+      service_code,
+      pin_code,
+      patient_name,
+      patient_age,
+      address,
+      district,
+      created_at,
+      profiles:client_id (
+        nombres,
+        apellidos_pa,
+        apellidos_ma
+      ),
+      service_days (
+        id,
+        day_date,
+        start_hour,
+        end_hour,
+        status,
+        real_start,
+        real_end,
+        report
+      )
+    `)
+    .eq("nurse_id", nurseId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+
+  return (data || []).map((row: any) => {
+    const clientNombres = row.profiles?.nombres || "";
+    const clientApellidos = [row.profiles?.apellidos_pa, row.profiles?.apellidos_ma].filter(Boolean).join(" ");
+    const clientName = `${clientNombres} ${clientApellidos}`.trim() || "Cliente";
+
+    return {
+      id: row.id,
+      client_id: row.client_id,
+      status: row.status,
+      payment_status: row.payment_status,
+      service_type: row.service_type,
+      total_hours: row.total_hours,
+      total_amount: row.total_amount,
+      hourly_rate: row.hourly_rate,
+      notes: row.notes,
+      contract_code: row.contract_code,
+      service_code: row.service_code,
+      pin_code: row.pin_code,
+      patient_name: row.patient_name,
+      patient_age: row.patient_age,
+      address: row.address,
+      district: row.district,
+      created_at: row.created_at,
+      clientName: clientName,
+      clientPlan: "Básico",
+      service_days: (row.service_days || []).map((d: any) => ({
+        id: d.id,
+        day_date: d.day_date,
+        start_hour: d.start_hour,
+        end_hour: d.end_hour,
+        status: d.status,
+        real_start: d.real_start || undefined,
+        real_end: d.real_end || undefined,
+        report: d.report || undefined,
+      })),
+    };
+  });
+}
+
+/**
+ * Actualiza el estado de una contratación.
+ */
+export async function updateServiceStatus(
+  serviceId: number,
+  status: "confirmed" | "rejected" | "cancelled" | "active" | "completed"
+): Promise<void> {
+  const { error } = await supabase
+    .from("services")
+    .update({
+      status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", serviceId);
+
+  if (error) throw error;
+}
+
+/**
+ * Inicia una sesión diaria de servicio en Supabase.
+ */
+export async function updateServiceDayStart(
+  dayId: number,
+  realStart: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("service_days")
+    .update({
+      status: "active",
+      real_start: realStart,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", dayId);
+
+  if (error) throw error;
+}
+
+/**
+ * Finaliza una sesión diaria de servicio en Supabase.
+ */
+export async function updateServiceDayEnd(
+  dayId: number,
+  realEnd: string,
+  report?: string
+): Promise<void> {
+  const { error } = await supabase
+    .from("service_days")
+    .update({
+      status: "completed",
+      real_end: realEnd,
+      report: report || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", dayId);
+
+  if (error) throw error;
 }
 
