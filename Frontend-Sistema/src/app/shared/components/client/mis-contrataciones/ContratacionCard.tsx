@@ -122,13 +122,13 @@ export default function ContratacionCard({
               </button>
             </>
           )}
-          {estado === "confirmado" && (
+          {estado === "firma_requerida" && (
             <button type="button" onClick={onFirmarContrato} className={outlineTeal}>
               <FileText className="h-4 w-4" />
               Firmar contrato
             </button>
           )}
-          {(estado === "activo" || estado === "completado") && (
+          {(estado === "confirmado" || estado === "en_curso" || estado === "completado") && (
             <>
               <button type="button" onClick={onVerJornadas} className={outlineTeal}>
                 <Calendar className="h-4 w-4" />

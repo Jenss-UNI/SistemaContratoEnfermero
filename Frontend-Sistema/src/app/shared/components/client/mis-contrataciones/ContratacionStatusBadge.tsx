@@ -7,22 +7,27 @@ const CONFIG: Record<
 > = {
   pendiente: {
     label: "Pendiente",
-    className: "bg-amber-50 text-amber-700",
+    className: "bg-amber-50 text-amber-700 border border-amber-200/50",
     icon: Clock,
+  },
+  firma_requerida: {
+    label: "Firma Requerida",
+    className: "bg-orange-50 text-orange-705 border border-orange-200/50 text-orange-750",
+    icon: FileCheck,
   },
   confirmado: {
     label: "Confirmado",
-    className: "bg-sky-50 text-sky-700",
-    icon: FileCheck,
+    className: "bg-sky-50 text-sky-700 border border-sky-200/50",
+    icon: Circle,
   },
-  activo: {
-    label: "Activo",
-    className: "bg-emerald-50 text-emerald-700",
+  en_curso: {
+    label: "En curso",
+    className: "bg-teal-50 text-teal-700 border border-teal-200/50",
     icon: Circle,
   },
   completado: {
     label: "Completado",
-    className: "bg-emerald-50 text-emerald-700",
+    className: "bg-emerald-50 text-emerald-700 border border-emerald-200/50",
     icon: CheckCircle2,
   },
 };

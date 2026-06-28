@@ -185,24 +185,11 @@ export default function BookingCalendar({
     // Si el día de semana no está en la agenda recurrente → deshabilitado
     if (unavailableWeekDays.includes(date.getDay())) return true;
 
-    // Bloquear día si todas las horas de la agenda están ocupadas por bookings confirmados
+    // Bloquear día si hay cualquier reserva en ese día
     const daySchedule = schedules[date.getDay()];
     if (daySchedule) {
       const dayBookings = bookings.filter(b => b.fecha === formattedDate);
-      if (dayBookings.length > 0) {
-        const agendaStart = parseHour(daySchedule.start);
-        const agendaEnd   = parseHour(daySchedule.end);
-        const totalHours  = agendaEnd - agendaStart;
-
-        const blockedHours = dayBookings.reduce((acc, b) => {
-          const bStart = parseHour(String(b.start));
-          const bEnd   = parseHour(String(b.end));
-          const overlap = Math.max(0, Math.min(bEnd, agendaEnd) - Math.max(bStart, agendaStart));
-          return acc + overlap;
-        }, 0);
-
-        if (blockedHours >= totalHours) return true; // día completamente ocupado
-      }
+      if (dayBookings.length > 0) return true;
     }
 
     return false;

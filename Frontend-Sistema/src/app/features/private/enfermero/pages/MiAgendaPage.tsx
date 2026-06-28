@@ -50,7 +50,7 @@ interface Booking {
   patientName: string;
   clientName: string;
   serviceId: string;
-  status: "confirmed" | "pending";
+  status: "confirmed" | "pending" | "active";
 }
 
 /* ─── Predefined Data Constants ─── */

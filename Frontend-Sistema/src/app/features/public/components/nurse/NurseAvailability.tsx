@@ -140,36 +140,11 @@ export default function NurseAvailability({ nurseId }: Props) {
     // Si el día de semana no está habilitado en la agenda recurrente → deshabilitado
     if (unavailableWeekDays.includes(date.getDay())) return true;
 
-    // Verificar si las horas del día están completamente bloqueadas por reservas confirmadas
+    // Bloquear día si hay cualquier reserva en ese día
     const daySchedule = schedules[date.getDay()];
     if (daySchedule) {
       const dayBookings = getDateBookings(date);
-      if (dayBookings.length > 0) {
-        // Obtener rango de la agenda del día
-        const { parseHour } = (() => {
-          const ph = (v: string) => {
-            const [h] = v.split(":");
-            let hour = parseInt(h);
-            if (v.includes("pm") && hour !== 12) hour += 12;
-            if (v.includes("am") && hour === 12) hour = 0;
-            return hour;
-          };
-          return { parseHour: ph };
-        })();
-        const agendaStart = parseHour(daySchedule.start);
-        const agendaEnd   = parseHour(daySchedule.end);
-        const totalHours  = agendaEnd - agendaStart;
-
-        // Calcular horas bloqueadas (suma de rangos de bookings que caen dentro de la agenda)
-        const blockedHours = dayBookings.reduce((acc, b) => {
-          const bStart = typeof b.start === "number" ? b.start : parseHour(String(b.start));
-          const bEnd   = typeof b.end === "number"   ? b.end   : parseHour(String(b.end));
-          const overlap = Math.max(0, Math.min(bEnd, agendaEnd) - Math.max(bStart, agendaStart));
-          return acc + overlap;
-        }, 0);
-
-        if (blockedHours >= totalHours) return true; // día completamente ocupado
-      }
+      if (dayBookings.length > 0) return true;
     }
 
     return false;

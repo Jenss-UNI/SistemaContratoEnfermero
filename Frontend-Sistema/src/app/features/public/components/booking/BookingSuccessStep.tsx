@@ -1,7 +1,5 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../../../core/contexts/AuthContext";
-import { createHiring } from "../../../private/client/services/hiring.service";
 import { CLIENT_PANEL_BASE } from "../../../private/client/clientNav";
 
 import {
@@ -28,38 +26,18 @@ interface Props {
   };
 
   selectedDays: SelectedDay[];
-  selectedPatient: string;
-  bookingNotes: string;
 }
 
 export default function BookingSuccessStep({
   nurse,
   selectedService,
   selectedDays,
-  selectedPatient,
-  bookingNotes
 }: Props) {
-
   const navigate = useNavigate();
-  const { user } = useAuth();
-
   const [loadingStep, setLoadingStep] = useState(0);
   const [completed, setCompleted] = useState(false);
 
-  const parseHour = (value: string) => {
-    const [hourStr] = value.split(":");
-    let hour = parseInt(hourStr);
-    const isPM = value.toLowerCase().includes("pm");
-    if (isPM && hour !== 12) hour += 12;
-    if (!isPM && hour === 12) hour = 0;
-    return hour;
-  };
 
-  const totalHours = useMemo(() => {
-    return selectedDays.reduce((acc, item) => {
-      return acc + (parseHour(item.end) - parseHour(item.start));
-    }, 0);
-  }, [selectedDays]);
 
   const loadingTexts = [
     "Validando disponibilidad del profesional...",
@@ -67,26 +45,7 @@ export default function BookingSuccessStep({
     "Confirmando la reserva..."
   ];
 
-  useEffect(() => {
-    if (!user?.id) return;
-    createHiring({
-      clientId: user.id,
-      nurseId: nurse.id,
-      patientId: selectedPatient,
-      serviceType: selectedService.name,
-      hourlyRate: selectedService.price,
-      totalHours,
-      totalAmount: totalHours * selectedService.price,
-      notes: bookingNotes,
-      days: selectedDays
-    })
-      .then((id) => {
-        console.log("Hiring successfully created in Supabase with ID:", id);
-      })
-      .catch((err) => {
-        console.error("Error creating hiring in Supabase:", err);
-      });
-  }, [user?.id]);
+
 
   useEffect(() => {
 

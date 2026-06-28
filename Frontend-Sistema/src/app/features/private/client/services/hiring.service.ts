@@ -170,10 +170,11 @@ export async function fetchClientHirings(clientId: string): Promise<Contratacion
     }
 
     // Map DB status to hiring.model.ts ContratacionEstado
-    // DB: pending → "pendiente", confirmed → "confirmado", active → "activo", completed → "completado"
+    // DB: pending → "pendiente", confirmed → "firma_requerida", active → "confirmado", completed → "completado"
     let estado: any = "pendiente";
-    if (row.status === "confirmed") estado = "confirmado";
-    else if (row.status === "active") estado = "activo";
+    if (row.status === "confirmed") estado = "firma_requerida";
+    else if (row.status === "active") estado = "confirmado";
+    else if (row.status === "in_progress") estado = "en_curso";
     else if (row.status === "completed") estado = "completado";
 
     // Map DB payment_status: pending, in_custody, released, refunded
@@ -357,8 +358,9 @@ export async function fetchContractDetail(serviceId: number): Promise<ContratoDe
 
   // Map to Contratacion fields
   let estado: any = "pendiente";
-  if (svc.status === "confirmed") estado = "confirmado";
-  else if (svc.status === "active") estado = "activo";
+  if (svc.status === "confirmed") estado = "firma_requerida";
+  else if (svc.status === "active") estado = "confirmado";
+  else if (svc.status === "in_progress") estado = "en_curso";
   else if (svc.status === "completed") estado = "completado";
 
   let pagoEstado: any = "pendiente";

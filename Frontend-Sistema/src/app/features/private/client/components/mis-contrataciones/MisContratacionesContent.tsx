@@ -23,14 +23,15 @@ function matchesSearch(c: Contratacion, query: string): boolean {
 }
 
 function countByEstado(items: Contratacion[], estado: ContratacionEstado): number {
-  return items.filter((c) => c.estado === estado).length;
+  return items.filter((item) => item.estado === estado).length;
 }
 
 const FILTROS: { id: ContratacionFiltro; label: string }[] = [
   { id: "todos", label: "Todos" },
   { id: "pendiente", label: "Pendientes" },
+  { id: "firma_requerida", label: "Firma Requerida" },
   { id: "confirmado", label: "Confirmados" },
-  { id: "activo", label: "Activos" },
+  { id: "en_curso", label: "En Curso" },
   { id: "completado", label: "Completados" },
 ];
 
@@ -100,7 +101,7 @@ export default function MisContratacionesContent() {
   }, [contrataciones, filtro, busqueda]);
 
   const stats = useMemo(() => {
-    const activos = countByEstado(contrataciones, "activo");
+    const activos = countByEstado(contrataciones, "en_curso");
     const enCustodia = contrataciones
       .filter((c) => c.pagoEstado === "preautorizado")
       .reduce((sum, c) => sum + c.montoTotal, 0);
@@ -119,8 +120,9 @@ export default function MisContratacionesContent() {
     () => ({
       todos: contrataciones.length,
       pendiente: countByEstado(contrataciones, "pendiente"),
+      firma_requerida: countByEstado(contrataciones, "firma_requerida"),
       confirmado: countByEstado(contrataciones, "confirmado"),
-      activo: countByEstado(contrataciones, "activo"),
+      en_curso: countByEstado(contrataciones, "en_curso"),
       completado: countByEstado(contrataciones, "completado"),
     }),
     [contrataciones]

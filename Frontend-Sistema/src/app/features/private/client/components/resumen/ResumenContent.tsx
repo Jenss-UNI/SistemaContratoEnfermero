@@ -64,8 +64,8 @@ export default function ResumenContent({ onPinRegenerado: _onPinRegenerado }: Re
     );
   }
 
-  const activosCount = contrataciones.filter(c => c.estado === "activo").length;
-  const proximosCount = contrataciones.filter(c => c.estado === "pendiente" || c.estado === "confirmado").length;
+  const activosCount = contrataciones.filter(c => c.estado === "en_curso" || c.estado === "confirmado").length;
+  const proximosCount = contrataciones.filter(c => c.estado === "pendiente" || c.estado === "firma_requerida").length;
   const totalInvertido = contrataciones
     .filter(c => c.estado === "completado")
     .reduce((sum, c) => sum + c.montoTotal, 0);
@@ -86,12 +86,13 @@ export default function ResumenContent({ onPinRegenerado: _onPinRegenerado }: Re
   };
 
   const activeOrUpcoming = contrataciones.filter(
-    (c) => c.estado === "activo" || c.estado === "confirmado" || c.estado === "pendiente"
+    (c) => c.estado === "en_curso" || c.estado === "confirmado" || c.estado === "firma_requerida" || c.estado === "pendiente"
   );
 
   const servicios = activeOrUpcoming.map((c) => ({
+    dbId: c.id,
     id: c.codigoServicio || c.codigo,
-    status: c.estado === "activo" ? "Activo" : c.estado === "confirmado" ? "Confirmado" : "Pendiente",
+    status: c.estado === "en_curso" ? "En Curso" : c.estado === "confirmado" ? "Confirmado" : c.estado === "firma_requerida" ? "Firma Requerida" : "Pendiente",
     type: "Asistencial",
     professionalName: c.profesionalNombre,
     specialty: c.especialidad,

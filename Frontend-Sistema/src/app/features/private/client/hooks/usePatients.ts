@@ -20,6 +20,8 @@ interface UsePatientsReturn {
   remove:    (patientId: string) => Promise<boolean>;
 }
 
+const initializationsInProgress = new Set<string>();
+
 export function usePatients(): UsePatientsReturn {
   const { user } = useAuth();
 
@@ -31,6 +33,18 @@ export function usePatients(): UsePatientsReturn {
   // ── Cargar familiares y verificar "Yo mismo" ──────────────────────────────
   const load = useCallback(async () => {
     if (!user?.id) return;
+
+    if (initializationsInProgress.has(user.id)) {
+      try {
+        const list = await fetchPatients(user.id);
+        setPatients(list);
+      } catch (err) {
+        console.error("Error reloading concurrent:", err);
+      }
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -41,46 +55,51 @@ export function usePatients(): UsePatientsReturn {
       const hasSelf = list.some((p) => p.parentesco === "Yo mismo");
 
       if (!hasSelf) {
-        // 3. Si no existe, obtener los datos del perfil del cliente para auto-crearlo
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("nombres, apellidos_pa, apellidos_ma, telefono, direccion, distrito, foto_url")
-          .eq("id", user.id)
-          .single();
+        initializationsInProgress.add(user.id);
+        try {
+          // 3. Si no existe, obtener los datos del perfil del cliente para auto-crearlo
+          const { data: profile, error: profileError } = await supabase
+            .from("profiles")
+            .select("nombres, apellidos_pa, apellidos_ma, telefono, direccion, distrito, foto_url")
+            .eq("id", user.id)
+            .single();
 
-        if (profileError) throw profileError;
+          if (profileError) throw profileError;
 
-        if (profile) {
-          const fullName = [
-            profile.nombres,
-            profile.apellidos_pa,
-            profile.apellidos_ma
-          ]
-            .filter(Boolean)
-            .join(" ");
+          if (profile) {
+            const fullName = [
+              profile.nombres,
+              profile.apellidos_pa,
+              profile.apellidos_ma
+            ]
+              .filter(Boolean)
+              .join(" ");
 
-          const selfPatient: Omit<Patient, "id" | "clientId"> = {
-            nombreCompleto: fullName,
-            edad: 30, // Edad por defecto (editable por el usuario)
-            parentesco: "Yo mismo",
-            tipoSangre: "",
-            fotoUrl: profile.foto_url || undefined,
-            condicionesMedicas: [],
-            medicamentos: [],
-            alergias: [],
-            contactoEmergencia: "",
-            telefonoEmergencia: profile.telefono || "",
-            distrito: profile.distrito || "",
-            googleMapsUrl: "",
-            notasCuidado: "",
-          };
+            const selfPatient: Omit<Patient, "id" | "clientId"> = {
+              nombreCompleto: fullName,
+              edad: 30, // Edad por defecto (editable por el usuario)
+              parentesco: "Yo mismo",
+              tipoSangre: "",
+              fotoUrl: profile.foto_url || undefined,
+              condicionesMedicas: [],
+              medicamentos: [],
+              alergias: [],
+              contactoEmergencia: "",
+              telefonoEmergencia: profile.telefono || "",
+              distrito: profile.distrito || "",
+              googleMapsUrl: "",
+              notasCuidado: "",
+            };
 
-          // Guardar el familiar automático "Yo mismo" en la BD
-          await insertPatient(user.id, selfPatient);
+            // Guardar el familiar automático "Yo mismo" en la BD
+            await insertPatient(user.id, selfPatient);
 
-          // Volver a cargar la lista para incluir el nuevo registro
-          const updatedList = await fetchPatients(user.id);
-          setPatients(updatedList);
+            // Volver a cargar la lista para incluir el nuevo registro
+            const updatedList = await fetchPatients(user.id);
+            setPatients(updatedList);
+          }
+        } finally {
+          initializationsInProgress.delete(user.id);
         }
       } else {
         setPatients(list);

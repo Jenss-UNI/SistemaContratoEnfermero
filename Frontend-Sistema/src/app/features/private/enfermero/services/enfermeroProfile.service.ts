@@ -897,7 +897,7 @@ export async function fetchNurseBookings(userId: string): Promise<{
       patientName: s.patient_name || "Paciente",
       clientName: clientName,
       serviceId: String(s.id),
-      status: s.status === "confirmed" ? "confirmed" : "confirmed",
+      status: s.status,
     };
   });
 }

@@ -86,24 +86,24 @@ export default function ContractDetailView({
   const subtotal = contrato.montoTotal - comision;
 
   const estadoStr =
-    contrato.estado === "confirmado" ? "Confirmado — Pendiente de firma" :
-    contrato.estado === "activo"     ? "Activo" :
+    contrato.estado === "firma_requerida" ? "Confirmado — Pendiente de firma" :
+    (contrato.estado === "confirmado" || contrato.estado === "en_curso") ? "Activo" :
     contrato.estado === "completado" ? "Completado" :
     "Pendiente";
 
-  // El cliente puede firmar solo cuando el enfermero ya aceptó (estado = 'confirmado')
-  const isPendienteFirma = contrato.estado === "confirmado";
+  // El cliente puede firmar solo cuando el enfermero ya aceptó (estado = 'firma_requerida')
+  const isPendienteFirma = contrato.estado === "firma_requerida";
 
   // Badge de color según estado del contrato
   const estadoBadgeClass =
-    contrato.estado === "activo"     ? "bg-teal-100 text-teal-700" :
-    contrato.estado === "confirmado" ? "bg-blue-100 text-blue-700" :
+    (contrato.estado === "confirmado" || contrato.estado === "en_curso") ? "bg-teal-100 text-teal-700" :
+    contrato.estado === "firma_requerida" ? "bg-blue-100 text-blue-700" :
     contrato.estado === "completado" ? "bg-emerald-100 text-emerald-700" :
     "bg-amber-100 text-amber-700";
 
   const estadoDotClass =
-    contrato.estado === "activo"     ? "bg-teal-500" :
-    contrato.estado === "confirmado" ? "bg-blue-500" :
+    (contrato.estado === "confirmado" || contrato.estado === "en_curso") ? "bg-teal-500" :
+    contrato.estado === "firma_requerida" ? "bg-blue-500" :
     contrato.estado === "completado" ? "bg-emerald-500" :
     "bg-amber-500";
 
@@ -134,29 +134,27 @@ export default function ContractDetailView({
             padding: 0 !important;
             height: auto !important;
           }
-
-          /* Eliminar el relleno superior de 170px de la vista privada del cliente */
-          div.min-h-screen {
-            padding-top: 0 !important;
-            background-color: white !important;
-          }
-
-          main {
-            padding: 0 !important;
-            margin: 0 !important;
-            max-width: 100% !important;
-          }
           
+          /* Resetear todos los contenedores padre */
+          #root, main, div {
+            margin: 0 !important;
+            padding: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+          }
+
           /* Ajustar contenedor principal de impresión para ocupar toda la página de forma estática */
           #printable-contract-view {
-            position: relative !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
             width: 100% !important;
             max-width: 100% !important;
-            padding: 0 !important;
             margin: 0 !important;
+            padding: 0 !important;
             border: none !important;
-            box-shadow: none !important;
             background: white !important;
+            display: block !important;
           }
 
           /* Convertir grids complejos a bloque para evitar saltos de línea raros */

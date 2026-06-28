@@ -1,4 +1,4 @@
-export type ContratacionEstado = "pendiente" | "confirmado" | "activo" | "completado";
+export type ContratacionEstado = "pendiente" | "firma_requerida" | "confirmado" | "en_curso" | "completado";
 
 export type PagoEstado = "pendiente" | "preautorizado" | "liberado";
 

@@ -1,4 +1,8 @@
 import { useState, useEffect } from "react";
+
+// Module-level lock: persists across component remounts (React StrictMode, etc.)
+// Key = clientId:nurseId:patientId:firstDate to prevent duplicate service creation
+const hiringCreationInProgress = new Set<string>();
 import { useAuth } from "../../../../core/contexts/AuthContext";
 import { supabase } from "../../../../core/services/supabase";
 import {
@@ -54,6 +58,8 @@ export default function BookingPaymentStep({
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasPrincipalMethod, setHasPrincipalMethod] = useState(false);
+
 
   const [cardName, setCardName] = useState("");
   const [cardNumber, setCardNumber] = useState("");
@@ -69,21 +75,31 @@ export default function BookingPaymentStep({
       try {
         const { data, error } = await supabase
           .from("payment_methods")
-          .select("id, marca, terminacion, nombre_tarjeta, created_at")
-          .eq("client_id", user.id)
-          .eq("tipo", "tarjeta");
+          .select("id, tipo, marca, terminacion, nombre_tarjeta, es_principal, created_at")
+          .eq("client_id", user.id);
 
         if (error) throw error;
-        const loadedCards = (data || []).map((c: any) => ({
-          id: String(c.id),
-          brand: c.marca || "VISA",
-          last4: c.terminacion || "4242",
-          holder: c.nombre_tarjeta || "Titular",
-          expiry: "12/29",
-        }));
+        
+        const loadedCards = (data || [])
+          .filter((c: any) => c.tipo === "tarjeta")
+          .map((c: any) => ({
+            id: String(c.id),
+            brand: c.marca || "VISA",
+            last4: c.terminacion || "4242",
+            holder: c.nombre_tarjeta || "Titular",
+            expiry: "12/29",
+          }));
+
         setCards(loadedCards);
+        
+        // Ver si ya tiene algún método principal (yape, plin, o tarjeta)
+        const hasPrincipal = (data || []).some((c: any) => c.es_principal);
+        setHasPrincipalMethod(hasPrincipal);
+
         if (loadedCards.length > 0) {
           setSelectedCard(loadedCards[0].id);
+        } else {
+          setShowNewCard(true); // Mostrar formulario si no hay tarjetas registradas
         }
       } catch (err) {
         console.error("Error loading payment methods:", err);
@@ -108,7 +124,7 @@ export default function BookingPaymentStep({
         .insert({
           client_id: user.id,
           tipo: "tarjeta",
-          es_principal: cards.length === 0,
+          es_principal: !hasPrincipalMethod, // Solo principal si no tiene otro método principal
           terminacion: last4,
           marca: brand,
           nombre_tarjeta: cardName,
@@ -128,6 +144,7 @@ export default function BookingPaymentStep({
 
       setCards((prev) => [...prev, newCard]);
       setSelectedCard(newCard.id);
+      setHasPrincipalMethod(true);
       setShowNewCard(false);
       setCardName("");
       setCardNumber("");
@@ -184,7 +201,6 @@ export default function BookingPaymentStep({
     selectedService.price;
 
   const validateExpiry = () => {
-
     if (cardExpiry.length !== 5)
       return false;
 
@@ -204,29 +220,12 @@ export default function BookingPaymentStep({
       return false;
     }
 
-    const currentDate =
-      new Date();
+    const currentDate = new Date();
+    const currentYear = Number(currentDate.getFullYear().toString().slice(-2));
+    const currentMonth = currentDate.getMonth() + 1;
 
-    const currentYear =
-      Number(
-        currentDate
-          .getFullYear()
-          .toString()
-          .slice(-2)
-      );
-
-    const currentMonth =
-      currentDate.getMonth() + 1;
-
-    if (yearNum < currentYear)
-      return false;
-
-    if (
-      yearNum === currentYear &&
-      monthNum < currentMonth
-    ) {
-      return false;
-    }
+    if (yearNum < currentYear) return false;
+    if (yearNum === currentYear && monthNum < currentMonth) return false;
 
     return true;
   };
@@ -728,7 +727,16 @@ export default function BookingPaymentStep({
 
           onClick={async () => {
             if (!user?.id) return;
+
+            // Build a unique key for this specific booking attempt
+            const firstDateStr = selectedDays[0]?.date.toISOString().slice(0, 10) ?? "";
+            const lockKey = `${user.id}:${nurse.id}:${selectedPatient}:${firstDateStr}`;
+
+            // If another request for the same booking is already in-flight, block
+            if (hiringCreationInProgress.has(lockKey)) return;
+            hiringCreationInProgress.add(lockKey);
             setIsProcessing(true);
+
             try {
               const totalHoursVal = selectedDays.reduce((acc, item) => {
                 return acc + (parseHour(item.end) - parseHour(item.start));
@@ -752,11 +760,13 @@ export default function BookingPaymentStep({
               });
 
               setIsProcessing(false);
+              hiringCreationInProgress.delete(lockKey);
               onNext();
             } catch (err: any) {
               console.error("Error creating hiring record:", err);
               alert(`Error al procesar la contratación: ${err.message || err}`);
               setIsProcessing(false);
+              hiringCreationInProgress.delete(lockKey);
             }
           }}
 

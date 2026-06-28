@@ -178,8 +178,6 @@ export default function BookingModal({
               nurse={nurse}
               selectedService={selectedService}
               selectedDays={selectedDays}
-              selectedPatient={selectedPatient}
-              bookingNotes={bookingNotes}
             />
 
           )}
