@@ -1,6 +1,8 @@
 import { NavLink } from "react-router-dom";
-import { ADMIN_NAV_ITEMS } from "../adminNav"; 
+import { ADMIN_NAV_ITEMS } from "../adminNav";
 import { User, ShieldCheck, LogOut, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "../../../../core/services/supabase";
 
 type AdminPanelSidebarProps = {
   closeSidebar?: () => void;
@@ -8,19 +10,35 @@ type AdminPanelSidebarProps = {
 };
 
 export default function AdminPanelSidebar({ closeSidebar, onLogoutClick }: AdminPanelSidebarProps) {
-  
-  // Función auxiliar simulada para el ejemplo visual.
-  // Lo ideal es que añadas la propiedad "badge" a tu arreglo ADMIN_NAV_ITEMS.
-  const getBadgeValue = (label: string) => {
-    if (['Verificaciones', 'Enfermeros', 'Contratos'].includes(label)) return 1;
-    if (label === 'Clientes') return 2;
-    return null;
+
+  const { data: stats } = useQuery({
+    queryKey: ['admin', 'sidebar', 'stats'],
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_admin_sidebar_stats');
+      if (error) throw new Error(error.message);
+      return data as {
+        verificacionesPendientes: number;
+        enfermerosActivos: number;
+        clientesRegistrados: number;
+        contratosActivos: number;
+      };
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const getBadgeValue = (label: string): number | null => {
+    switch (label) {
+      case 'Verificaciones': return stats?.verificacionesPendientes ?? null;
+      case 'Enfermeros': return stats?.enfermerosActivos ?? null;
+      case 'Clientes': return stats?.clientesRegistrados ?? null;
+      case 'Contratos': return stats?.contratosActivos ?? null;
+      default: return null;
+    }
   };
 
   return (
     <div className="flex h-full flex-col bg-white">
-      
-      {/* --- CABECERA DEL SIDEBAR (Logo alineado con el header principal) --- */}
+
       <div className="flex h-[72px] flex-shrink-0 items-center justify-between border-b border-slate-200 px-6">
         <div className="text-xl font-bold text-[#0f766e]">
           Cuidame
@@ -34,7 +52,6 @@ export default function AdminPanelSidebar({ closeSidebar, onLogoutClick }: Admin
         </button>
       </div>
 
-      {/* Perfil de Usuario */}
       <div className="px-6 pb-6 pt-5 border-b border-slate-100">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-[#0f766e] text-white">
@@ -53,21 +70,19 @@ export default function AdminPanelSidebar({ closeSidebar, onLogoutClick }: Admin
         </div>
       </div>
 
-      {/* Navegación */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-4 pt-6">
         {ADMIN_NAV_ITEMS.map(({ label, path, icon: Icon }) => {
           const badgeCount = getBadgeValue(label);
-          
+
           return (
             <NavLink
               key={path}
               to={path}
               onClick={() => closeSidebar?.()}
               className={({ isActive }) =>
-                `flex items-center justify-between rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-[#f0fdfa] text-[#0f766e]"
-                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
+                `flex items-center justify-between rounded-xl px-4 py-3 text-sm font-medium transition-colors ${isActive
+                  ? "bg-[#f0fdfa] text-[#0f766e]"
+                  : "text-slate-500 hover:bg-slate-50 hover:text-slate-700"
                 }`
               }
             >
@@ -75,9 +90,9 @@ export default function AdminPanelSidebar({ closeSidebar, onLogoutClick }: Admin
                 <Icon className="h-5 w-5 flex-shrink-0" />
                 {label}
               </div>
-              
-              {badgeCount && (
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[11px] font-bold text-white">
+
+              {badgeCount !== null && badgeCount > 0 && (
+                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-rose-500 px-1.5 text-[11px] font-bold text-white">
                   {badgeCount}
                 </span>
               )}
@@ -86,9 +101,8 @@ export default function AdminPanelSidebar({ closeSidebar, onLogoutClick }: Admin
         })}
       </nav>
 
-      {/* Botón Cerrar Sesión */}
       <div className="mt-auto px-4 pb-6 pt-4 border-t border-slate-100">
-        <button 
+        <button
           onClick={onLogoutClick}
           className="flex w-full items-center justify-center gap-2 rounded-xl border border-rose-100 bg-white py-2.5 text-sm font-medium text-rose-500 transition-colors hover:bg-rose-50 cursor-pointer"
         >
@@ -96,7 +110,7 @@ export default function AdminPanelSidebar({ closeSidebar, onLogoutClick }: Admin
           Cerrar sesión
         </button>
       </div>
-      
+
     </div>
   );
 }

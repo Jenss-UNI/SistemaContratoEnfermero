@@ -1,4 +1,4 @@
-﻿import { useMemo, useState } from "react";
+﻿import { useMemo, useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import AdminPanelSidebar from "./AdminPanelSidebar";
 import { ADMIN_NAV_ITEMS, ADMIN_PANEL_BASE } from "../adminNav";
@@ -12,6 +12,7 @@ export default function AdminPanelLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isSpinning, setIsSpinning] = useState(true);
 
   const pageTitle = useMemo(() => {
     const cleanPath = location.pathname.replace(/\/$/, "");
@@ -20,6 +21,11 @@ export default function AdminPanelLayout() {
     if (cleanPath === ADMIN_PANEL_BASE || cleanPath === `${ADMIN_PANEL_BASE}/`) return "Resumen";
     return "Panel administrativo";
   }, [location.pathname]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsSpinning(false), 300);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleSignOut = async () => {
     try {
@@ -36,18 +42,16 @@ export default function AdminPanelLayout() {
   return (
     <div className="flex h-screen w-full bg-slate-50 font-sans text-slate-800 relative overflow-hidden">
       <div
-        className={`fixed inset-0 z-20 bg-slate-900/40 transition-opacity duration-300 lg:hidden ${
-          sidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        }`}
+        className={`fixed inset-0 z-20 bg-slate-900/40 transition-opacity duration-300 lg:hidden ${sidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          }`}
         onClick={() => setSidebarOpen(false)}
       />
 
       <aside
-        className={`fixed inset-y-0 left-0 z-30 w-[260px] flex-shrink-0 transform border-r border-slate-200 bg-white shadow-xl transition-transform duration-300 lg:static lg:translate-x-0 lg:shadow-none ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 left-0 z-30 w-[260px] flex-shrink-0 transform border-r border-slate-200 bg-white shadow-xl transition-transform duration-300 lg:static lg:translate-x-0 lg:shadow-none ${sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
-        <AdminPanelSidebar 
+        <AdminPanelSidebar
           closeSidebar={() => setSidebarOpen(false)}
           onLogoutClick={() => setShowLogoutConfirm(true)}
         />
@@ -70,10 +74,10 @@ export default function AdminPanelLayout() {
 
           <div className="flex items-center gap-3">
             <div className="hidden h-10 items-center justify-center rounded-xl bg-slate-50 px-4 text-[13px] font-medium text-slate-500 sm:flex">
-              24 de junio de 2026
+              {new Date().toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' })}
             </div>
             <button className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700">
-              <RefreshCw className="h-4 w-4" strokeWidth={2.5} />
+              <RefreshCw className={`h-4 w-4 ${isSpinning ? 'animate-spin' : ''}`} strokeWidth={2.5} />
             </button>
             <div className="inline-flex h-10 items-center gap-1.5 rounded-full bg-[#f0fdfa] px-4 text-[13px] font-bold text-[#0f766e]">
               <ShieldCheck className="h-4 w-4" strokeWidth={2.5} />
