@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { CLIENT_PANEL_BASE } from "../../../private/client/clientNav";
 
 import {
   CheckCircle2,
@@ -30,13 +31,13 @@ interface Props {
 export default function BookingSuccessStep({
   nurse,
   selectedService,
-  selectedDays
+  selectedDays,
 }: Props) {
-
   const navigate = useNavigate();
-
   const [loadingStep, setLoadingStep] = useState(0);
   const [completed, setCompleted] = useState(false);
+
+
 
   const loadingTexts = [
     "Validando disponibilidad del profesional...",
@@ -44,12 +45,14 @@ export default function BookingSuccessStep({
     "Confirmando la reserva..."
   ];
 
+
+
   useEffect(() => {
 
     if (loadingStep < loadingTexts.length) {
       const timer = setTimeout(() => {
         setLoadingStep((prev) => prev + 1);
-      }, 1800);
+      }, 1500);
 
       return () => clearTimeout(timer);
     }
@@ -57,7 +60,7 @@ export default function BookingSuccessStep({
     if (loadingStep === loadingTexts.length) {
       const timer = setTimeout(() => {
         setCompleted(true);
-      }, 1200);
+      }, 1000);
 
       return () => clearTimeout(timer);
     }
@@ -205,7 +208,7 @@ export default function BookingSuccessStep({
           <div className="mt-10 flex gap-4 justify-center flex-wrap">
 
             <button
-              onClick={() => navigate("#")}
+              onClick={() => navigate(`${CLIENT_PANEL_BASE}/mis-contrataciones`)}
               className="
                 px-8
                 h-14

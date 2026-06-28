@@ -1,13 +1,15 @@
-import { useMemo, useState } from "react";
-import { Trash2, Info } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { Trash2, Info, Loader2 } from "lucide-react";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 import { es } from "react-day-picker/locale/es";
+import { fetchNurseAvailabilityData, formatHour } from "../../../private/client/services/hiring.service";
 
 interface Props {
   selectedDays: SelectedDay[];
   setSelectedDays: React.Dispatch<React.SetStateAction<SelectedDay[]>>;
   pricePerHour: number;
+  nurseId?: string;
   onContinue: () => void;
   onBack: () => void;
 }
@@ -18,67 +20,183 @@ interface SelectedDay {
   end: string;
 }
 
+const defaultSlots = [
+  { day_of_week: 0, start_hour: 8, end_hour: 14, enabled: false },
+  { day_of_week: 1, start_hour: 7, end_hour: 15, enabled: true },
+  { day_of_week: 2, start_hour: 7, end_hour: 15, enabled: true },
+  { day_of_week: 3, start_hour: 7, end_hour: 15, enabled: true },
+  { day_of_week: 4, start_hour: 7, end_hour: 15, enabled: true },
+  { day_of_week: 5, start_hour: 7, end_hour: 15, enabled: true },
+  { day_of_week: 6, start_hour: 8, end_hour: 13, enabled: true },
+];
+
 export default function BookingCalendar({
   selectedDays,
   setSelectedDays,
   pricePerHour,
+  nurseId,
   onContinue,
   onBack
 }: Props) {
+  const [slots, setSlots] = useState<any[]>([]);
+  const [exceptions, setExceptions] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const unavailableWeekDays = [0, 1, 2, 3];
+  useEffect(() => {
+    if (!nurseId) {
+      setLoading(false);
+      return;
+    }
+    fetchNurseAvailabilityData(nurseId)
+      .then((data) => {
+        setSlots(data.slots || []);
+        setExceptions(data.exceptions || []);
+        setBookings(data.bookings || []);
+      })
+      .catch((err) => {
+        console.error("Error loading availability calendar:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [nurseId]);
 
-  const schedules = {
-    4: {
-      start: "8:00 am",
-      end: "8:00 pm"
-    },
+  const activeSlots = slots.length > 0 ? slots : defaultSlots;
+  const enabledDays = activeSlots.filter((s) => s.enabled).map((s) => s.day_of_week);
+  const unavailableWeekDays = [0, 1, 2, 3, 4, 5, 6].filter((d) => !enabledDays.includes(d));
 
-    5: {
-      start: "8:00 am",
-      end: "6:00 pm"
-    },
+  const schedules = activeSlots.reduce((acc: any, s: any) => {
+    if (s.enabled) {
+      acc[s.day_of_week] = {
+        start: formatHour(s.start_hour),
+        end: formatHour(s.end_hour),
+      };
+    }
+    return acc;
+  }, {});
 
-    6: {
-      start: "12:00 pm",
-      end: "9:00 pm"
+  /**
+   * Devuelve el horario disponible para una fecha dada.
+   * Retorna null si el día no tiene disponibilidad (bloqueado o fuera de agenda).
+   * Las excepciones siempre sobrescriben la agenda recurrente.
+   */
+  const getDaySchedule = (date: Date): { start: string; end: string } | null => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const dateStr = String(date.getDate()).padStart(2, "0");
+    const formattedDate = `${year}-${month}-${dateStr}`;
+
+    const matchExc = exceptions.find(e => e.fecha === formattedDate);
+    if (matchExc) {
+      // Vacaciones → día completo bloqueado
+      if (matchExc.tipo === "vacation") return null;
+
+      // Bloqueo total (sin horas) → día completo bloqueado
+      if (matchExc.tipo === "block" &&
+          (matchExc.start_hour === null || matchExc.start_hour === undefined)) {
+        return null;
+      }
+
+      // Bloqueo parcial (con horas) → el horario de la excepción ES el horario disponible
+      // (la excepción restringe, pero no elimina el día)
+      if (matchExc.tipo === "block" &&
+          matchExc.start_hour !== null && matchExc.start_hour !== undefined) {
+        return {
+          start: formatHour(matchExc.start_hour),
+          end:   formatHour(matchExc.end_hour),
+        };
+      }
+
+      // Horario extra (día normalmente libre pero con disponibilidad especial)
+      if (matchExc.tipo === "extra") {
+        return {
+          start: formatHour(matchExc.start_hour ?? 8),
+          end:   formatHour(matchExc.end_hour ?? 18),
+        };
+      }
     }
 
+    // Sin excepción: usar agenda recurrente; null si el día de semana no está habilitado
+    return schedules[date.getDay()] || null;
+  };
+
+  const getDateBlockedRanges = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const dateStr = String(date.getDate()).padStart(2, "0");
+    const formattedDate = `${year}-${month}-${dateStr}`;
+
+    const ranges: { start: string; end: string; label: string }[] = [];
+
+    const dateBookings = bookings.filter((b) => b.fecha === formattedDate);
+    dateBookings.forEach((b) => {
+      ranges.push({ start: b.start, end: b.end, label: "Reserva" });
+    });
+
+    const matchExc = exceptions.find(e => e.fecha === formattedDate);
+    if (matchExc && matchExc.tipo === "block" && matchExc.start_hour !== null && matchExc.start_hour !== undefined) {
+      ranges.push({
+        start: formatHour(matchExc.start_hour),
+        end: formatHour(matchExc.end_hour),
+        label: "Bloqueo agenda"
+      });
+    }
+
+    return ranges;
+  };
+
+  // Convierte "8:00 am" / "2:00 pm" a entero de hora (0-23)
+  const parseHour = (value: string): number => {
+    const [hourStr] = value.split(":");
+    let hour = parseInt(hourStr);
+    const isPM = value.includes("pm");
+    if (isPM && hour !== 12) hour += 12;
+    if (!isPM && hour === 12) hour = 0;
+    return hour;
+  };
+
+  const isDisabledDate = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (date < today) return true;
+
+    // Limit to next 30 days
+    const maxDate = new Date();
+    maxDate.setDate(today.getDate() + 30);
+    maxDate.setHours(0, 0, 0, 0);
+    if (date > maxDate) return true;
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const dateStr = String(date.getDate()).padStart(2, "0");
+    const formattedDate = `${year}-${month}-${dateStr}`;
+
+    // Excepciones tienen prioridad sobre la agenda recurrente
+    const matchExc = exceptions.find(e => e.fecha === formattedDate);
+    if (matchExc) {
+      if (matchExc.tipo === "vacation") return true;
+      if (matchExc.tipo === "block" && (matchExc.start_hour === null || matchExc.start_hour === undefined)) {
+        return true;
+      }
+      if (matchExc.tipo === "extra") return false; // día extra habilitado
+    }
+
+    // Si el día de semana no está en la agenda recurrente → deshabilitado
+    if (unavailableWeekDays.includes(date.getDay())) return true;
+
+    // Bloquear día si hay cualquier reserva en ese día
+    const daySchedule = schedules[date.getDay()];
+    if (daySchedule) {
+      const dayBookings = bookings.filter(b => b.fecha === formattedDate);
+      if (dayBookings.length > 0) return true;
+    }
+
+    return false;
   };
 
   const today = new Date();
-
   today.setHours(0, 0, 0, 0);
-
-  const parseHour = (
-    value: string
-  ) => {
-
-    const [hourStr] =
-      value.split(":");
-
-    let hour =
-      parseInt(hourStr);
-
-    const isPM =
-      value.includes("pm");
-
-    if (
-      isPM &&
-      hour !== 12
-    ) {
-      hour += 12;
-    }
-
-    if (
-      !isPM &&
-      hour === 12
-    ) {
-      hour = 0;
-    }
-
-    return hour;
-  };
 
   const hours = [
     "6:00 am",
@@ -151,58 +269,49 @@ export default function BookingCalendar({
 
   {/* validar horarios */ }
   const validateRange = (
-
     start: string,
-    end: string
-
+    end: string,
+    date: Date
   ) => {
+    const startHour = parseHour(start);
+    const endHour = parseHour(end);
 
-    const startHour =
-      parseHour(start);
-
-    const endHour =
-      parseHour(end);
-
-    if (
-      endHour <= startHour
-    ) {
-
+    if (endHour <= startHour) {
       return {
         valid: false,
-        message:
-          "La hora de salida debe ser mayor a la entrada"
-
+        message: "La hora de salida debe ser mayor a la entrada"
       };
     }
 
-    if (
-      endHour - startHour < 1
-    ) {
-
+    if (endHour - startHour < 1) {
       return {
         valid: false,
-        message:
-          "El servicio debe durar mínimo 1 hora"
-
+        message: "El servicio debe durar mínimo 1 hora"
       };
+    }
+
+    // Check collision with blocked intervals (bookings & partial blocks)
+    const blockedRanges = getDateBlockedRanges(date);
+    for (const range of blockedRanges) {
+      const rStart = parseHour(range.start);
+      const rEnd = parseHour(range.end);
+      if (Math.max(startHour, rStart) < Math.min(endHour, rEnd)) {
+        return {
+          valid: false,
+          message: `El horario choca con un bloque ocupado/reservado (${range.start} - ${range.end})`
+        };
+      }
     }
 
     return {
       valid: true,
       message: ""
-
     };
   };
 
-  const hasErrors =
-    selectedDays.some((item) => {
-
-      return !validateRange(
-        item.start,
-        item.end
-      ).valid;
-
-    });
+  const hasErrors = selectedDays.some((item) => {
+    return !validateRange(item.start, item.end, item.date).valid;
+  });
 
   const totalHours = useMemo(() => {
     return selectedDays.reduce(
@@ -227,6 +336,15 @@ export default function BookingCalendar({
   const totalPrice =
     totalHours *
     pricePerHour;
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <Loader2 className="w-10 h-10 animate-spin text-teal-600" />
+        <p className="text-sm text-slate-500 font-medium">Cargando disponibilidad...</p>
+      </div>
+    );
+  }
 
   return (
 
@@ -271,7 +389,7 @@ export default function BookingCalendar({
         const key = date.toDateString();
 
         if (!map.has(key)) {
-          const schedule = schedules[date.getDay() as keyof typeof schedules];
+          const schedule = getDaySchedule(date);
 
           if (schedule) {
             filtered.push({
@@ -287,16 +405,11 @@ export default function BookingCalendar({
     });
   }}
 
-  disabled={[
-    { before: today },
-    { dayOfWeek: unavailableWeekDays }
-  ]}
+  disabled={isDisabledDate}
 
   modifiers={{
     selected: selectedDays.map(d => d.date),
-    unavailable: (date) =>
-      unavailableWeekDays.includes(date.getDay()) ||
-      date < today
+    unavailable: (date) => isDisabledDate(date)
   }}
 
   classNames={{
@@ -366,47 +479,29 @@ export default function BookingCalendar({
           <div className="space-y-5">
 
             {selectedDays.map((item, index) => {
-
-              const validation =
-                validateRange(
-                  item.start,
-                  item.end
-                );
-
-              const hoursCount =
-                calculateHours(
-                  item.start,
-                  item.end
-                );
-
-              const daySchedule =
-                schedules[
-                item.date.getDay() as keyof typeof schedules
-                ];
+              const validation = validateRange(item.start, item.end, item.date);
+              const blockedRanges = getDateBlockedRanges(item.date);
+              const hoursCount = calculateHours(item.start, item.end);
+              // getDaySchedule puede retornar null si el día quedó bloqueado,
+              // usamos el fallback mínimo para evitar crash en el selector
+              const daySchedule = getDaySchedule(item.date) ?? { start: "6:00 am", end: "8:00 pm" };
 
               return (
-
                 <div
-
                   key={item.date.toISOString()}
-
                   className={`
-
                     rounded-2xl
-border
-border-teal-200
-bg-teal-50/40
-p-5
-shadow-sm
-transition-all
-
+                    border
+                    border-teal-200
+                    bg-teal-50/40
+                    p-5
+                    shadow-sm
+                    transition-all
                     ${validation.valid
-
                       ? `
                           bg-slate-50
                           border-slate-200
                         `
-
                       : `
                           bg-red-50
                           border-red-200
@@ -414,14 +509,10 @@ transition-all
                     }
                   `}
                 >
-
                   {/* TOP */}
                   <div className="flex items-center justify-between mb-5">
-
                     <div className="flex items-center gap-3">
-
                       <h4 className="font-semibold text-slate-800">
-
                         {item.date.toLocaleDateString(
                           "es-PE",
                           {
@@ -430,25 +521,19 @@ transition-all
                             month: "short",
                           }
                         )}
-
                       </h4>
-
                       <div
-
                         className={`
                           px-3
                           py-1
                           rounded-full
                           text-xs
                           font-semibold
-
                           ${validation.valid
-
                             ? `
                                 bg-teal-100
                                 text-teal-700
                               `
-
                             : `
                                 bg-red-100
                                 text-red-700
@@ -456,36 +541,33 @@ transition-all
                           }
                         `}
                       >
-
                         {hoursCount}h
-
                       </div>
-
                     </div>
-
                     <button
-
                       onClick={() => removeDay(item.date)}
-
                       className="
-w-8
-h-8
-rounded-full
-flex
-items-center
-justify-center
-text-slate-400
-hover:bg-red-100
-hover:text-red-500
-transition
-"
+                        w-8
+                        h-8
+                        rounded-full
+                        flex
+                        items-center
+                        justify-center
+                        text-slate-400
+                        hover:bg-red-100
+                        hover:text-red-500
+                        transition
+                      "
                     >
-
                       <Trash2 className="w-4 h-4" />
-
                     </button>
-
                   </div>
+
+                  {blockedRanges.length > 0 && (
+                    <div className="mb-4 px-3 py-2 rounded-xl bg-amber-50 border border-amber-100 text-xs text-amber-700 font-medium">
+                      ⚠️ Horarios ocupados este día: {blockedRanges.map(r => `${r.start} - ${r.end} (${r.label})`).join(", ")}
+                    </div>
+                  )}
 
                   {/* HORARIOS */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

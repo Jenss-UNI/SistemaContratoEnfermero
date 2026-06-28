@@ -1,4 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useAuth } from "../../../../core/contexts/AuthContext";
+import { fetchNurseServices, updateServiceStatus, updateServiceDayStart, updateServiceDayEnd } from "../services/enfermeroProfile.service";
 import {
   Briefcase,
   Calendar,
@@ -24,7 +26,7 @@ import {
 
 /* ─── Types ─── */
 type ServiceStatus = "pending" | "confirmed" | "active" | "completed" | "cancelled";
-type ServiceTab = "pending" | "confirmed" | "active" | "completed";
+type ServiceTab = "pending" | "confirmed" | "active" | "in_progress" | "completed";
 
 interface ServiceDay {
   id: number;
@@ -62,17 +64,19 @@ interface ServiceRow {
 
 const TAB_LABELS: Record<ServiceTab, string> = {
   pending: "Pendientes",
-  confirmed: "Aceptados",
-  active: "En curso",
-  completed: "Completado",
+  confirmed: "Firma requerida",
+  active: "Confirmados",
+  in_progress: "En curso",
+  completed: "Completados",
 };
 
 const STATUS_BADGES: Record<string, { label: string; bg: string; text: string }> = {
-  pending: { label: "Pendiente", bg: "bg-amber-50 text-amber-700 border border-amber-200/50", text: "text-amber-750" },
-  confirmed: { label: "Aceptado", bg: "bg-sky-50 text-sky-700 border border-sky-200/50", text: "text-sky-750" },
-  active: { label: "En curso", bg: "bg-teal-50 text-teal-700 border border-teal-200/50", text: "text-teal-750" },
-  completed: { label: "Completado", bg: "bg-emerald-50 text-emerald-700 border border-emerald-200/50", text: "text-emerald-750" },
-  cancelled: { label: "Cancelado", bg: "bg-rose-50 text-rose-700 border border-rose-200/50", text: "text-rose-750" },
+  pending:     { label: "Pendiente",   bg: "bg-amber-50 text-amber-700 border border-amber-200/50",   text: "text-amber-750" },
+  confirmed:   { label: "Firma Requerida", bg: "bg-orange-50 text-orange-705 border border-orange-200/50", text: "text-orange-750" },
+  active:      { label: "Confirmado",  bg: "bg-sky-50 text-sky-705 border border-sky-200/50",          text: "text-sky-750" },
+  in_progress: { label: "En curso",    bg: "bg-teal-50 text-teal-705 border border-teal-200/50",       text: "text-teal-750" },
+  completed:   { label: "Completado",  bg: "bg-emerald-50 text-emerald-705 border border-emerald-200/50", text: "text-emerald-750" },
+  cancelled:   { label: "Cancelado",   bg: "bg-rose-50 text-rose-705 border border-rose-200/50",       text: "text-rose-750" },
 };
 
 function formatHour(h: number) {
@@ -89,244 +93,31 @@ function formatDateShort(dateStr: string) {
 const ITEMS_PER_PAGE = 4;
 
 export default function MisServiciosPage() {
-  // Mock data perfectly matching screenshots
-  const [services, setServices] = useState<ServiceRow[]>([
-    // En Curso (Tab 3) - Carmen Rodriguez matching mockup perfectly
-    {
-      id: 11,
-      client_id: "c-3",
-      status: "active",
-      payment_status: "paid",
-      service_type: "Especializado",
-      total_hours: 30,
-      total_amount: 4500,
-      hourly_rate: 150,
-      service_code: "SER-000050",
-      pin_code: "PIN123",
-      patient_name: "Elena Rodriguez",
-      patient_age: 78,
-      address: "Av. Larco 1234",
-      district: "Miraflores",
-      created_at: "2026-05-10T08:00:00.000Z",
-      clientName: "Carmen Rodriguez",
-      clientPlan: "Premium",
-      notes: "Paciente con artrosis de cadera. Necesita asistencia completa.",
-      service_days: [
-        { id: 201, day_date: "2026-05-12", start_hour: 8, end_hour: 14, status: "completed", real_start: "08:05", real_end: "14:10" },
-        { id: 202, day_date: "2026-05-13", start_hour: 8, end_hour: 14, status: "active", real_start: "08:15" },
-        { id: 203, day_date: "2026-05-14", start_hour: 8, end_hour: 14, status: "scheduled" },
-        { id: 204, day_date: "2026-05-15", start_hour: 8, end_hour: 14, status: "scheduled" },
-        { id: 205, day_date: "2026-05-16", start_hour: 8, end_hour: 14, status: "scheduled" }
-      ]
-    },
+  const { user } = useAuth();
+  const [services, setServices] = useState<ServiceRow[]>([]);
+  const [loading, setLoading] = useState(true);
 
-    // Pendientes (Tab 1)
-    {
-      id: 1,
-      client_id: "c-1",
-      status: "pending",
-      payment_status: "paid",
-      service_type: "Asistencial",
-      total_hours: 6,
-      total_amount: 120,
-      hourly_rate: 20,
-      service_code: "SER-000039",
-      pin_code: "PIN123",
-      patient_name: "Elena Rodriguez",
-      patient_age: 12,
-      address: "Av. Larco 456",
-      district: "Miraflores",
-      created_at: "2026-05-25T01:00:00.000Z",
-      clientName: "Jens Jeremies Luna Levita",
-      clientPlan: "Premium",
-      notes: "Paciente requiere cambio de vendajes y control de temperatura.",
-      service_days: [
-        { id: 101, day_date: "2026-05-29", start_hour: 8, end_hour: 14, status: "scheduled" }
-      ]
-    },
-    {
-      id: 2,
-      client_id: "c-1",
-      status: "pending",
-      payment_status: "paid",
-      service_type: "Acompañamiento",
-      total_hours: 4,
-      total_amount: 75,
-      hourly_rate: 18.75,
-      service_code: "SER-000038",
-      pin_code: "PIN388",
-      patient_name: "Elena Rodriguez",
-      patient_age: 12,
-      address: "Av. Larco 456",
-      district: "Miraflores",
-      created_at: "2026-05-24T18:00:00.000Z",
-      clientName: "Jens Jeremies Luna Levita",
-      clientPlan: "Premium",
-      notes: "Paseo por el parque y lectura por la tarde.",
-      service_days: [
-        { id: 102, day_date: "2026-05-30", start_hour: 14, end_hour: 18, status: "scheduled" }
-      ]
-    },
-    {
-      id: 3,
-      client_id: "c-1",
-      status: "pending",
-      payment_status: "paid",
-      service_type: "Acompañamiento",
-      total_hours: 10,
-      total_amount: 180,
-      hourly_rate: 18,
-      service_code: "SER-000037",
-      pin_code: "PIN377",
-      patient_name: "Elena Rodriguez",
-      patient_age: 12,
-      address: "Av. Larco 456",
-      district: "Miraflores",
-      created_at: "2026-05-24T12:00:00.000Z",
-      clientName: "Jens Jeremies Luna Levita",
-      clientPlan: "Premium",
-      notes: "Acompañamiento escolar y tareas.",
-      service_days: [
-        { id: 103, day_date: "2026-05-28", start_hour: 8, end_hour: 13, status: "scheduled" },
-        { id: 104, day_date: "2026-05-29", start_hour: 8, end_hour: 13, status: "scheduled" }
-      ]
-    },
-    {
-      id: 4,
-      client_id: "c-1",
-      status: "pending",
-      payment_status: "paid",
-      service_type: "Asistencial",
-      total_hours: 6,
-      total_amount: 120,
-      hourly_rate: 20,
-      service_code: "SER-000036",
-      pin_code: "PIN366",
-      patient_name: "Elena Rodriguez",
-      patient_age: 12,
-      address: "Av. Larco 456",
-      district: "Miraflores",
-      created_at: "2026-05-23T10:00:00.000Z",
-      clientName: "Jens Jeremies Luna Levita",
-      clientPlan: "Premium",
-      notes: "Monitoreo rutinario posoperatorio.",
-      service_days: [
-        { id: 105, day_date: "2026-05-29", start_hour: 8, end_hour: 14, status: "scheduled" }
-      ]
-    },
-    {
-      id: 5,
-      client_id: "c-1",
-      status: "pending",
-      payment_status: "paid",
-      service_type: "Asistencial",
-      total_hours: 8,
-      total_amount: 160,
-      hourly_rate: 20,
-      service_code: "SER-000035",
-      pin_code: "PIN355",
-      patient_name: "Elena Rodriguez",
-      patient_age: 12,
-      address: "Av. Larco 456",
-      district: "Miraflores",
-      created_at: "2026-05-22T08:00:00.000Z",
-      clientName: "Jens Jeremies Luna Levita",
-      clientPlan: "Premium",
-      service_days: [
-        { id: 106, day_date: "2026-05-27", start_hour: 9, end_hour: 17, status: "scheduled" }
-      ]
-    },
-
-    // Aceptados / Confirmados (Tab 2)
-    {
-      id: 7,
-      client_id: "c-2",
-      status: "confirmed",
-      payment_status: "paid",
-      service_type: "Asistencial",
-      total_hours: 15,
-      total_amount: 340,
-      hourly_rate: 22.6,
-      service_code: "SER-000042",
-      pin_code: "PIN777",
-      patient_name: "Juana Lopez Casas",
-      patient_age: 88,
-      address: "Jr. Huamanga 123",
-      district: "La Victoria",
-      created_at: "2026-05-24T09:00:00.000Z",
-      clientName: "Axel Perez",
-      clientPlan: "Familiar",
-      service_days: [
-        { id: 108, day_date: "2026-05-26", start_hour: 7, end_hour: 12, status: "scheduled" },
-        { id: 109, day_date: "2026-05-27", start_hour: 7, end_hour: 12, status: "scheduled" },
-        { id: 110, day_date: "2026-05-28", start_hour: 7, end_hour: 12, status: "scheduled" }
-      ]
-    },
-
-    // Finalizados / Completados (Tab 4)
-    {
-      id: 9,
-      client_id: "c-1",
-      status: "completed",
-      payment_status: "paid",
-      service_type: "Especializado",
-      total_hours: 4,
-      total_amount: 106,
-      hourly_rate: 26.5,
-      service_code: "SER-000034",
-      pin_code: "PIN034",
-      patient_name: "Elena Rodriguez",
-      patient_age: 12,
-      address: "Av. Larco 456",
-      district: "Miraflores",
-      created_at: "2026-05-21T09:00:00.000Z",
-      clientName: "Jens Jeremies Luna Levita",
-      clientPlan: "Premium",
-      service_days: [
-        {
-          id: 112,
-          day_date: "2026-05-27",
-          start_hour: 8,
-          end_hour: 12,
-          status: "completed",
-          real_start: "08:02",
-          real_end: "12:00",
-          report: "Se realizó curación de herida, suministro de analgésico y monitoreo de pulso."
-        }
-      ]
-    },
-    {
-      id: 10,
-      client_id: "c-1",
-      status: "completed",
-      payment_status: "paid",
-      service_type: "Asistencial",
-      total_hours: 5,
-      total_amount: 100,
-      hourly_rate: 20,
-      service_code: "SER-000033",
-      pin_code: "PIN033",
-      patient_name: "Elena Rodriguez",
-      patient_age: 12,
-      address: "Av. Larco 456",
-      district: "Miraflores",
-      created_at: "2026-05-20T09:00:00.000Z",
-      clientName: "Jens Jeremies Luna Levita",
-      clientPlan: "Premium",
-      service_days: [
-        {
-          id: 113,
-          day_date: "2026-05-21",
-          start_hour: 9,
-          end_hour: 14,
-          status: "completed",
-          real_start: "08:55",
-          real_end: "14:05",
-          report: "Control general y acompañamiento en terapia física."
-        }
-      ]
+  const loadServices = () => {
+    if (!user?.id) {
+      setLoading(false);
+      return;
     }
-  ]);
+    setLoading(true);
+    fetchNurseServices(user.id)
+      .then((data) => {
+        setServices(data);
+      })
+      .catch((err) => {
+        console.error("Error loading nurse services:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  };
+
+  useEffect(() => {
+    loadServices();
+  }, [user?.id]);
 
   const [activeTab, setActiveTab] = useState<ServiceTab>("pending");
   const [searchQuery, setSearchQuery] = useState("");
@@ -354,27 +145,35 @@ export default function MisServiciosPage() {
   };
 
   // Accept a service solicitation
-  const handleAccept = (service: ServiceRow) => {
+  const handleAccept = async (service: ServiceRow) => {
     setProcessing(true);
-    setTimeout(() => {
-      setServices((prev) =>
-        prev.map((s) => (s.id === service.id ? { ...s, status: "confirmed" } : s))
-      );
-      setProcessing(false);
-      setAcceptConfirm(null);
+    try {
+      await updateServiceStatus(service.id, "confirmed");
       showToast("Solicitud aceptada exitosamente.", "success");
-    }, 1000);
+      setAcceptConfirm(null);
+      loadServices();
+    } catch (err: any) {
+      console.error("Error accepting service:", err);
+      showToast(`Error al aceptar: ${err.message || err}`, "error");
+    } finally {
+      setProcessing(false);
+    }
   };
 
   // Reject a service solicitation
-  const handleReject = (service: ServiceRow) => {
+  const handleReject = async (service: ServiceRow) => {
     setProcessing(true);
-    setTimeout(() => {
-      setServices((prev) => prev.filter((s) => s.id !== service.id));
-      setProcessing(false);
-      setRejectConfirm(null);
+    try {
+      await updateServiceStatus(service.id, "rejected");
       showToast("Solicitud rechazada correctamente.", "info");
-    }, 1000);
+      setRejectConfirm(null);
+      loadServices();
+    } catch (err: any) {
+      console.error("Error rejecting service:", err);
+      showToast(`Error al rechazar: ${err.message || err}`, "error");
+    } finally {
+      setProcessing(false);
+    }
   };
 
   // Start assisted session with PIN
@@ -390,6 +189,13 @@ export default function MisServiciosPage() {
 
     const now = new Date();
     const realStart = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+    // Persistir inicio de jornada en base de datos
+    const targetDay = service.service_days[dayIndex];
+    if (targetDay?.id) {
+      updateServiceDayStart(Number(targetDay.id), realStart)
+        .catch((err) => console.error("Error persiting day start in DB:", err));
+    }
 
     setServices((prev) =>
       prev.map((s) => {
@@ -429,6 +235,19 @@ export default function MisServiciosPage() {
     );
     const allDone = updatedDays.every((d) => d.status === "completed");
 
+    // Persistir fin de jornada en base de datos
+    const targetDay = service.service_days[dayIndex];
+    if (targetDay?.id) {
+      updateServiceDayEnd(Number(targetDay.id), realEnd, endNotes)
+        .then(() => {
+          if (allDone) {
+            updateServiceStatus(Number(service.id), "completed")
+              .catch((err) => console.error("Error updating service status to completed in DB:", err));
+          }
+        })
+        .catch((err) => console.error("Error persiting day end in DB:", err));
+    }
+
     setServices((prev) =>
       prev.map((s) => {
         if (s.id !== service.id) return s;
@@ -460,7 +279,14 @@ export default function MisServiciosPage() {
   // Filters and Pagination
   const filteredServices = useMemo(() => {
     return services.filter((s) => {
-      if (s.status !== activeTab) return false;
+      if (activeTab === "in_progress") {
+        if (!(s.status === "active" && getActiveDayIndex(s) >= 0)) return false;
+      } else if (activeTab === "active") {
+        if (!(s.status === "active" && getActiveDayIndex(s) === -1)) return false;
+      } else {
+        if (s.status !== activeTab) return false;
+      }
+
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         return (
@@ -484,10 +310,20 @@ export default function MisServiciosPage() {
     return {
       pending: services.filter((s) => s.status === "pending").length,
       confirmed: services.filter((s) => s.status === "confirmed").length,
-      active: services.filter((s) => s.status === "active").length,
+      active: services.filter((s) => s.status === "active" && getActiveDayIndex(s) === -1).length,
+      in_progress: services.filter((s) => s.status === "active" && getActiveDayIndex(s) >= 0).length,
       completed: services.filter((s) => s.status === "completed").length,
     };
   }, [services]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <Loader2 className="w-10 h-10 animate-spin text-teal-600" />
+        <p className="text-sm text-slate-500 font-medium">Cargando servicios...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full space-y-6">
@@ -502,7 +338,7 @@ export default function MisServiciosPage() {
 
       {/* Tabs / Selectores de Estado */}
       <div className="flex bg-slate-100/70 border border-slate-200/50 rounded-xl p-1 overflow-x-auto gap-1">
-        {(["pending", "confirmed", "active", "completed"] as ServiceTab[]).map((tab) => {
+        {(["pending", "confirmed", "active", "in_progress", "completed"] as ServiceTab[]).map((tab) => {
           const count = tabCounts[tab];
           const isActive = activeTab === tab;
           return (
@@ -578,16 +414,20 @@ export default function MisServiciosPage() {
             {activeTab === "pending"
               ? "Las nuevas solicitudes de pacientes que coincidan con tu perfil y distrito aparecerán aquí."
               : activeTab === "confirmed"
-              ? "Los servicios aceptados y confirmados que esperan ser iniciados mediante PIN por el paciente."
+              ? "Servicios aceptados que están a la espera de la firma digital del cliente."
               : activeTab === "active"
-              ? "No tienes jornadas asistenciales o acompañamientos activos en este momento."
+              ? "Servicios listos para iniciar. El cliente ha firmado el contrato y puedes marcar asistencia con PIN."
+              : activeTab === "in_progress"
+              ? "Jornadas y acompañamientos asistenciales en curso actualmente."
               : "Tus contratos asistenciales completados e históricos se archivarán en esta pestaña."}
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {paginatedServices.map((service) => {
-            const badge = STATUS_BADGES[service.status];
+            const badge = service.status === "active" && getActiveDayIndex(service) >= 0
+              ? STATUS_BADGES.in_progress
+              : STATUS_BADGES[service.status];
             const completed = completedCount(service);
             const total = service.service_days.length;
             const todayIdx = getTodaysPendingDay(service);
@@ -701,36 +541,43 @@ export default function MisServiciosPage() {
                       </>
                     )}
                     {service.status === "confirmed" && (
-                      todayIdx >= 0 ? (
-                        <button
-                          type="button"
-                          onClick={() => setPinModal({ service, dayIndex: todayIdx })}
-                          className="w-full py-2.5 bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold rounded-xl cursor-pointer shadow-sm transition flex items-center justify-center gap-1.5 whitespace-nowrap animate-pulse"
-                        >
-                          <PlayCircle className="h-4 w-4" />
-                          Iniciar PIN
-                        </button>
-                      ) : (
-                        <span className="w-full text-center text-xs text-slate-450 italic font-medium bg-slate-50 py-2.5 rounded-xl border border-slate-100">
-                          Próx: {firstDay ? formatDateShort(firstDay.day_date) : "—"}
-                        </span>
-                      )
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full py-2.5 bg-slate-100 border border-slate-200 text-slate-400 text-xs font-bold rounded-xl cursor-not-allowed flex items-center justify-center gap-1.5 whitespace-nowrap"
+                      >
+                        <Lock className="h-3.5 w-3.5 text-slate-300" />
+                        Iniciar PIN (Firma requerida)
+                      </button>
                     )}
                     {service.status === "active" && (
                       <>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const idx = getActiveDayIndex(service) >= 0 ? getActiveDayIndex(service) : getTodaysPendingDay(service);
-                            if (idx >= 0) {
+                        {getActiveDayIndex(service) >= 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const idx = getActiveDayIndex(service);
                               setActiveJourney({ service, dayIndex: idx });
-                            }
-                          }}
-                          className="flex-1 py-2.5 bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold rounded-xl cursor-pointer shadow-sm transition flex items-center justify-center gap-1.5 whitespace-nowrap"
-                        >
-                          <Eye className="h-4 w-4" />
-                          Ver jornada activa
-                        </button>
+                            }}
+                            className="flex-1 py-2.5 bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold rounded-xl cursor-pointer shadow-sm transition flex items-center justify-center gap-1.5 whitespace-nowrap"
+                          >
+                            <Eye className="h-4 w-4" />
+                            Ver jornada activa
+                          </button>
+                        ) : todayIdx >= 0 ? (
+                          <button
+                            type="button"
+                            onClick={() => setPinModal({ service, dayIndex: todayIdx })}
+                            className="flex-1 py-2.5 bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold rounded-xl cursor-pointer shadow-sm transition flex items-center justify-center gap-1.5 whitespace-nowrap animate-pulse"
+                          >
+                            <PlayCircle className="h-4 w-4" />
+                            Iniciar PIN
+                          </button>
+                        ) : (
+                          <span className="flex-1 text-center text-xs text-slate-450 italic font-medium bg-slate-50 py-2.5 rounded-xl border border-slate-100 flex items-center justify-center">
+                            Próx: {firstDay ? formatDateShort(firstDay.day_date) : "—"}
+                          </span>
+                        )}
                         <button
                           type="button"
                           onClick={() => setDetailModal(service)}

@@ -42,7 +42,7 @@ export const MOCK_CONTRATACIONES: Contratacion[] = [
     codigo: "SER-000034",
     codigoServicio: "SER-000034",
     codigoContrato: "CON-000034",
-    estado: "activo",
+    estado: "en_curso",
     pagoEstado: "preautorizado",
     pagoContrato: "custodia",
     profesionalNombre: "Carlos Sanchez Martinez",

@@ -4,6 +4,7 @@ import NurseCard from "../components/nurse/NurseCard";
 import type { Nurse } from "../../../core/models/nurse.model";
 import { Search, Star, X, MapPin, ShieldCheck, Users, Trophy, Loader2 } from "lucide-react";
 import { fetchPublicNurses } from "../services/directorio.service";
+import { useAuth } from "../../../core/contexts/AuthContext";
 
 
 export const nurses: Nurse[] = [
@@ -615,6 +616,7 @@ const allDistricts = [
 const serviceTypes = ["Especializado", "Técnico", "Acompañamiento", "Asistencial"];
 
 export default function DirectorioPage() {
+  const { user } = useAuth();
   const [nursesList, setNursesList] = useState<Nurse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -806,7 +808,7 @@ export default function DirectorioPage() {
         setSearchTerm("");
     };
 
-  const isAuthenticated = true; // Cambiar para probar modo autenticado
+  const isAuthenticated = !!user;
 
     return (
         <>

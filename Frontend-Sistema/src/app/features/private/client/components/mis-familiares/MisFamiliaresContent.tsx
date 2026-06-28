@@ -7,8 +7,10 @@ import {
   PatientCard,
   PatientDetailModal,
   PatientFormModal,
+  DeleteFamilyModal,
   patientToForm,
 } from "../../../../../shared/components/client/mis-pacientes";
+import { countActiveServicesForPatient } from "../../services/patient.service";
 
 type ModalMode = "view" | "add" | "edit" | null;
 
@@ -17,6 +19,9 @@ export default function MisFamiliaresContent() {
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [deleteModalPatient, setDeleteModalPatient] = useState<Patient | null>(null);
+  const [loadingServicesForDelete, setLoadingServicesForDelete] = useState(false);
+  const [hasActiveServicesForDelete, setHasActiveServicesForDelete] = useState(false);
 
   const openView = (patient: Patient) => {
     setSelectedPatient(patient);
@@ -40,11 +45,17 @@ export default function MisFamiliaresContent() {
 
   const handleDelete = async (patient: Patient) => {
     if (patient.parentesco === "Yo mismo") return; // Impedir eliminar al propio cliente
-    const ok = window.confirm(
-      `¿Eliminar a tu familiar ${patient.nombreCompleto}? Esta acción no se puede deshacer.`
-    );
-    if (!ok) return;
-    await remove(patient.id);
+    setDeleteModalPatient(patient);
+    setLoadingServicesForDelete(true);
+    setHasActiveServicesForDelete(false);
+    try {
+      const activeCount = await countActiveServicesForPatient(patient.id);
+      setHasActiveServicesForDelete(activeCount > 0);
+    } catch (err) {
+      console.error("Error checking active services for deletion:", err);
+    } finally {
+      setLoadingServicesForDelete(false);
+    }
   };
 
   const handleSaveForm = async (formData: PatientFormData) => {
@@ -220,6 +231,22 @@ export default function MisFamiliaresContent() {
           submitLabel="Guardar Familiar"
           onClose={closeModal}
           onSubmit={handleSaveForm}
+        />
+      )}
+
+      {deleteModalPatient && (
+        <DeleteFamilyModal
+          patientName={deleteModalPatient.nombreCompleto}
+          onClose={() => setDeleteModalPatient(null)}
+          loadingServices={loadingServicesForDelete}
+          hasActiveServices={hasActiveServicesForDelete}
+          isDeleting={saving}
+          onConfirm={async () => {
+            const success = await remove(deleteModalPatient.id);
+            if (success) {
+              setDeleteModalPatient(null);
+            }
+          }}
         />
       )}
     </div>

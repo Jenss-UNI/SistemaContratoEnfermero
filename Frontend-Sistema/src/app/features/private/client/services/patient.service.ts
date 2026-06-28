@@ -202,3 +202,17 @@ export async function deletePatient(patientId: string): Promise<void> {
 
   if (error) throw error;
 }
+
+/**
+ * Cuenta la cantidad de servicios pendientes, activos o confirmados asociados a un familiar.
+ */
+export async function countActiveServicesForPatient(patientId: string): Promise<number> {
+  const { count, error } = await supabase
+    .from("services")
+    .select("id", { count: "exact", head: true })
+    .eq("patient_id", patientId)
+    .in("status", ["pending", "confirmed", "active"]);
+
+  if (error) throw error;
+  return count || 0;
+}

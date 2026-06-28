@@ -1,4 +1,4 @@
-export type ContratacionEstado = "pendiente" | "confirmado" | "activo" | "completado";
+export type ContratacionEstado = "pendiente" | "firma_requerida" | "confirmado" | "en_curso" | "completado";
 
 export type PagoEstado = "pendiente" | "preautorizado" | "liberado";
 
@@ -60,5 +60,12 @@ export type ContratoDetalle = Contratacion & {
   comisionPorcentaje: number;
   clienteNombre: string;
   clientePlan: string;
+  clienteDni?: string;
   pinServicio: string;
+  firma?: {
+    signature_url: string;
+    signed_at: string;
+    dni: string;
+    ip_address?: string;
+  } | null;
 };

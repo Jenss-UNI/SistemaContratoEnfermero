@@ -3,6 +3,7 @@ export { default as PatientCard } from "./PatientCard";
 export { default as PatientDetailModal } from "./PatientDetailModal";
 export { default as PatientForm } from "./PatientForm";
 export { default as PatientFormModal } from "./PatientFormModal";
+export { default as DeleteFamilyModal } from "./DeleteFamilyModal";
 export { default as TagBadge } from "./TagBadge";
 export { default as TagListInput } from "./TagListInput";
 export {

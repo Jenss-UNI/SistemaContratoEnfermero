@@ -1,12 +1,54 @@
-import { useState } from "react";
-import { CalendarDays, Clock, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { CalendarDays, Clock, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 import { es } from "date-fns/locale";
+import { fetchNurseAvailabilityData, formatHour } from "../../../private/client/services/hiring.service";
 
-export default function NurseAvailability() {
+interface Props {
+  nurseId?: string;
+}
 
-  const unavailableWeekDays = [0, 1, 2, 3]; // Domingo a Miercoles no disponible
+const defaultSlots = [
+  { day_of_week: 0, start_hour: 8, end_hour: 14, enabled: false },
+  { day_of_week: 1, start_hour: 7, end_hour: 15, enabled: true },
+  { day_of_week: 2, start_hour: 7, end_hour: 15, enabled: true },
+  { day_of_week: 3, start_hour: 7, end_hour: 15, enabled: true },
+  { day_of_week: 4, start_hour: 7, end_hour: 15, enabled: true },
+  { day_of_week: 5, start_hour: 7, end_hour: 15, enabled: true },
+  { day_of_week: 6, start_hour: 8, end_hour: 13, enabled: true },
+];
+
+export default function NurseAvailability({ nurseId }: Props) {
+  const [slots, setSlots] = useState<any[]>([]);
+  const [exceptions, setExceptions] = useState<any[]>([]);
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<Date>();
+
+  useEffect(() => {
+    if (!nurseId) {
+      setLoading(false);
+      return;
+    }
+    fetchNurseAvailabilityData(nurseId)
+      .then((data) => {
+        setSlots(data.slots || []);
+        setExceptions(data.exceptions || []);
+        setBookings(data.bookings || []);
+      })
+      .catch((err) => {
+        console.error("Error fetching availability:", err);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [nurseId]);
+
+  const activeSlots = slots.length > 0 ? slots : defaultSlots;
+  const enabledDays = activeSlots.filter(s => s.enabled).map(s => s.day_of_week);
+  const unavailableWeekDays = [0, 1, 2, 3, 4, 5, 6].filter(d => !enabledDays.includes(d));
+
   const weekDays = [
     "Dom",
     "Lun",
@@ -16,23 +58,106 @@ export default function NurseAvailability() {
     "Vie",
     "Sáb",
   ];
-  const schedules = {
-    4: { start: "8:00 am", end: "8:00 pm" }, // Jueves
-    5: { start: "8:00 am", end: "6:00 pm" }, // Viernes
-    6: { start: "12:00 pm", end: "9:00 pm" } // Sábado
+
+  const schedules = activeSlots.reduce((acc: any, s: any) => {
+    if (s.enabled) {
+      acc[s.day_of_week] = {
+        start: formatHour(s.start_hour),
+        end: formatHour(s.end_hour)
+      };
+    }
+    return acc;
+  }, {});
+
+  const getSelectedSchedule = () => {
+    if (!selected) return null;
+    const year = selected.getFullYear();
+    const month = String(selected.getMonth() + 1).padStart(2, "0");
+    const dateStr = String(selected.getDate()).padStart(2, "0");
+    const formattedDate = `${year}-${month}-${dateStr}`;
+
+    const matchExc = exceptions.find(e => e.fecha === formattedDate);
+    if (matchExc) {
+      if (matchExc.tipo === "vacation") {
+        return null;
+      }
+      if (matchExc.tipo === "block") {
+        if (matchExc.start_hour === null || matchExc.start_hour === undefined) {
+          return null;
+        }
+        return {
+          start: `Excepto: ${formatHour(matchExc.start_hour)}`,
+          end: formatHour(matchExc.end_hour)
+        };
+      }
+      if (matchExc.tipo === "extra") {
+        return {
+          start: formatHour(matchExc.start_hour ?? 8),
+          end: formatHour(matchExc.end_hour ?? 18)
+        };
+      }
+    }
+    return schedules[selected.getDay()] || null;
   };
 
-  const [selected, setSelected] =
-    useState<Date>();
+  const selectedSchedule = getSelectedSchedule();
+  const isSelectedAvailable = selectedSchedule !== null;
 
-  const selectedSchedule =
-    selected
-      ? schedules[selected.getDay() as keyof typeof schedules]
-      : null;
+  const getDateBookings = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const dateStr = String(date.getDate()).padStart(2, "0");
+    const formattedDate = `${year}-${month}-${dateStr}`;
+    return bookings.filter((b) => b.fecha === formattedDate);
+  };
 
-  const isSelectedAvailable =
-    selected &&
-    selectedSchedule;
+  const isDisabledDate = (date: Date) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (date < today) return true;
+
+    // Limit to next 30 days
+    const maxDate = new Date();
+    maxDate.setDate(today.getDate() + 30);
+    maxDate.setHours(0, 0, 0, 0);
+    if (date > maxDate) return true;
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const dateStr = String(date.getDate()).padStart(2, "0");
+    const formattedDate = `${year}-${month}-${dateStr}`;
+
+    // Excepciones tienen prioridad sobre agenda recurrente
+    const matchExc = exceptions.find(e => e.fecha === formattedDate);
+    if (matchExc) {
+      if (matchExc.tipo === "vacation") return true;
+      if (matchExc.tipo === "block" && (matchExc.start_hour === null || matchExc.start_hour === undefined)) {
+        return true;
+      }
+      if (matchExc.tipo === "extra") return false; // día extra habilitado
+    }
+
+    // Si el día de semana no está habilitado en la agenda recurrente → deshabilitado
+    if (unavailableWeekDays.includes(date.getDay())) return true;
+
+    // Bloquear día si hay cualquier reserva en ese día
+    const daySchedule = schedules[date.getDay()];
+    if (daySchedule) {
+      const dayBookings = getDateBookings(date);
+      if (dayBookings.length > 0) return true;
+    }
+
+    return false;
+  };
+
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-3xl p-6 shadow-sm flex justify-center items-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-teal-600" />
+      </div>
+    );
+  }
 
   return (
 
@@ -74,14 +199,7 @@ export default function NurseAvailability() {
           mode="single"
           selected={selected}
           onSelect={setSelected}
-          disabled={[
-            {
-              dayOfWeek: unavailableWeekDays,
-            },
-            {
-              before: new Date(),
-            },
-          ]}
+          disabled={isDisabledDate}
           className="w-full"
           classNames={{
             months: "w-full",
@@ -157,7 +275,7 @@ export default function NurseAvailability() {
 
           <div className="flex items-center gap-2">
 
-            <Clock className="w-4 h-4" />
+            <Clock className="w-4 h-4 text-teal-600" />
 
             {isSelectedAvailable && selectedSchedule ? (
               <span className="font-medium text-teal-700">
@@ -166,12 +284,28 @@ export default function NurseAvailability() {
                 {selectedSchedule.end}
               </span>
             ) : (
-              <span className="text-red-500">
+              <span className="text-red-500 font-medium">
                 No disponible
               </span>
             )}
 
           </div>
+
+          {isSelectedAvailable && selectedSchedule && (() => {
+            const dateBookings = getDateBookings(selected);
+            return dateBookings.length > 0 ? (
+              <div className="mt-3 border-t border-teal-100 pt-2">
+                <p className="text-xs text-amber-700 font-semibold mb-1">Horarios ya reservados este día:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {dateBookings.map((b, i) => (
+                    <span key={i} className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-xs font-medium">
+                      {b.start} - {b.end}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null;
+          })()}
 
         </div>
 
