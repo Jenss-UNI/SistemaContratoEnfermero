@@ -1,135 +1,203 @@
 import {
     Hourglass,
-    User,
     PlayCircle,
     CheckCircle2,
-    DollarSign,
-    Percent,
-    MonitorSmartphone,
-    Calendar
+    Star
 } from "lucide-react";
+import { useMetricsCards, useCharts, useTopNurses } from "../hooks/useMetricsData";
 
-const TOP_METRICS = [
-    { label: "Enfermeros verificados", value: "0", detail: "2 registrados", icon: Hourglass, color: "text-[#0db39e]", bg: "bg-[#e5f9f4]" },
-    { label: "Clientes registrados", value: "2", detail: "Clientes registrados", icon: User, color: "text-rose-500", bg: "bg-rose-50" },
-    { label: "Servicios activos", value: "1", detail: "1 confirmados", icon: PlayCircle, color: "text-emerald-500", bg: "bg-emerald-50" },
-    { label: "Servicios completados", value: "2", detail: "De 5 totales", icon: CheckCircle2, color: "text-slate-500", bg: "bg-slate-100" },
-    { label: "Ingresos totales", value: "S/ 1,500", detail: "Ingresos totales", icon: DollarSign, color: "text-amber-500", bg: "bg-amber-50" },
-    { label: "Comisión plataforma (10%)", value: "S/ 150", detail: "Comisión plataforma (10%)", icon: Percent, color: "text-[#0db39e]", bg: "bg-[#e5f9f4]" },
-    { label: "En custodia", value: "S/ 1,865", detail: "Activos + confirmados", icon: MonitorSmartphone, color: "text-blue-500", bg: "bg-blue-50" },
-    { label: "Ingresos este mes", value: "S/ 0", detail: "S/ 0 esta semana", icon: Calendar, color: "text-purple-500", bg: "bg-purple-50" },
-];
-
-const CHART_MONTHS = [
-    { month: "ene. 26", svc: "0", amount: null, height: "h-1", bg: "bg-slate-200" },
-    { month: "feb. 26", svc: "0", amount: null, height: "h-1", bg: "bg-slate-200" },
-    { month: "mar. 26", svc: "0", amount: null, height: "h-1", bg: "bg-slate-200" },
-    { month: "abr. 26", svc: "0", amount: null, height: "h-1", bg: "bg-slate-200" },
-    { month: "may. 26", svc: "2", amount: "S/2k", height: "h-32", bg: "bg-[#14b8a6]" }, 
-    { month: "jun. 26", svc: "0", amount: null, height: "h-1", bg: "bg-slate-200" },
-];
-
-const SERVICES_TYPE = [
-    { label: "Especializado", svc: "2", amount: "S/ 1,300", progress: "100%", color: "bg-[#14b8a6]" }, 
-    { label: "Acompañamiento", svc: "2", amount: "S/ 200", progress: "100%", color: "bg-[#10b981]" }, 
-    { label: "Asistencial", svc: "1", amount: "S/ 0", progress: "65%", color: "bg-[#f59e0b]" },
-];
-
-const BOTTOM_METRICS = [
-    { label: "Verificación pendiente", value: "0", detail: "Esperando aprobación", valColor: "text-[#d97706]" },
-    { label: "Conversión servicios", value: "40%", detail: "Servicios completados vs total", valColor: "text-[#0f766e]" },
-    { label: "Ticket promedio", value: "S/ 750", detail: "Por servicio completado", valColor: "text-[#10b981]" },
-];
+function formatAmount(amount: number): string {
+    return `S/ ${amount.toLocaleString('es-PE')}`;
+}
 
 export default function MetricasPage() {
+    const { data: cards, isLoading: loadingCards } = useMetricsCards();
+    const { data: charts, isLoading: loadingCharts } = useCharts();
+    const { data: topNurses, isLoading: loadingNurses } = useTopNurses();
+
+    const isLoading = loadingCards || loadingCharts || loadingNurses;
+
+    if (isLoading) {
+        return (
+            <div className="flex items-center justify-center py-16">
+                <p className="text-sm text-slate-400">Cargando métricas...</p>
+            </div>
+        );
+    }
+
+    const maxRevenue = Math.max(...(charts?.revenueByMonth?.map((m) => m.revenue) ?? []), 1);
+    const maxServicesType = Math.max(...(charts?.servicesByType?.map((t) => t.count) ?? []), 1);
+    const colors = ['bg-[#14b8a6]', 'bg-[#10b981]', 'bg-[#f59e0b]', 'bg-[#f43f5e]', 'bg-[#6366f1]'];
+
     return (
         <div className="w-full space-y-6">
 
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {TOP_METRICS.map((item, index) => (
-                    <div key={index} className="rounded-xl border border-slate-100 bg-white p-3 shadow-sm">
-                        <div className={`mb-2 inline-flex h-7 w-7 items-center justify-center rounded-lg ${item.bg}`}>
-                            <item.icon className={`h-3.5 w-3.5 ${item.color}`} strokeWidth={2.5} />
-                        </div>
-                        <p className="text-lg font-bold text-slate-900">{item.value}</p>
-                        <p className="mt-0.5 text-[11px] font-medium text-slate-500">{item.label}</p>
-                        <p className="mt-0.5 min-h-[14px] text-[10px] font-medium text-slate-400">
-                            {item.detail !== item.label ? item.detail : ""}
-                        </p>
-                    </div>
-                ))}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <CardItem label="Enfermeros verificados" value={cards?.enfermerosVerificados ?? 0} icon={Hourglass} color="text-[#0db39e]" bg="bg-[#e5f9f4]" />
+                <CardItem label="Servicios activos" value={cards?.serviciosActivos ?? 0} icon={PlayCircle} color="text-emerald-500" bg="bg-emerald-50" />
+                <CardItem label="Servicios completados" value={cards?.serviciosCompletados ?? 0} icon={CheckCircle2} color="text-slate-500" bg="bg-slate-100" />
             </div>
 
+            {/* Fila 2: Bottom metrics */}
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                <BottomCard label="Verificación pendiente" value={cards?.verificacionPendiente ?? 0} detail="Esperando aprobación" color="text-[#d97706]" />
+                <BottomCard label="Conversión servicios" value={`${cards?.conversion ?? 0}%`} detail="Servicios completados vs total" color="text-[#0f766e]" />
+                <BottomCard label="Ticket promedio" value={formatAmount(cards?.ticketPromedio ?? 0)} detail="Por servicio completado" color="text-[#10b981]" />
+            </div>
+
+            {/* Fila 3: Gráficos */}
             <div className="grid gap-3 lg:grid-cols-2">
                 <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm flex flex-col">
                     <h3 className="mb-4 text-[13px] font-bold text-slate-900">Ingresos por Mes (últimos 6 meses)</h3>
 
-                    <div className="flex flex-1 items-end justify-between gap-1 border-b border-slate-100 pb-2">
-                        {CHART_MONTHS.map((col, index) => (
-                            <div key={index} className="flex flex-1 flex-col items-center justify-end group">
-                                {col.amount && (
-                                    <span className="mb-1 text-[9px] font-bold text-slate-500">
-                                        {col.amount}
-                                    </span>
-                                )}
-                                <div className={`w-full max-w-[40px] rounded-t-sm ${col.bg} ${col.height} transition-all duration-500`} />
+                    {(charts?.revenueByMonth ?? []).length === 0 ? (
+                        <div className="flex min-h-[120px] items-center justify-center">
+                            <p className="text-[12px] font-medium text-slate-400">Sin resultados</p>
+                        </div>
+                    ) : (
+                        <>
+                            <div className="flex flex-1 items-end justify-between gap-1 border-b border-slate-100 pb-2">
+                                {(charts?.revenueByMonth ?? []).map((col, index) => {
+                                    const pct = maxRevenue > 0 ? (col.revenue / maxRevenue) * 100 : 0;
+                                    return (
+                                        <div key={index} className="flex flex-1 flex-col items-center justify-end group">
+                                            {col.revenue > 0 && (
+                                                <span className="mb-1 text-[9px] font-bold text-slate-500">
+                                                    S/{Math.round(col.revenue / 1000) > 0 ? `${Math.round(col.revenue / 1000)}k` : col.revenue}
+                                                </span>
+                                            )}
+                                            <div
+                                                className={`w-full max-w-[40px] rounded-t-sm ${col.revenue > 0 ? 'bg-[#14b8a6]' : 'bg-slate-200'} transition-all duration-500`}
+                                                style={{ height: `${Math.max(pct, 2)}%`, maxHeight: '128px', minHeight: '4px' }}
+                                            />
+                                        </div>
+                                    );
+                                })}
                             </div>
-                        ))}
-                    </div>
 
-                    <div className="mt-2 flex justify-between text-center">
-                        {CHART_MONTHS.map((col, index) => (
-                            <div key={index} className="flex flex-1 flex-col">
-                                <span className="text-[10px] font-medium text-slate-400">{col.month}</span>
-                                <span className="mt-1 text-[11px] font-bold text-slate-700">{col.svc}</span>
-                                <span className="text-[8px] font-medium uppercase tracking-wider text-slate-400">svc</span>
+                            <div className="mt-2 flex justify-between text-center">
+                                {(charts?.revenueByMonth ?? []).map((col, index) => (
+                                    <div key={index} className="flex flex-1 flex-col">
+                                        <span className="text-[10px] font-medium text-slate-400">{col.month}</span>
+                                        <span className="mt-1 text-[11px] font-bold text-slate-700">{col.services}</span>
+                                        <span className="text-[8px] font-medium uppercase tracking-wider text-slate-400">svc</span>
+                                    </div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
+                        </>
+                    )}
                 </div>
 
                 <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
                     <h3 className="mb-3 text-[13px] font-bold text-slate-900">Servicios por Tipo</h3>
 
-                    <div className="space-y-4 mt-2">
-                        {SERVICES_TYPE.map((svc, index) => (
-                            <div key={index}>
-                                <div className="mb-1.5 flex items-center justify-between text-[11px]">
-                                    <span className="font-medium text-slate-700">{svc.label}</span>
-                                    <div className="flex items-center gap-1.5">
-                                        <span className="font-medium text-slate-500">{svc.svc} svc</span>
-                                        <span className="font-bold text-slate-900">{svc.amount}</span>
+                    {(charts?.servicesByType ?? []).length === 0 ? (
+                        <div className="flex min-h-[120px] items-center justify-center">
+                            <p className="text-[12px] font-medium text-slate-400">Sin resultados</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-4 mt-2">
+                            {(charts?.servicesByType ?? []).map((svc, index) => (
+                                <div key={index}>
+                                    <div className="mb-1.5 flex items-center justify-between text-[11px]">
+                                        <span className="font-medium text-slate-700">{svc.type}</span>
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="font-medium text-slate-500">{svc.count} svc</span>
+                                            <span className="font-bold text-slate-900">{formatAmount(svc.revenue)}</span>
+                                        </div>
+                                    </div>
+                                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                                        <div
+                                            className={`h-full rounded-full ${colors[index % colors.length]}`}
+                                            style={{ width: `${(svc.count / maxServicesType) * 100}%` }}
+                                        />
                                     </div>
                                 </div>
-                                <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
-                                    <div
-                                        className={`h-full rounded-full ${svc.color}`}
-                                        style={{ width: svc.progress }}
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             </div>
 
+            {/* Fila 4: Top Enfermeros */}
             <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
-                <h3 className="text-[13px] font-bold text-slate-900">Top Enfermeros por Servicios Completados</h3>
-                <div className="flex min-h-[120px] items-center justify-center">
-                    <p className="text-[12px] font-medium text-slate-400">No hay servicios completados aún</p>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                {BOTTOM_METRICS.map((item, index) => (
-                    <div key={index} className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
-                        <p className="text-[11px] font-medium text-slate-400">{item.label}</p>
-                        <p className={`mt-1.5 text-2xl font-bold ${item.valColor}`}>{item.value}</p>
-                        <p className="mt-0.5 text-[10px] font-medium text-slate-400">{item.detail}</p>
+                <h3 className="text-[13px] font-bold text-slate-900 mb-4">Top Enfermeros por Servicios Completados</h3>
+                {(topNurses ?? []).length === 0 ? (
+                    <div className="flex min-h-[120px] items-center justify-center">
+                        <p className="text-[12px] font-medium text-slate-400">Sin resultados</p>
                     </div>
-                ))}
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-[600px] w-full text-left text-xs">
+                            <thead>
+                                <tr className="border-b border-slate-100">
+                                    <th className="pb-2.5 px-3 text-[11px] font-bold text-slate-500">#</th>
+                                    <th className="pb-2.5 px-3 text-[11px] font-bold text-slate-500">Enfermero</th>
+                                    <th className="pb-2.5 px-3 text-[11px] font-bold text-slate-500">Servicios</th>
+                                    <th className="pb-2.5 px-3 text-[11px] font-bold text-slate-500">Ingresos</th>
+                                    <th className="pb-2.5 px-3 text-[11px] font-bold text-slate-500">Calificación</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-50">
+                                {topNurses!.map((nurse, i) => (
+                                    <tr key={i} className="hover:bg-slate-50/50">
+                                        <td className="py-2.5 px-3 text-[11px] font-bold text-slate-400">#{i + 1}</td>
+                                        <td className="py-2.5 px-3 text-[12px] font-semibold text-slate-800">{nurse.name}</td>
+                                        <td className="py-2.5 px-3">
+                                            <span className="text-[12px] font-bold text-[#0db39e]">{nurse.completedServices}</span>
+                                        </td>
+                                        <td className="py-2.5 px-3 text-[11px] text-slate-700">{formatAmount(nurse.revenue)}</td>
+                                        <td className="py-2.5 px-3">
+                                            {nurse.rating > 0 ? (
+                                                <span className="inline-flex items-center gap-1 text-[11px]">
+                                                    <Star className="h-3 w-3 text-yellow-400" fill="currentColor" />
+                                                    <span className="font-semibold">{nurse.rating.toFixed(1)}</span>
+                                                </span>
+                                            ) : (
+                                                <span className="text-[11px] text-slate-400">Sin calif.</span>
+                                            )}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
 
+        </div>
+    );
+}
+
+function CardItem({ label, value, icon: Icon, color, bg }: {
+    label: string;
+    value: string | number;
+    icon: any;
+    color: string;
+    bg: string;
+}) {
+    return (
+        <div className="rounded-xl border border-slate-100 bg-white p-3 shadow-sm">
+            <div className={`mb-2 inline-flex h-7 w-7 items-center justify-center rounded-lg ${bg}`}>
+                <Icon className={`h-3.5 w-3.5 ${color}`} strokeWidth={2.5} />
+            </div>
+            <p className="text-lg font-bold text-slate-900">{value}</p>
+            <p className="mt-0.5 text-[11px] font-medium text-slate-500">{label}</p>
+        </div>
+    );
+}
+
+function BottomCard({ label, value, detail, color }: {
+    label: string;
+    value: string | number;
+    detail: string;
+    color: string;
+}) {
+    return (
+        <div className="rounded-xl border border-slate-100 bg-white p-4 shadow-sm">
+            <p className="text-[11px] font-medium text-slate-400">{label}</p>
+            <p className={`mt-1.5 text-2xl font-bold ${color}`}>{value}</p>
+            <p className="mt-0.5 text-[10px] font-medium text-slate-400">{detail}</p>
         </div>
     );
 }

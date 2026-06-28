@@ -1,155 +1,119 @@
-import { useEffect, useMemo, useState } from "react";
-import { User, Tag, Flag, Clock, Search, CheckCheck, Check, RefreshCw } from "lucide-react";
-import Modal from "../../../../shared/components/client/mis-pacientes/Modal";
+import { useEffect, useState } from "react";
+import { User, Tag, Flag, Clock, Search, CheckCheck, Check, RefreshCw, X, Loader2 } from "lucide-react";
+import { useReportesStats, useReportes, useActualizarReporte } from "../hooks/useReportsData";
 
-type Severity = "Alta" | "Media" | "Baja";
-type Status = "Resuelto" | "Abierto" | "En revisión";
-
-type Report = {
-  id: string;
-  title: string;
-  authorType: string;
-  targetType: string;
-  severity: Severity;
-  status: Status;
-  date: string;
-  shortDate: string;
-  description: string;
-  currentResponse: string | null;
-};
-
-const INITIAL_REPORTS: Report[] = [
-  {
-    id: "1",
-    title: "Prueba",
-    authorType: "Enfermero",
-    targetType: "condiciones",
-    severity: "Alta",
-    status: "Abierto",
-    date: "24 de junio de 2026",
-    shortDate: "24-jun.",
-    description: "Prueba",
-    currentResponse: null,
-  },
-  {
-    id: "2",
-    title: "jghbvd",
-    authorType: "Enfermero",
-    targetType: "condiciones",
-    severity: "Alta",
-    status: "Abierto",
-    date: "20 de junio de 2026",
-    shortDate: "20-jun.",
-    description: "Detalle del reporte jghbvd...",
-    currentResponse: null,
-  },
-  {
-    id: "3",
-    title: "enfermero llego tarde",
-    authorType: "Cliente",
-    targetType: "enfermero",
-    severity: "Media",
-    status: "Abierto",
-    date: "12 de junio de 2026",
-    shortDate: "12-jun.",
-    description: "El enfermero llegó 30 minutos tarde a la cita programada.",
-    currentResponse: null,
-  },
-];
+type Status = "abierto" | "en_revision" | "resuelto";
 
 const FILTERS = ["Todos", "Abiertos", "En revisión", "Resueltos"] as const;
 
 const FILTER_STATUS_MAP: Record<(typeof FILTERS)[number], Status | null> = {
   Todos: null,
-  Abiertos: "Abierto",
-  "En revisión": "En revisión",
-  Resueltos: "Resuelto",
+  Abiertos: "abierto",
+  "En revisión": "en_revision",
+  Resueltos: "resuelto",
 };
 
-const severityStyle: Record<Severity, { bg: string; dot: string; text: string }> = {
-  Alta: { bg: "bg-rose-50", dot: "bg-rose-500", text: "text-rose-600" },
-  Media: { bg: "bg-amber-50", dot: "bg-amber-500", text: "text-amber-600" },
-  Baja: { bg: "bg-slate-50", dot: "bg-slate-500", text: "text-slate-600" },
+const statusLabelMap: Record<string, string> = {
+  abierto: 'Abierto',
+  en_revision: 'En revisión',
+  resuelto: 'Resuelto',
 };
 
-const statusStyle: Record<Status, string> = {
-  Resuelto: "bg-[#ccfbf1] text-[#0db39e]",
-  Abierto: "bg-[#e5f9f4] text-[#0db39e]",
-  "En revisión": "bg-[#fffbeb] text-[#d97706]",
+const severityLabelMap: Record<string, string> = {
+  alta: 'Alta',
+  media: 'Media',
+  baja: 'Baja',
 };
+
+const severityStyle: Record<string, { bg: string; dot: string; text: string }> = {
+  alta: { bg: "bg-rose-50", dot: "bg-rose-500", text: "text-rose-600" },
+  media: { bg: "bg-amber-50", dot: "bg-amber-500", text: "text-amber-600" },
+  baja: { bg: "bg-slate-50", dot: "bg-slate-500", text: "text-slate-600" },
+};
+
+const statusStyle: Record<string, string> = {
+  resuelto: "bg-[#ccfbf1] text-[#0db39e]",
+  abierto: "bg-[#e5f9f4] text-[#0db39e]",
+  en_revision: "bg-[#fffbeb] text-[#d97706]",
+};
+
+function formatDate(dateString: string): string {
+  const d = new Date(dateString);
+  return d.toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+
+function formatShortDate(dateString: string): string {
+  const d = new Date(dateString);
+  return d.toLocaleDateString('es-PE', { day: '2-digit', month: 'short' }).replace('.', '-');
+}
 
 export default function ReportesPage() {
-  const [reports, setReports] = useState<Report[]>(INITIAL_REPORTS);
   const [activeFilter, setActiveFilter] = useState<(typeof FILTERS)[number]>("Todos");
-  const [selectedReportId, setSelectedReportId] = useState<string>("");
+  const [selectedReportId, setSelectedReportId] = useState<number | null>(null);
   const [responseText, setResponseText] = useState("");
-  
-  // Usamos "Update" como un estado pendiente adicional para el modal de actualización
   const [pendingAction, setPendingAction] = useState<Status | "Update" | null>(null);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
-  const filteredReports = useMemo(
-    () =>
-      reports.filter((report) => {
-        const status = FILTER_STATUS_MAP[activeFilter];
-        return status === null || report.status === status;
-      }),
-    [activeFilter, reports]
+  const { data: stats } = useReportesStats();
+  const { data: reportes, isLoading } = useReportes(
+    FILTER_STATUS_MAP[activeFilter] ?? 'Todos'
   );
+  const actualizarMutation = useActualizarReporte();
+
+  const selectedReport = reportes?.find((r) => r.id === selectedReportId) || null;
 
   useEffect(() => {
-    if (filteredReports.length > 0 && !filteredReports.some((r) => r.id === selectedReportId)) {
-      setSelectedReportId(filteredReports[0].id);
-    } else if (filteredReports.length === 0) {
-      setSelectedReportId("");
+    if (reportes && reportes.length > 0 && !reportes.some((r) => r.id === selectedReportId)) {
+      setSelectedReportId(reportes[0].id);
+    } else if (reportes?.length === 0) {
+      setSelectedReportId(null);
     }
-  }, [filteredReports, selectedReportId]);
-
-  const selectedReport = reports.find((r) => r.id === selectedReportId) || null;
+  }, [reportes, selectedReportId]);
 
   useEffect(() => {
-    setResponseText(selectedReport?.currentResponse || "");
+    setResponseText(selectedReport?.response || "");
   }, [selectedReportId]);
 
   const handleConfirmAction = () => {
     if (!selectedReport || !pendingAction) return;
 
-    setReports((prev) =>
-      prev.map((report) =>
-        report.id === selectedReport.id
-          ? {
-              ...report,
-              // Si la acción es Update, conservamos el estado actual
-              status: pendingAction === "Update" ? report.status : pendingAction,
-              currentResponse: responseText.trim() || report.currentResponse,
-            }
-          : report
-      )
-    );
-    setPendingAction(null);
+    actualizarMutation.mutate({
+      reportId: selectedReport.id,
+      newStatus: pendingAction === "Update" ? selectedReport.status : pendingAction,
+      respuesta: responseText.trim() || null,
+    }, {
+      onSuccess: () => {
+        setPendingAction(null);
+        setShowConfirmModal(false);
+      },
+    });
   };
 
-  // Función auxiliar para renderizar el badge de estado con su icono condicional
-  const renderStatusBadge = (status: Status, isSmall = false) => {
-    const baseStyle = statusStyle[status];
+  const renderStatusBadge = (status: string, isSmall = false) => {
+    const label = statusLabelMap[status] || status;
+    const baseStyle = statusStyle[status] || 'bg-slate-100 text-slate-500';
     const iconSize = isSmall ? "h-3 w-3" : "h-3.5 w-3.5";
     const textSize = isSmall ? "text-[10px]" : "text-[11px]";
 
     return (
       <span className={`inline-flex items-center gap-1 flex-shrink-0 rounded-full px-2.5 py-1 ${textSize} font-bold ${baseStyle}`}>
-        {status === "Resuelto" && <Check className={iconSize} strokeWidth={3} />}
-        {status}
+        {status === 'resuelto' && <Check className={iconSize} strokeWidth={3} />}
+        {label}
       </span>
     );
   };
 
-  const countOpen = reports.filter((r) => r.status === "Abierto").length;
-  const countReview = reports.filter((r) => r.status === "En revisión").length;
-  const countResolved = reports.filter((r) => r.status === "Resuelto").length;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <p className="text-sm text-slate-400">Cargando reportes...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full space-y-6">
-      
-      {/* CABECERA Y MÉTRICAS SUPERIORES */}
+
       <div className="rounded-lg border border-slate-100 bg-white p-4 shadow-sm md:p-5">
         <div className="mb-4 flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-rose-50 text-rose-400">
@@ -169,7 +133,7 @@ export default function ReportesPage() {
               <Clock className="h-4 w-4" strokeWidth={2.5} />
             </div>
             <div>
-              <p className="text-xl font-bold text-slate-900">{countOpen}</p>
+              <p className="text-xl font-bold text-slate-900">{stats?.abiertos ?? 0}</p>
               <p className="text-sm font-medium text-slate-500">Abiertos</p>
             </div>
           </div>
@@ -178,7 +142,7 @@ export default function ReportesPage() {
               <Search className="h-4 w-4" strokeWidth={2.5} />
             </div>
             <div>
-              <p className="text-xl font-bold text-slate-900">{countReview}</p>
+              <p className="text-xl font-bold text-slate-900">{stats?.enRevision ?? 0}</p>
               <p className="text-sm font-medium text-slate-500">En revisión</p>
             </div>
           </div>
@@ -187,49 +151,45 @@ export default function ReportesPage() {
               <CheckCheck className="h-4 w-4" strokeWidth={2.5} />
             </div>
             <div>
-              <p className="text-xl font-bold text-slate-900">{countResolved}</p>
+              <p className="text-xl font-bold text-slate-900">{stats?.resueltos ?? 0}</p>
               <p className="text-sm font-medium text-slate-500">Resueltos</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* CONTENEDOR MAESTRO-DETALLE ALINEADO CON GRID-ROWS */}
       <div className="flex flex-col gap-y-5 gap-x-6 lg:grid lg:grid-cols-[380px_minmax(0,1fr)] lg:grid-rows-[auto_1fr]">
-        
-        {/* --- FILTROS FLOTANTES (Fila 1, Columna 1) --- */}
+
         <div className="flex flex-wrap items-center gap-3 overflow-x-auto whitespace-nowrap lg:col-start-1 lg:row-start-1">
           {FILTERS.map((filter) => (
             <button
               key={filter}
               onClick={() => setActiveFilter(filter)}
-              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${
-                activeFilter === filter
+              className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors ${activeFilter === filter
                   ? "border-transparent bg-[#0db39e] text-white"
                   : "border-slate-200 bg-white text-slate-500 hover:bg-slate-50"
-              }`}
+                }`}
             >
               {filter}
             </button>
           ))}
         </div>
 
-        {/* --- COLUMNA IZQUIERDA: LISTA DE REPORTES (Fila 2, Columna 1) --- */}
         <div className="flex flex-col gap-4 lg:col-start-1 lg:row-start-2">
-          {filteredReports.length > 0 ? (
-            filteredReports.map((report) => {
+          {(reportes ?? []).length > 0 ? (
+            reportes!.map((report) => {
               const isSelected = selectedReportId === report.id;
-              const sevStyle = severityStyle[report.severity];
+              const sevStyle = severityStyle[report.severity] || severityStyle.media;
+              const severityLabel = severityLabelMap[report.severity] || report.severity;
 
               return (
                 <button
                   key={report.id}
                   onClick={() => setSelectedReportId(report.id)}
-                  className={`flex flex-col gap-3 rounded-[1.75rem] border p-5 text-left transition-all ${
-                    isSelected
+                  className={`flex flex-col gap-3 rounded-[1.75rem] border p-5 text-left transition-all ${isSelected
                       ? "border-[#0db39e] bg-[#ecfdf5] shadow-[0_12px_35px_-22px_rgba(13,179,158,0.55)]"
                       : "border-slate-200 bg-white hover:border-slate-300"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center justify-between gap-3 w-full">
                     <h3 className="text-base font-semibold text-slate-900 line-clamp-1">{report.title}</h3>
@@ -238,19 +198,19 @@ export default function ReportesPage() {
 
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full bg-white border border-slate-100 px-3 py-1 text-sm font-medium text-slate-500 shadow-sm">
-                      {report.targetType}
+                      {report.category}
                     </span>
                     <span className="rounded-full bg-white border border-slate-100 px-3 py-1 text-sm font-medium text-slate-500 shadow-sm">
-                      {report.authorType}
+                      {report.reporter_role}
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between w-full gap-3 mt-1">
                     <div className={`flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold ${sevStyle.bg} ${sevStyle.text}`}>
                       <span className={`h-2 w-2 rounded-full ${sevStyle.dot}`}></span>
-                      {report.severity}
+                      {severityLabel}
                     </div>
-                    <span className="text-sm font-semibold text-slate-400">{report.shortDate}</span>
+                    <span className="text-sm font-semibold text-slate-400">{formatShortDate(report.created_at)}</span>
                   </div>
                 </button>
               );
@@ -262,37 +222,32 @@ export default function ReportesPage() {
           )}
         </div>
 
-        {/* --- COLUMNA DERECHA: DETALLE DEL REPORTE (Fila 2, Columna 2) --- */}
         <section className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-sm md:p-8 lg:col-start-2 lg:row-start-2">
           {selectedReport ? (
             <div className="flex flex-col h-full">
-              
-              {/* Cabecera del Detalle */}
+
               <div className="flex items-start justify-between gap-4">
                 <h2 className="text-2xl font-bold text-slate-900">{selectedReport.title}</h2>
                 {renderStatusBadge(selectedReport.status)}
               </div>
 
-              {/* Metadatos del Detalle */}
               <div className="mt-4 flex flex-wrap items-center gap-4 text-[13px] text-slate-500 font-medium">
                 <div className="flex items-center gap-1.5">
                   <User className="h-4 w-4" />
-                  <span>{selectedReport.targetType}</span>
+                  <span>{selectedReport.reporter_role}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Tag className="h-4 w-4" />
-                  <span>{selectedReport.authorType}</span>
+                  <span>{selectedReport.category}</span>
                 </div>
-                <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${severityStyle[selectedReport.severity].bg} ${severityStyle[selectedReport.severity].text}`}>
-                  <span className={`h-1.5 w-1.5 rounded-full ${severityStyle[selectedReport.severity].dot}`}></span>
-                  {selectedReport.severity}
+                <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-bold ${(severityStyle[selectedReport.severity] || severityStyle.media).bg} ${(severityStyle[selectedReport.severity] || severityStyle.media).text}`}>
+                  <span className={`h-1.5 w-1.5 rounded-full ${(severityStyle[selectedReport.severity] || severityStyle.media).dot}`}></span>
+                  {severityLabelMap[selectedReport.severity] || selectedReport.severity}
                 </div>
-                <span className="text-slate-500">{selectedReport.date}</span>
+                <span className="text-slate-500">{formatDate(selectedReport.created_at)}</span>
               </div>
 
               <div className="mt-8 flex-1 space-y-6">
-                
-                {/* Descripción del Reporte */}
                 <div>
                   <h3 className="mb-3 text-[11px] font-bold uppercase tracking-wider text-slate-500">Descripción del reporte</h3>
                   <div className="rounded-2xl border border-slate-100 bg-[#fafafa] p-5 text-[14px] text-slate-700">
@@ -300,7 +255,6 @@ export default function ReportesPage() {
                   </div>
                 </div>
 
-                {/* Área de Respuesta del Administrador */}
                 <div>
                   <h3 className="mb-3 text-[13px] font-bold text-slate-900">Respuesta del administrador</h3>
                   <textarea
@@ -312,12 +266,11 @@ export default function ReportesPage() {
                   />
                 </div>
 
-                {/* Botones de Acción Condicionales */}
                 <div className="flex flex-col gap-4 sm:flex-row pt-4">
-                  {selectedReport.status === "Resuelto" ? (
+                  {selectedReport.status === 'resuelto' ? (
                     <button
                       type="button"
-                      onClick={() => setPendingAction("Update")}
+                      onClick={() => { setPendingAction("Update"); setShowConfirmModal(true); }}
                       className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#0db39e] py-3.5 text-[14px] font-bold text-white transition hover:bg-[#0a8e7c]"
                     >
                       <RefreshCw className="h-4 w-4" strokeWidth={2.5} />
@@ -327,7 +280,7 @@ export default function ReportesPage() {
                     <>
                       <button
                         type="button"
-                        onClick={() => setPendingAction("En revisión")}
+                        onClick={() => { setPendingAction("en_revision"); setShowConfirmModal(true); }}
                         className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#f59e0b] py-3.5 text-[14px] font-bold text-white transition hover:bg-[#d97706]"
                       >
                         <Search className="h-4 w-4" strokeWidth={2.5} />
@@ -336,7 +289,7 @@ export default function ReportesPage() {
 
                       <button
                         type="button"
-                        onClick={() => setPendingAction("Resuelto")}
+                        onClick={() => { setPendingAction("resuelto"); setShowConfirmModal(true); }}
                         className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#0db39e] py-3.5 text-[14px] font-bold text-white transition hover:bg-[#0a8e7c]"
                       >
                         <Check className="h-4 w-4" strokeWidth={3} />
@@ -345,7 +298,6 @@ export default function ReportesPage() {
                     </>
                   )}
                 </div>
-
               </div>
             </div>
           ) : (
@@ -363,51 +315,48 @@ export default function ReportesPage() {
 
       </div>
 
-      {/* Modal Unificado para Cambio de Estado y Actualización */}
-      {pendingAction && selectedReport && (
-        <Modal
-          title={
-            pendingAction === "Resuelto" ? "Marcar como Resuelto" :
-            pendingAction === "En revisión" ? "Poner en Revisión" :
-            "Actualizar Respuesta"
-          }
-          onClose={() => setPendingAction(null)}
-          maxWidthClass="max-w-md"
-          footer={
-            <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-              <button
-                onClick={() => setPendingAction(null)}
-                className="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-[13px] font-bold text-slate-700 transition hover:bg-slate-50"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleConfirmAction}
-                className={`rounded-xl px-5 py-2.5 text-[13px] font-bold text-white transition ${
-                  pendingAction === "Resuelto" || pendingAction === "Update"
-                    ? "bg-[#0db39e] hover:bg-[#0a8e7c]"
-                    : "bg-[#f59e0b] hover:bg-[#d97706]"
-                }`}
-              >
-                Confirmar
-              </button>
+      {showConfirmModal && pendingAction && selectedReport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setShowConfirmModal(false)} />
+          <div className="relative bg-white rounded-2xl w-full max-w-md shadow-xl">
+            <div className="p-6">
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <h2 className="text-xl font-bold text-slate-900">
+                  {pendingAction === "resuelto" ? "Marcar como Resuelto" :
+                    pendingAction === "en_revision" ? "Poner en Revisión" :
+                      "Actualizar Respuesta"}
+                </h2>
+                <button onClick={() => setShowConfirmModal(false)} className="text-slate-400 hover:text-slate-600">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <p className="text-[14px] font-medium text-slate-600 mb-6">
+                {pendingAction === "Update" ? (
+                  <>¿Estás seguro de que deseas actualizar la respuesta para el reporte <span className="font-bold text-slate-900">"{selectedReport.title}"</span>?</>
+                ) : (
+                  <>¿Estás seguro de que deseas cambiar el estado del reporte <span className="font-bold text-slate-900">"{selectedReport.title}"</span> a <span className="font-bold text-slate-900">"{statusLabelMap[pendingAction]}"</span>?</>
+                )}
+              </p>
+
+              <div className="flex gap-3">
+                <button onClick={() => setShowConfirmModal(false)} className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-[13px] font-bold text-slate-700 hover:bg-slate-50">
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleConfirmAction}
+                  disabled={actualizarMutation.isPending}
+                  className={`flex-1 rounded-xl py-2.5 text-[13px] font-bold text-white disabled:opacity-50 ${pendingAction === "resuelto" || pendingAction === "Update"
+                      ? "bg-[#0db39e] hover:bg-[#0a8e7c]"
+                      : "bg-[#f59e0b] hover:bg-[#d97706]"
+                    }`}
+                >
+                  {actualizarMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin inline-block" /> : 'Confirmar'}
+                </button>
+              </div>
             </div>
-          }
-        >
-          <div className="space-y-4 p-2">
-            <p className="text-[14px] font-medium text-slate-600">
-              {pendingAction === "Update" ? (
-                <>
-                  ¿Estás seguro de que deseas actualizar la respuesta para el reporte <span className="font-bold text-slate-900">"{selectedReport.title}"</span>?
-                </>
-              ) : (
-                <>
-                  ¿Estás seguro de que deseas cambiar el estado del reporte <span className="font-bold text-slate-900">"{selectedReport.title}"</span> a <span className="font-bold text-slate-900">"{pendingAction}"</span>?
-                </>
-              )}
-            </p>
           </div>
-        </Modal>
+        </div>
       )}
     </div>
   );
