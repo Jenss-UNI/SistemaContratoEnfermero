@@ -1,7 +1,11 @@
-import { useState } from "react";
-import { Check, X, Bookmark, Star, Home } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Check, X, Bookmark, Star, Home, Loader2 } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Header, Footer } from "../../../shared/layout";
+import { useAuth } from "../../../core/contexts/AuthContext";
+import { fetchClienteSubscription } from "../../private/client/services/clienteProfile.service";
+import type { ClienteSubscription } from "../../private/client/services/clienteProfile.service";
+import ConfirmSubscriptionModal from "../../../shared/components/client/pagos/ConfirmSubscriptionModal";
 
 type BillingCycle = "mensual" | "anual";
 interface PlanFeature { label: string; included: boolean }
@@ -81,26 +85,49 @@ function BillingToggle({ billing, onChange }: { billing: BillingCycle; onChange:
   );
 }
 
-function PlanCard({ plan, billing, onSelect }: { plan: Plan; billing: BillingCycle; onSelect: (id: string) => void }) {
+type PlanCardProps = {
+  plan: Plan;
+  billing: BillingCycle;
+  onSelect: (id: string) => void;
+  btnText: string;
+  isDisabled: boolean;
+  isCurrent: boolean;
+  customLabel: string | null;
+};
+
+function PlanCard({
+  plan,
+  billing,
+  onSelect,
+  btnText,
+  isDisabled,
+  isCurrent,
+  customLabel,
+}: PlanCardProps) {
   const [hovered, setHovered] = useState(false);
   const price  = billing === "mensual" ? plan.monthlyPrice : plan.annualPrice;
   const period = billing === "mensual" ? "mes" : "año";
   const [int, dec] = price.toFixed(2).split(".");
 
- 
-  const glowColor = plan.highlighted
+  const glowColor = isCurrent
+    ? "rgba(56,189,248,0.25)"
+    : plan.highlighted
     ? "rgba(10,191,188,0.18)"
     : plan.badge?.color === "orange"
     ? "rgba(245,158,11,0.15)"
     : "rgba(100,116,139,0.10)";
 
-  const borderColor = plan.highlighted
+  const borderColor = isCurrent
+    ? "#38bdf8"
+    : plan.id === "basico"
+    ? "#94a3b8"
+    : plan.highlighted
     ? "#0ABFBC"
     : plan.badge?.color === "orange"
     ? "#F59E0B"
     : hovered ? "#cbd5e1" : "#e2e8f0";
 
-  const borderWidth = plan.highlighted || plan.badge?.color === "orange" ? "2px" : "1px";
+  const borderWidth = isCurrent || plan.id === "basico" || plan.highlighted || plan.badge?.color === "orange" ? "2px" : "1px";
 
   return (
     <div
@@ -116,17 +143,15 @@ function PlanCard({ plan, billing, onSelect }: { plan: Plan; billing: BillingCyc
       }}
       className="relative bg-white rounded-2xl p-7 flex flex-col h-full cursor-default"
     >
-
-      {plan.badge && (
+      {(customLabel || plan.badge) && (
         <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-          <span className={`text-xs font-semibold px-4 py-1.5 rounded-full whitespace-nowrap
-            ${plan.badge.color === "teal" ? "bg-[#0ABFBC] text-white" : "bg-[#F59E0B] text-white"}`}>
-            {plan.badge.label}
+          <span className={`text-xs font-semibold px-4 py-1.5 rounded-full whitespace-nowrap shadow-sm
+            ${customLabel ? "bg-teal-600 text-white font-bold" : plan.badge?.color === "teal" ? "bg-[#0ABFBC] text-white" : "bg-[#F59E0B] text-white"}`}>
+            {customLabel || plan.badge?.label}
           </span>
         </div>
       )}
 
-   
       <div
         style={{ transition: "transform 0.3s ease" }}
         className={`w-11 h-11 rounded-xl flex items-center justify-center mb-5 ${
@@ -138,7 +163,6 @@ function PlanCard({ plan, billing, onSelect }: { plan: Plan; billing: BillingCyc
 
       <h3 className="text-[17px] font-bold text-gray-900 mb-3">{plan.name}</h3>
 
-      
       <div className="flex items-baseline mb-1">
         <span
           style={{ transition: "color 0.3s ease" }}
@@ -176,19 +200,23 @@ function PlanCard({ plan, billing, onSelect }: { plan: Plan; billing: BillingCyc
         ))}
       </ul>
 
-   
       <button
         onClick={() => onSelect(plan.id)}
+        disabled={isDisabled}
         style={{ transition: "background 0.25s ease, color 0.25s ease, transform 0.15s ease" }}
-        className={`w-full py-3 rounded-xl text-sm font-semibold active:scale-95 ${
-          plan.buttonVariant === "solid"
+        className={`w-full py-3 rounded-xl text-sm font-semibold transition-all active:scale-95 disabled:pointer-events-none ${
+          isDisabled
+            ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed active:scale-100"
+            : isCurrent
+            ? "bg-teal-100 text-teal-700 cursor-default"
+            : plan.buttonVariant === "solid"
             ? "bg-[#0ABFBC] text-white hover:bg-[#09aaa7]"
             : hovered
-              ? "bg-[#0ABFBC] text-white border border-[#0ABFBC]"
-              : "border border-[#0ABFBC] text-[#0ABFBC]"
+            ? "bg-[#0ABFBC] text-white border border-[#0ABFBC]"
+            : "border border-[#0ABFBC] text-[#0ABFBC] hover:bg-teal-50/50"
         }`}
       >
-        Registrarme y elegir
+        {btnText}
       </button>
     </div>
   );
@@ -197,12 +225,172 @@ function PlanCard({ plan, billing, onSelect }: { plan: Plan; billing: BillingCyc
 const HEADER_HEIGHT = "pt-[52px]";
 
 export default function PlanesPage() {
-  const [billing, setBilling] = useState<BillingCycle>("mensual");
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const mode = searchParams.get("mode"); // 'renew' or 'upgrade'
+
+  const { user, refetchAuthProfile } = useAuth();
+  const [billing, setBilling] = useState<BillingCycle>("mensual");
+  const [subscription, setSubscription] = useState<ClienteSubscription | null>(null);
+  const [loadingSub, setLoadingSub] = useState(true);
+
+  // Estados del modal de confirmación
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [selectedPlanForModal, setSelectedPlanForModal] = useState<{
+    id: number;
+    nombre: string;
+    precio: number;
+    ciclo: "mensual" | "anual";
+  } | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const loadSub = async () => {
+    if (user?.id) {
+      setLoadingSub(true);
+      try {
+        const sub = await fetchClienteSubscription(user.id);
+        setSubscription(sub);
+        if (sub) {
+          // Inicializar por defecto en el ciclo actual del usuario
+          setBilling((sub.ciclo === "anual" ? "anual" : "mensual") as BillingCycle);
+        }
+      } catch (err) {
+        console.error("Error loading subscription in PlanesPage:", err);
+      } finally {
+        setLoadingSub(false);
+      }
+    } else {
+      setLoadingSub(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSub();
+  }, [user?.id]);
+
+  const getPlanPriority = (name: string): number => {
+    const n = name.toLowerCase();
+    if (n.includes("familiar")) return 3;
+    if (n.includes("premium")) return 2;
+    if (n.includes("básico") || n.includes("basico")) return 1;
+    return 0;
+  };
+
+  const getPlanStatus = (planId: string) => {
+    if (!user) {
+      return {
+        btnText: "Registrarme y elegir",
+        isDisabled: false,
+        isCurrent: false,
+        label: null,
+      };
+    }
+
+    const hasActiveSub =
+      subscription &&
+      subscription.status === "active" &&
+      new Date(subscription.fecha_vence) >= new Date();
+
+    // Modo Renovación o sin suscripción activa
+    if (!hasActiveSub || mode === "renew") {
+      return {
+        btnText: mode === "renew" ? "Renovar plan" : "Activar plan",
+        isDisabled: false,
+        isCurrent: false,
+        label: null,
+      };
+    }
+
+    const currentPriority = getPlanPriority(subscription.plan_nombre);
+    const currentIsAnnual = subscription.ciclo === "anual";
+
+    const targetPriority = getPlanPriority(planId);
+    const targetIsAnnual = billing === "anual";
+
+    const isCurrent = targetPriority === currentPriority && targetIsAnnual === currentIsAnnual;
+
+    if (isCurrent) {
+      return {
+        btnText: "Tu plan actual",
+        isDisabled: true,
+        isCurrent: true,
+        label: "Plan actual",
+      };
+    }
+
+    const isSuperior =
+      targetPriority > currentPriority ||
+      (targetPriority === currentPriority && targetIsAnnual && !currentIsAnnual);
+
+    if (isSuperior) {
+      return {
+        btnText: "Mejorar a este plan",
+        isDisabled: false,
+        isCurrent: false,
+        label: null,
+      };
+    } else {
+      return {
+        btnText: "Plan inferior",
+        isDisabled: true,
+        isCurrent: false,
+        label: null,
+      };
+    }
+  };
+
+  const handleSelectPlan = (planId: string) => {
+    const plan = PLANS.find((p) => p.id === planId);
+    if (!plan) return;
+
+    if (!user) {
+      navigate(`/register?plan=${planId}&billing=${billing}`);
+      return;
+    }
+
+    const PLAN_DB_IDS: Record<string, number> = {
+      basico: 1,
+      premium: 2,
+      familiar: 3,
+    };
+
+    const precio = billing === "mensual" ? plan.monthlyPrice : plan.annualPrice;
+
+    setSelectedPlanForModal({
+      id: PLAN_DB_IDS[planId] || 1,
+      nombre: plan.name,
+      precio,
+      ciclo: billing,
+    });
+    setShowConfirmModal(true);
+  };
+  const handleConfirmSubscription = async () => {
+    setShowConfirmModal(false);
+    setSelectedPlanForModal(null);
+    setSuccessMessage("¡Suscripción actualizada correctamente!");
+    
+    // Recargar perfil local y en AuthContext
+    await loadSub();
+    await refetchAuthProfile();
+    
+    // Limpiar query params de la URL (?mode=renew o ?mode=upgrade) para restaurar vista normal
+    navigate("/planes", { replace: true });
+    
+    setTimeout(() => {
+      setSuccessMessage(null);
+    }, 2500);
+  };
 
   return (
     <>
       <Header />
+
+      {successMessage && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[110] flex items-center gap-3 rounded-2xl bg-teal-600 border border-teal-500 shadow-2xl px-6 py-4 text-sm text-white font-bold animate-bounce">
+          <Check className="w-5 h-5 bg-white text-teal-600 rounded-full p-0.5 shrink-0" />
+          {successMessage}
+        </div>
+      )}
 
       <main className={`bg-[#F4F6F9] ${HEADER_HEIGHT}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
@@ -220,17 +408,30 @@ export default function PlanesPage() {
             <BillingToggle billing={billing} onChange={setBilling} />
           </div>
 
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch overflow-visible py-6">
-            {PLANS.map((plan) => (
-              <PlanCard
-                key={plan.id}
-                plan={plan}
-                billing={billing}
-                onSelect={(id) => navigate(`/register?plan=${id}&billing=${billing}`)}
-              />
-            ))}
-          </div>
+          {loadingSub ? (
+            <div className="flex flex-col items-center justify-center py-20">
+              <Loader2 className="h-10 w-10 animate-spin text-[#0ABFBC] mb-4" />
+              <p className="text-sm text-slate-500">Cargando información del plan...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch overflow-visible py-6">
+              {PLANS.map((plan) => {
+                const status = getPlanStatus(plan.id);
+                return (
+                  <PlanCard
+                    key={plan.id}
+                    plan={plan}
+                    billing={billing}
+                    onSelect={handleSelectPlan}
+                    btnText={status.btnText}
+                    isDisabled={status.isDisabled}
+                    isCurrent={status.isCurrent}
+                    customLabel={status.label}
+                  />
+                );
+              })}
+            </div>
+          )}
 
           <p className="text-center text-xs text-gray-400 mt-4 pb-2">
             * Comisión de plataforma: 10% sobre el total del servicio. Puedes cancelar tu suscripción en cualquier momento.
@@ -238,6 +439,20 @@ export default function PlanesPage() {
 
         </div>
       </main>
+
+      {showConfirmModal && selectedPlanForModal && (
+        <ConfirmSubscriptionModal
+          planId={selectedPlanForModal.id}
+          planNombre={selectedPlanForModal.nombre}
+          precio={selectedPlanForModal.precio}
+          ciclo={selectedPlanForModal.ciclo}
+          onClose={() => {
+            setShowConfirmModal(false);
+            setSelectedPlanForModal(null);
+          }}
+          onConfirm={handleConfirmSubscription}
+        />
+      )}
 
       <Footer />
     </>

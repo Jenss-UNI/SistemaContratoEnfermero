@@ -35,8 +35,11 @@ export type ClienteProfileUpdate = {
 
 /** Información resumida de la suscripción del cliente */
 export interface ClienteSubscription {
+  plan_id:     number;      // ← ID real del plan en la BD
   plan_nombre: string;
+  fecha_inicio: string;     // ← Fecha de inicio de la suscripción
   fecha_vence: string;
+  ciclo:       string;      // ← ciclo: mensual o anual
   status:      string;
 }
 
@@ -92,7 +95,10 @@ export async function fetchClienteSubscription(userId: string): Promise<ClienteS
   const { data, error } = await supabase
     .from("subscriptions")
     .select(`
+      plan_id,
+      fecha_inicio,
       fecha_vence,
+      ciclo,
       status,
       plans (
         nombre
@@ -111,8 +117,11 @@ export async function fetchClienteSubscription(userId: string): Promise<ClienteS
   const planInfo = data.plans as unknown as { nombre: string } | null;
 
   return {
+    plan_id:     data.plan_id,
     plan_nombre: planInfo?.nombre ? planInfo.nombre.charAt(0).toUpperCase() + planInfo.nombre.slice(1) : "—",
+    fecha_inicio: data.fecha_inicio ?? "",
     fecha_vence: data.fecha_vence ?? "",
+    ciclo:       data.ciclo ?? "",
     status:      data.status ?? "",
   };
 }

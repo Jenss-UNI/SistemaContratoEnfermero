@@ -1,6 +1,6 @@
 import { AlertCircle, ChevronDown } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { sanitizeText } from "../../../utils/validation";
+
 
 type DistritoComboboxProps = {
   label: string;
@@ -10,6 +10,7 @@ type DistritoComboboxProps = {
   error?: string;
   required?: boolean;
   placeholder?: string;
+  readOnly?: boolean;
 };
 
 export default function DistritoCombobox({
@@ -20,6 +21,7 @@ export default function DistritoCombobox({
   error,
   required,
   placeholder = "Selecciona o escribe un distrito",
+  readOnly,
 }: DistritoComboboxProps) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -31,7 +33,9 @@ export default function DistritoCombobox({
   }, [value, options]);
 
   const inputClass = `h-11 w-full rounded-xl border px-4 pr-10 text-sm outline-none transition focus:ring-2 ${
-    error
+    readOnly
+      ? "border-slate-200 bg-slate-50 text-slate-500 cursor-not-allowed"
+      : error
       ? "border-red-400 text-red-900 focus:ring-red-100"
       : "border-slate-200 text-slate-800 focus:border-teal-500 focus:ring-teal-100"
   }`;
@@ -63,28 +67,31 @@ export default function DistritoCombobox({
           type="text"
           value={value}
           onChange={(e) => {
-            const next = sanitizeText(
-              e.target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s.'-]/g, ""),
-              60
-            );
+            if (readOnly) return;
+            const next = e.target.value
+              .replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑüÜ0-9\s.'-]/g, "")
+              .slice(0, 60);
             onChange(next);
             setOpen(true);
           }}
-          onFocus={() => setOpen(true)}
+          onFocus={() => !readOnly && setOpen(true)}
           placeholder={placeholder}
           maxLength={60}
           className={inputClass}
           autoComplete="off"
+          readOnly={readOnly}
         />
-        <button
-          type="button"
-          tabIndex={-1}
-          onClick={() => setOpen((v) => !v)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-          aria-label="Mostrar distritos"
-        >
-          <ChevronDown className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`} />
-        </button>
+        {!readOnly && (
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={() => setOpen((v) => !v)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+            aria-label="Mostrar distritos"
+          >
+            <ChevronDown className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`} />
+          </button>
+        )}
 
         {open && (
           <ul className="absolute z-20 mt-1 max-h-48 w-full overflow-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg">

@@ -1,4 +1,4 @@
-export { default as PatientSummaryCard } from "./PatientSummaryCard";
+
 export { default as PinCodeCard } from "./PinCodeCard";
 export { default as PinRegeneratedToast } from "./PinRegeneratedToast";
 export { default as PlanSummaryCard } from "./PlanSummaryCard";

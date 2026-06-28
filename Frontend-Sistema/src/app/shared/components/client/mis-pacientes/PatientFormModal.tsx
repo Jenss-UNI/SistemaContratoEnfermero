@@ -7,7 +7,7 @@ type PatientFormModalProps = {
   initialForm: PatientFormData;
   submitLabel: string;
   onClose: () => void;
-  onSubmit: (data: PatientFormData) => void;
+  onSubmit: (data: PatientFormData) => void | Promise<void>;
 };
 
 export default function PatientFormModal({

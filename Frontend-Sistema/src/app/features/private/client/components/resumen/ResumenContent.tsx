@@ -1,27 +1,48 @@
 import { Calendar, Heart, UserRound, Wallet } from "lucide-react";
 import { CLIENT_PANEL_BASE } from "../../clientNav";
 import {
-  PatientSummaryCard,
   PinCodeCard,
   PlanSummaryCard,
   SectionHeader,
   ServiceCard,
   StatCard,
 } from "../../../../../shared/components/client/resumen";
+import { PatientCard } from "../../../../../shared/components/client/mis-pacientes";
+import { usePatients } from "../../hooks/usePatients";
+import { useClienteProfile } from "../../hooks/useClienteProfile";
 
-export default function ResumenContent() {
+interface ResumenContentProps {
+  onPinRegenerado?: () => void;
+}
+
+export default function ResumenContent({ onPinRegenerado: _onPinRegenerado }: ResumenContentProps) {
+  const { patients } = usePatients();
+  const { subscription } = useClienteProfile();
+  
   const stats = {
     activos: "0",
     proximos: "11",
-    pacientes: "2",
+    pacientes: patients.filter(p => p.parentesco !== "Yo mismo").length.toString(),
     invertido: "S/ 206",
   };
 
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return "—";
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    const [year, month, day] = parts;
+    const months = ["ene.", "feb.", "mar.", "abr.", "may.", "jun.", "jul.", "ago.", "sep.", "oct.", "nov.", "dic."];
+    const mIdx = parseInt(month, 10) - 1;
+    const mName = months[mIdx] || month;
+    return `${parseInt(day, 10)} ${mName} ${year}`;
+  };
+
   const planData = {
-    planName: "Premium",
-    status: "Activo",
-    expirationDate: "19 jun. 2026",
-    memberSince: "may. 2026",
+    planName: subscription?.plan_nombre ?? "Sin Plan",
+    status: subscription?.status ?? "inactive",
+    expirationDate: subscription?.fecha_vence ? formatDate(subscription.fecha_vence) : "—",
+    memberSince: subscription?.fecha_inicio ? formatDate(subscription.fecha_inicio) : "—",
+    ciclo: subscription?.ciclo ?? "—",
   };
 
   const servicios = [
@@ -79,20 +100,8 @@ export default function ResumenContent() {
     },
   ];
 
-  const pacientes = [
-    {
-      id: 1,
-      name: "Monica Perez",
-      details: "34 años • Otro",
-      location: "San Isidro",
-    },
-    {
-      id: 2,
-      name: "Elena Rodriguez",
-      details: "12 años • Hijo/a",
-      location: "Miraflores",
-    },
-  ];
+  // We only show real family members (excluding "Yo mismo") in this section.
+  const familyMembers = patients.filter(p => p.parentesco !== "Yo mismo");
 
   return (
     <div className="space-y-8 w-full">
@@ -115,7 +124,7 @@ export default function ResumenContent() {
           iconClassName="bg-amber-50 text-amber-500"
         />
         <StatCard
-          label="Mis Pacientes"
+          label="Mis Familiares"
           value={stats.pacientes}
           icon={UserRound}
           iconClassName="bg-pink-50 text-pink-500"
@@ -139,13 +148,17 @@ export default function ResumenContent() {
 
       <section>
         <SectionHeader
-          title="Mis Pacientes"
-          linkTo={`${CLIENT_PANEL_BASE}/mis-pacientes`}
+          title="Mis Familiares"
+          linkTo={`${CLIENT_PANEL_BASE}/mis-familiares`}
         />
         <div className="grid gap-4 sm:grid-cols-2">
-          {pacientes.map((paciente) => (
-            <PatientSummaryCard key={paciente.id} {...paciente} />
-          ))}
+          {familyMembers.length > 0 ? (
+            familyMembers.slice(0, 2).map((paciente) => (
+              <PatientCard key={paciente.id} patient={paciente} />
+            ))
+          ) : (
+            <p className="text-sm text-slate-500 col-span-2">Aún no tienes familiares registrados.</p>
+          )}
         </div>
       </section>
     </div>

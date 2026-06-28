@@ -1,4 +1,13 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useAuth } from "../../../../core/contexts/AuthContext";
+import {
+  fetchNurseScheduleSlots,
+  saveNurseScheduleSlots,
+  fetchNurseScheduleExceptions,
+  addNurseScheduleException,
+  deleteNurseScheduleException,
+  fetchNurseBookings,
+} from "../services/enfermeroProfile.service";
 import {
   Clock,
   Sun,
@@ -69,11 +78,6 @@ function toDateStr(d: Date) {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
 }
 
-function addDays(d: Date, days: number) {
-  const result = new Date(d);
-  result.setDate(result.getDate() + days);
-  return result;
-}
 
 function formatHour(h: number) {
   const suffix = h >= 12 ? "pm" : "am";
@@ -98,80 +102,61 @@ const defaultWeekly: WeeklySlot[] = [
   { dayOfWeek: 6, startHour: 8, endHour: 13, enabled: true },  // Sábado 8am - 1pm
 ];
 
-// Forzar la fecha inicial de la cuadrícula a ser exactamente el Domingo 24 de Mayo de 2026
-// para calzar al 100% con los números e interacciones de tus imágenes de referencia.
-const mockStartDate = new Date(2026, 4, 24); // 24 de Mayo 2026
+
 
 export default function MiAgendaPage() {
+  const { user } = useAuth();
   const [view, setView] = useState<"calendar" | "weekly">("calendar");
   const [weeklySchedule, setWeeklySchedule] = useState<WeeklySlot[]>(defaultWeekly);
-  
-  // Excepciones iniciales coincidiendo con la captura
-  const [exceptions, setExceptions] = useState<Exception[]>([
-    { id: "exc-1", date: "2026-05-23", type: "extra", startHour: 8, endHour: 19 }, // sábado, 23 de mayo
-    { id: "exc-2", date: "2026-06-01", type: "vacation" },                       // lunes, 1 de junio
-    { id: "exc-3", date: "2026-06-12", type: "block" },                          // viernes, 12 de junio
-  ]);
+  const [exceptions, setExceptions] = useState<Exception[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Citas confirmadas iniciales coincidiendo con la captura y adicionando días marcados en rojo
-  const [bookings, setBookings] = useState<Booking[]>([
-    {
-      id: "svc-3",
-      date: "2026-05-27", // Miércoles 27 de Mayo
-      startHour: 7,
-      endHour: 13,
-      patientName: "Juana Lopez Casas",
-      clientName: "Axel Perez",
-      serviceId: "3",
-      status: "confirmed",
-    },
-    {
-      id: "svc-1",
-      date: "2026-05-26", // Martes 26 de Mayo (Marca punto rojo)
-      startHour: 8,
-      endHour: 14,
-      patientName: "Manuel Prado",
-      clientName: "Maria Prado",
-      serviceId: "1",
-      status: "confirmed",
-    },
-    {
-      id: "svc-4",
-      date: "2026-05-28", // Jueves 28 de Mayo (Marca punto rojo)
-      startHour: 9,
-      endHour: 15,
-      patientName: "Rosa Espinoza",
-      clientName: "Sofia Espinoza",
-      serviceId: "4",
-      status: "confirmed",
-    },
-    {
-      id: "svc-2",
-      date: "2026-05-30", // Sábado 30 de Mayo (Marca punto rojo)
-      startHour: 8,
-      endHour: 12,
-      patientName: "Alberto Fujimori",
-      clientName: "Keiko Fujimori",
-      serviceId: "2",
-      status: "confirmed",
-    },
-  ]);
-
-  const [selectedDate, setSelectedDate] = useState<string | null>("2026-05-27"); // miércoles 27 seleccionado por defecto
+  const [selectedDate, setSelectedDate] = useState<string | null>(toDateStr(new Date()));
   const [showExceptionModal, setShowExceptionModal] = useState(false);
   const [exceptionForm, setExceptionForm] = useState<{
     date: string;
     type: "block" | "extra" | "vacation";
     startHour: number;
     endHour: number;
-  }>({ date: "2026-05-25", type: "block", startHour: 8, endHour: 18 });
+  }>({ date: toDateStr(new Date()), type: "block", startHour: 8, endHour: 18 });
 
   const [savingWeekly, setSavingWeekly] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; type: "success" | "error"; message: string } | null>(null);
 
-  // Navegación de meses (inicializado en Mayo 2026 para calzar con las referencias)
-  const [currentMonth, setCurrentMonth] = useState(4); // 4 = Mayo
-  const [currentYear, setCurrentYear] = useState(2026);
+  // Navegación de meses
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let active = true;
+
+    async function loadData() {
+      setIsLoading(true);
+      try {
+        const [slots, excs, bkngs] = await Promise.all([
+          fetchNurseScheduleSlots(user!.id),
+          fetchNurseScheduleExceptions(user!.id),
+          fetchNurseBookings(user!.id),
+        ]);
+        if (!active) return;
+        setWeeklySchedule(slots);
+        setExceptions(excs);
+        setBookings(bkngs);
+      } catch (err) {
+        console.error("Error loading agenda data:", err);
+        if (active) showToast("Error al cargar la agenda", "error");
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    }
+
+    loadData();
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
 
   const handlePrevMonth = () => {
     if (currentMonth === 0) {
@@ -260,47 +245,63 @@ export default function MiAgendaPage() {
   };
 
   // Guardar disponibilidad recurrente semanal
-  const handleSaveWeekly = (e: React.FormEvent) => {
+  const handleSaveWeekly = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user?.id) return;
     setSavingWeekly(true);
-    setTimeout(() => {
-      setSavingWeekly(false);
+    try {
+      await saveNurseScheduleSlots(user.id, weeklySchedule);
       showToast("Horario semanal guardado correctamente", "success");
-    }, 1200);
+    } catch (err) {
+      console.error("Error saving weekly schedule:", err);
+      showToast("Error al guardar el horario semanal", "error");
+    } finally {
+      setSavingWeekly(false);
+    }
   };
 
   // Añadir nueva excepción
-  const handleAddException = () => {
+  const handleAddException = async () => {
+    if (!user?.id) return;
     if (!exceptionForm.date) {
       showToast("Por favor selecciona una fecha válida.", "error");
       return;
     }
 
-    // Comprobar si ya existe una excepción en esa fecha
     const duplicate = exceptions.some((e) => e.date === exceptionForm.date);
     if (duplicate) {
       showToast("Ya existe una excepción configurada para esta fecha.", "error");
       return;
     }
 
-    const newExc: Exception = {
-      id: `exc-${Date.now()}`,
-      date: exceptionForm.date,
-      type: exceptionForm.type,
-      ...(exceptionForm.type === "extra"
-        ? { startHour: exceptionForm.startHour, endHour: exceptionForm.endHour }
-        : {}),
-    };
+    try {
+      const newExc = await addNurseScheduleException(user.id, {
+        date: exceptionForm.date,
+        type: exceptionForm.type,
+        startHour: exceptionForm.type === "extra" ? exceptionForm.startHour : undefined,
+        endHour: exceptionForm.type === "extra" ? exceptionForm.endHour : undefined,
+      });
 
-    setExceptions((prev) => [...prev, newExc]);
-    setShowExceptionModal(false);
-    showToast("Excepción agregada correctamente", "success");
+      setExceptions((prev) => [...prev, newExc]);
+      setShowExceptionModal(false);
+      showToast("Excepción agregada correctamente", "success");
+    } catch (err) {
+      console.error("Error adding exception:", err);
+      showToast("Error al agregar la excepción", "error");
+    }
   };
 
   // Eliminar una excepción
-  const handleRemoveException = (id: string) => {
-    setExceptions((prev) => prev.filter((e) => e.id !== id));
-    showToast("Excepción eliminada", "success");
+  const handleRemoveException = async (id: string) => {
+    if (!user?.id) return;
+    try {
+      await deleteNurseScheduleException(user.id, id);
+      setExceptions((prev) => prev.filter((e) => e.id !== id));
+      showToast("Excepción eliminada", "success");
+    } catch (err) {
+      console.error("Error deleting exception:", err);
+      showToast("Error al eliminar la excepción", "error");
+    }
   };
 
   // Cambiar habilitación de un día de la semana
@@ -341,6 +342,17 @@ export default function MiAgendaPage() {
         month: "long",
       })
     : "";
+
+  if (isLoading) {
+    return (
+      <div className="flex h-[450px] w-full items-center justify-center bg-white rounded-2xl border border-slate-100 shadow-sm">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="h-8 w-8 animate-spin text-teal-600" />
+          <p className="text-sm font-semibold text-slate-500">Cargando agenda...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full space-y-6">
@@ -513,7 +525,7 @@ export default function MiAgendaPage() {
                 {calendarDays.map((day) => {
                   const status = getDayStatus(day.date);
                   const isSelected = selectedDate === day.date;
-                  const isToday = day.date === "2026-05-25"; // Lunes 25 es el día actual en la captura
+                  const isToday = day.date === toDateStr(new Date());
                   const dayNum = Number(day.date.split("-")[2]);
 
                   const statusClasses = {

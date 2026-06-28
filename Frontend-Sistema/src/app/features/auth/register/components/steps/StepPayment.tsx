@@ -362,7 +362,6 @@ function WalletScreen({
     error, isLoading, onBack, onSubmit, onCopy, copied
 }: WalletScreenProps) {
     const isYape = tipo === "yape";
-    const colorPrimary = isYape ? "purple" : "sky";
     const gradientFrom = isYape ? "from-purple-600" : "from-sky-400";
     const gradientTo = isYape ? "to-purple-800" : "to-sky-600";
     const ringColor = isYape ? "ring-purple-200 focus:ring-purple-300" : "ring-sky-200 focus:ring-sky-300";
