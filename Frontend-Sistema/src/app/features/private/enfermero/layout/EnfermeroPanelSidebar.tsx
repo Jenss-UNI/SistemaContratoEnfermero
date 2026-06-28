@@ -3,34 +3,77 @@ import { ENFERMERO_NAV_ITEMS } from "../enfermeroNav";
 import { LogOut, ShieldCheck } from "lucide-react";
 
 type EnfermeroPanelSidebarProps = {
+  fullName: string;
+  nivel: string;
+  verificacionStatus: string;
+  fotoUrl: string | null;
   onLogoutClick: () => void;
   onItemClick?: () => void;
 };
 
-export default function EnfermeroPanelSidebar({ onLogoutClick, onItemClick }: EnfermeroPanelSidebarProps) {
+const getInitials = (name: string) => {
+  if (!name) return "EN";
+  const parts = name.split(" ");
+  if (parts.length >= 2) {
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }
+  return name.substring(0, 2).toUpperCase();
+};
+
+export default function EnfermeroPanelSidebar({
+  fullName,
+  nivel,
+  verificacionStatus,
+  fotoUrl,
+  onLogoutClick,
+  onItemClick,
+}: EnfermeroPanelSidebarProps) {
   return (
     <div className="flex h-full flex-col bg-white">
-      {/* Perfil del Enfermero (Alineado y sin truncar) */}
+      {/* Perfil del Enfermero */}
       <div className="px-6 py-6 border-b border-slate-100">
         <div className="flex items-start gap-3">
-          {/* Avatar con Iniciales "CM" en gradiente */}
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-teal-500 text-base font-bold text-white shadow-sm mt-0.5">
-            CM
-          </div>
+          {fotoUrl ? (
+            <img
+              src={fotoUrl}
+              alt={fullName}
+              className="h-12 w-12 rounded-full object-cover border border-slate-100 mt-0.5 shrink-0"
+            />
+          ) : (
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-teal-500 text-base font-bold text-white shadow-sm mt-0.5">
+              {getInitials(fullName)}
+            </div>
+          )}
           <div className="min-w-0 flex-1">
-            {/* Nombre Completo sin truncar */}
             <h3 className="text-sm font-bold text-slate-800 leading-tight">
-              Carlos Sanchez
+              {fullName}
             </h3>
             <p className="text-xs font-medium text-teal-700 mt-1">
-              Enfermero Especializado
+              {nivel}
             </p>
-            {/* Badge de Verificación centrado/alineado con el nombre */}
+            {/* Badge de Verificación */}
             <div className="mt-2.5 flex">
-              <span className="inline-flex items-center gap-1 rounded-full bg-teal-100 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-teal-700">
-                <ShieldCheck className="h-3 w-3" />
-                Verificado
-              </span>
+              {verificacionStatus === "approved" && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-teal-100 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-teal-700">
+                  <ShieldCheck className="h-3 w-3" />
+                  Verificado
+                </span>
+              )}
+              {verificacionStatus === "pending" && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-amber-700">
+                  En revisión
+                </span>
+              )}
+              {verificacionStatus === "rejected" && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-rose-100 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-rose-700">
+                  Rechazado
+                </span>
+              )}
+              {verificacionStatus === "not_submitted" && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-slate-600">
+                  Sin verificar
+                </span>
+              )}
             </div>
           </div>
         </div>

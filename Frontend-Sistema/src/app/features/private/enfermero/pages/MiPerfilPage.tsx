@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import {
   Trash2,
@@ -13,6 +14,17 @@ import {
   X,
   Languages,
 } from "lucide-react";
+import { useAuth } from "../../../../core/contexts/AuthContext";
+import {
+  fetchEnfermeroProfile,
+  updateEnfermeroProfile,
+  saveEnfermeroServiceTypes,
+  saveEnfermeroZones,
+  saveEnfermeroLanguages,
+  saveEnfermeroEducation,
+  saveEnfermeroCertifications,
+  uploadProfilePhoto,
+} from "../services/enfermeroProfile.service";
 
 // Lista completa de 43 distritos de Lima Metropolitana
 const allDistricts = [
@@ -76,85 +88,8 @@ const predefinedLanguages = [
   "Chino Mandarín",
 ];
 
-// Estructura de perfiles precargados para simulación
-const mockProfiles = {
-  especializado: {
-    name: "Carlos Sanchez Martinez",
-    specialty: "Geriatría y Cuidado del Adulto Mayor",
-    district: "Lince",
-    languages: ["Español", "Inglés (Básico)", "Francés"],
-    nivel: "Enfermero Especializado",
-    rateEspecializado: "53",
-    rateAsistencial: "20",
-    rateAcompanamiento: "15",
-    serviceEspecializado: true,
-    serviceAsistencial: true,
-    serviceAcompanamiento: true,
-    zones: ["Jesús María", "Pueblo Libre", "Lince"],
-    education: [
-      {
-        degree: "Licenciado en enfermería",
-        institution: "Universidad Tecnológica del Peru",
-        year: "2019",
-      },
-      {
-        degree: "sgsgsgsg",
-        institution: "gergegerger",
-        year: "2019",
-      },
-    ],
-    certifications: [
-      {
-        name: "dwdwdw",
-        issuer: "dwdwd",
-        year: "1990",
-      },
-    ],
-    bio: "Enfermero con 7 años de experiencia verificado",
-    photoUrl: null,
-  },
-  licenciado: {
-    name: "Alex Martinez",
-    specialty: "",
-    district: "La Molina",
-    languages: ["Español"],
-    nivel: "Licenciado en Enfermería",
-    rateEspecializado: "65",
-    rateAsistencial: "45",
-    rateAcompanamiento: "35",
-    serviceEspecializado: false,
-    serviceAsistencial: true,
-    serviceAcompanamiento: false,
-    zones: [] as string[],
-    education: [] as { degree: string; institution: string; year: string }[],
-    certifications: [] as { name: string; issuer: string; year: string }[],
-    bio: "",
-    photoUrl: null,
-  },
-  tecnico: {
-    name: "Jair Chavez",
-    specialty: "",
-    district: "Miraflores",
-    languages: ["Español"],
-    nivel: "Técnico en Enfermería",
-    rateEspecializado: "65",
-    rateAsistencial: "45",
-    rateAcompanamiento: "35",
-    serviceEspecializado: false,
-    serviceAsistencial: false,
-    serviceAcompanamiento: true,
-    zones: ["Miraflores"],
-    education: [] as { degree: string; institution: string; year: string }[],
-    certifications: [] as { name: string; issuer: string; year: string }[],
-    bio: "",
-    photoUrl: null,
-  },
-};
-
-type ProfileKey = "especializado" | "licenciado" | "tecnico";
-
 export default function MiPerfilPage() {
-  const [simulatedProfile, setSimulatedProfile] = useState<ProfileKey>("especializado");
+  const { user, refetchAuthProfile } = useAuth();
 
   // Formulario principal
   const [form, setForm] = useState({
@@ -171,13 +106,13 @@ export default function MiPerfilPage() {
   const [education, setEducation] = useState<{ degree: string; institution: string; year: string }[]>([]);
   const [certifications, setCertifications] = useState<{ name: string; issuer: string; year: string }[]>([]);
 
-  const [rateEspecializado, setRateEspecializado] = useState("53");
-  const [rateAsistencial, setRateAsistencial] = useState("20");
-  const [rateAcompanamiento, setRateAcompanamiento] = useState("15");
+  const [rateEspecializado, setRateEspecializado] = useState("0");
+  const [rateAsistencial, setRateAsistencial] = useState("0");
+  const [rateAcompanamiento, setRateAcompanamiento] = useState("0");
 
-  const [serviceEspecializado, setServiceEspecializado] = useState(true);
-  const [serviceAsistencial, setServiceAsistencial] = useState(true);
-  const [serviceAcompanamiento, setServiceAcompanamiento] = useState(true);
+  const [serviceEspecializado, setServiceEspecializado] = useState(false);
+  const [serviceAsistencial, setServiceAsistencial] = useState(false);
+  const [serviceAcompanamiento, setServiceAcompanamiento] = useState(false);
 
   // Estados para añadir nueva formación
   const [newEdDegree, setNewEdDegree] = useState("");
@@ -198,6 +133,7 @@ export default function MiPerfilPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Estados del Toast, Guardado y Errores
+  const [pageLoading, setPageLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<{ show: boolean; type: "success" | "error"; message: string } | null>(null);
@@ -209,42 +145,70 @@ export default function MiPerfilPage() {
     (_, index) => (currentYear - index).toString()
   );
 
-  // Cargar datos según el perfil simulado seleccionado
+  const loadProfileData = async () => {
+    if (!user?.id) return;
+    try {
+      setPageLoading(true);
+      const profileData = await fetchEnfermeroProfile(user.id);
+      
+      setForm({
+        name: `${profileData.nombres || ""} ${profileData.apellidos_pa || ""} ${profileData.apellidos_ma || ""}`.trim(),
+        specialty: profileData.nurse_profile?.especialidad || "",
+        district: profileData.distrito || "",
+        bio: profileData.nurse_profile?.bio || "",
+      });
+
+      setNivel(profileData.nurse_profile?.nivel || "Técnico en Enfermería");
+      setZones(profileData.zones || []);
+      setLanguages(profileData.languages || []);
+      setPhotoUrl(profileData.foto_url);
+
+      setEducation(profileData.education?.map((ed) => ({
+        degree: ed.titulo,
+        institution: ed.institucion,
+        year: String(ed.anio),
+      })) || []);
+
+      setCertifications(profileData.certifications?.map((c) => ({
+        name: c.nombre,
+        issuer: c.emisor,
+        year: String(c.anio),
+      })) || []);
+
+      // Tarifas y estado activo
+      const esp = profileData.service_types?.find((s) => s.tipo === "Especializado");
+      const asis = profileData.service_types?.find((s) => s.tipo === "Asistencial");
+      const acop = profileData.service_types?.find((s) => s.tipo === "Acompañamiento");
+
+      setRateEspecializado(esp?.tarifa_hora ? String(esp.tarifa_hora) : "0");
+      setServiceEspecializado(esp?.activo ?? false);
+
+      setRateAsistencial(asis?.tarifa_hora ? String(asis.tarifa_hora) : "0");
+      setServiceAsistencial(asis?.activo ?? false);
+
+      setRateAcompanamiento(acop?.tarifa_hora ? String(acop.tarifa_hora) : "0");
+      setServiceAcompanamiento(acop?.activo ?? false);
+
+      setErrors({});
+    } catch (err: any) {
+      console.error("[Profile] Error al cargar los datos del perfil:", err);
+      showToast("Error al cargar los datos del perfil.", "error");
+    } finally {
+      setPageLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const profileData = mockProfiles[simulatedProfile];
-    setForm({
-      name: profileData.name,
-      specialty: profileData.specialty,
-      district: profileData.district,
-      bio: profileData.bio,
-    });
-    setNivel(profileData.nivel);
-    setZones(profileData.zones);
-    setLanguages(profileData.languages);
-    setEducation(profileData.education);
-    setCertifications(profileData.certifications);
-    setRateEspecializado(profileData.rateEspecializado);
-    setRateAsistencial(profileData.rateAsistencial);
-    setRateAcompanamiento(profileData.rateAcompanamiento);
-    setServiceEspecializado(profileData.serviceEspecializado);
-    setServiceAsistencial(profileData.serviceAsistencial);
-    setServiceAcompanamiento(profileData.serviceAcompanamiento);
-    setPhotoUrl(null);
-    setErrors({});
-    
-    // Inicializar años por defecto en el primer elemento de la lista (Año Actual)
+    loadProfileData();
     setNewEdYear(currentYear.toString());
     setNewCertYear(currentYear.toString());
-  }, [simulatedProfile]);
+  }, [user?.id]);
 
-  // ─── MOTOR DE SANITIZACIÓN Y VALIDACIÓN DEL CLIENTE ───
+  // ─── MOTOR DE SANITIZACIÓN Y VALIDACIÓN ───
   const validateField = (name: string, value: string): string => {
     let errorMsg = "";
-
-    // 1. Limpieza inicial: Normalización de múltiples espacios a uno solo
     const cleanedValue = value.replace(/\s+/g, " ").trim();
 
-    // 2. Detección preventiva contra SQL Injection y XSS
     const sqlPattern = /(SELECT|UNION|DROP|INSERT|UPDATE|DELETE|WHERE|OR\s+['"]?\d+['"]?\s*=\s*['"]?\d+|--|\/\*|\*\/|;)/i;
     const xssPattern = /(<script|javascript:|onload=|onerror=|<iframe>|<object|<embed)/i;
 
@@ -255,13 +219,12 @@ export default function MiPerfilPage() {
       return "Se detectó código HTML o scripts no permitidos.";
     }
 
-    // 3. Validaciones del perfil especificadas por el usuario
     if (name === "name" || name === "specialty" || name === "newEdDegree") {
       if (cleanedValue.length > 0) {
-        if (cleanedValue.length < 3 || cleanedValue.length > 50) {
-          errorMsg = "La longitud debe estar estrictamente entre 3 y 50 caracteres.";
-        } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(cleanedValue)) {
-          errorMsg = "Solo se permiten letras, espacios y tildes (prohibido números y caracteres especiales).";
+        if (cleanedValue.length < 3 || cleanedValue.length > 80) {
+          errorMsg = "La longitud debe estar entre 3 y 80 caracteres.";
+        } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s'-]+$/.test(cleanedValue)) {
+          errorMsg = "Solo se permiten letras, espacios, guiones y tildes.";
         }
       } else if (name === "name") {
         errorMsg = "El nombre completo es obligatorio.";
@@ -270,11 +233,11 @@ export default function MiPerfilPage() {
       if (cleanedValue.length < 3 || cleanedValue.length > 50) {
         errorMsg = "El distrito principal debe tener entre 3 y 50 caracteres.";
       } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(cleanedValue)) {
-        errorMsg = "El distrito solo puede contener letras, espacios y tildes.";
+        errorMsg = "El distrito solo puede contener letras y espacios.";
       }
     } else if (name === "bio") {
       if (cleanedValue.length < 20) {
-        errorMsg = "La biografía debe contener al menos 20 caracteres para un perfil profesional de calidad.";
+        errorMsg = "La biografía debe contener al menos 20 caracteres.";
       } else if (cleanedValue.length > 500) {
         errorMsg = "La biografía no puede superar los 500 caracteres.";
       }
@@ -283,21 +246,18 @@ export default function MiPerfilPage() {
     return errorMsg;
   };
 
-  // Validar campos de tipo Curso/Institución (Certificaciones)
   const validateCertificationField = (value: string): string => {
     const cleaned = value.replace(/\s+/g, " ").trim();
 
-    // Validar inyección
     if (/(SELECT|UNION|DROP|--|;)/i.test(cleaned) || /(<script|javascript:)/i.test(cleaned)) {
       return "Se detectó contenido peligroso no permitido.";
     }
 
     if (cleaned.length < 3 || cleaned.length > 100) {
-      return "La longitud del curso/institución debe estar entre 3 y 100 caracteres.";
+      return "La longitud debe estar entre 3 y 100 caracteres.";
     }
-    // Debe contener al menos una letra, pero puede tener números y guiones
     if (!/[a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(cleaned)) {
-      return "Debe contener letras obligatoriamente (no se permiten entradas puramente numéricas).";
+      return "Debe contener letras obligatoriamente.";
     }
     if (!/^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s\-]+$/.test(cleaned)) {
       return "Solo se permiten letras, números, espacios y guiones.";
@@ -306,7 +266,6 @@ export default function MiPerfilPage() {
     return "";
   };
 
-  // Validar Tarifas
   const validateRateValue = (value: string): string => {
     const num = parseInt(value, 10);
     if (isNaN(num) || !/^\d+$/.test(value)) {
@@ -318,18 +277,14 @@ export default function MiPerfilPage() {
     return "";
   };
 
-  // Manejar cambios en inputs de texto con validación y limpieza en tiempo real
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    
-    // Guardamos el valor en crudo mientras escribe, pero validamos con el valor limpio
     setForm((prev) => ({ ...prev, [name]: value }));
 
     const error = validateField(name, value);
     setErrors((prev) => ({ ...prev, [name]: error }));
   };
 
-  // Agregar Idioma desde el catálogo cerrado
   const handleAddLanguage = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selected = e.target.value;
     if (!selected) return;
@@ -338,47 +293,46 @@ export default function MiPerfilPage() {
       setLanguages((prev) => [...prev, selected]);
       showToast(`Se agregó el idioma: ${selected}`, "success");
     }
-    e.target.value = ""; // Resetear selector
+    e.target.value = "";
   };
 
-  // Remover Idioma
   const handleRemoveLanguage = (lang: string) => {
     setLanguages((prev) => prev.filter((l) => l !== lang));
   };
 
-  // Toggle de distritos
   const toggleDistrict = (d: string) => {
     setZones((prev) =>
       prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]
     );
   };
 
-  // Filtrar los distritos según la búsqueda
   const filteredDistricts = allDistricts.filter((d) =>
     d.toLowerCase().includes(districtSearch.toLowerCase())
   );
 
-  // Simular la carga de foto de perfil
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !user?.id) return;
+
     if (file.size > 5 * 1024 * 1024) {
       showToast("La imagen debe ser menor a 5MB", "error");
       return;
     }
+
     setPhotoUploading(true);
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setTimeout(() => {
-        setPhotoUrl(ev.target?.result as string);
-        setPhotoUploading(false);
-        showToast("Foto de perfil actualizada", "success");
-      }, 1000);
-    };
-    reader.readAsDataURL(file);
+    try {
+      const publicUrl = await uploadProfilePhoto(user.id, file);
+      setPhotoUrl(publicUrl);
+      await refetchAuthProfile();
+      showToast("Foto de perfil actualizada", "success");
+    } catch (err: any) {
+      console.error("[Profile] Error al subir foto:", err);
+      showToast("Error al actualizar la foto de perfil.", "error");
+    } finally {
+      setPhotoUploading(false);
+    }
   };
 
-  // Disparar Toast emergente
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ show: true, type, message });
     setTimeout(() => {
@@ -386,11 +340,10 @@ export default function MiPerfilPage() {
     }, 4500);
   };
 
-  // Guardar datos con validaciones lógicas y de negocio completas antes de enviar
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user?.id) return;
 
-    // 1. Limpieza de espacios redundantes intermedios en el onSubmit (.trim() + .replace())
     const cleanedForm = {
       name: form.name.replace(/\s+/g, " ").trim(),
       specialty: form.specialty.replace(/\s+/g, " ").trim(),
@@ -398,17 +351,14 @@ export default function MiPerfilPage() {
       bio: form.bio.replace(/\s+/g, " ").trim(),
     };
 
-    // Actualizamos el formulario con la versión sanitizada para que el usuario la visualice limpia
     setForm(cleanedForm);
 
-    // 2. Validar campos
     const newErrors: Record<string, string> = {};
     Object.keys(cleanedForm).forEach((key) => {
       const err = validateField(key, cleanedForm[key as keyof typeof cleanedForm]);
       if (err) newErrors[key] = err;
     });
 
-    // 3. Validar tarifas activas
     if (serviceEspecializado && nivel === "Enfermero Especializado") {
       const err = validateRateValue(rateEspecializado);
       if (err) newErrors.rateEspecializado = err;
@@ -424,13 +374,11 @@ export default function MiPerfilPage() {
 
     setErrors(newErrors);
 
-    // 4. Validación de negocio: Zonas de atención obligatorias (mínimo 1)
     if (zones.length === 0) {
       showToast("Debes seleccionar al menos un distrito de atención para poder guardar.", "error");
       return;
     }
 
-    // 5. Bloquear si existen errores
     const hasErrors = Object.values(newErrors).some((x) => x !== "");
     if (hasErrors) {
       showToast("Por favor corrige los errores antes de guardar.", "error");
@@ -438,13 +386,85 @@ export default function MiPerfilPage() {
     }
 
     setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
+    try {
+      // Separar nombre completo en partes para la base de datos
+      const nameParts = cleanedForm.name.split(" ");
+      let nombres = "";
+      let apellidos_pa = "";
+      let apellidos_ma = "";
+
+      if (nameParts.length >= 3) {
+        apellidos_ma = nameParts.pop() || "";
+        apellidos_pa = nameParts.pop() || "";
+        nombres = nameParts.join(" ");
+      } else if (nameParts.length === 2) {
+        nombres = nameParts[0];
+        apellidos_pa = nameParts[1];
+      } else {
+        nombres = cleanedForm.name;
+      }
+
+      if (nombres.length < 2 || (apellidos_pa && apellidos_pa.length < 2)) {
+        showToast("Por favor ingresa un nombre y apellido paterno válidos.", "error");
+        setSaving(false);
+        return;
+      }
+
+      // 1. Guardar profiles y nurse_profiles
+      await updateEnfermeroProfile(user.id, {
+        nombres,
+        apellidos_pa,
+        apellidos_ma,
+        district: cleanedForm.district,
+        specialty: cleanedForm.specialty,
+        bio: cleanedForm.bio,
+      });
+
+      // 2. Guardar tipos de servicio y sus tarifas
+      const servicesToSave = [
+        {
+          tipo: "Especializado",
+          tarifa_hora: Number(rateEspecializado),
+          activo: nivel === "Enfermero Especializado" ? serviceEspecializado : false,
+          principal: nivel === "Enfermero Especializado",
+        },
+        {
+          tipo: "Asistencial",
+          tarifa_hora: Number(rateAsistencial),
+          activo: nivel === "Técnico en Enfermería" ? false : (nivel === "Licenciado en Enfermería" ? true : serviceAsistencial),
+          principal: nivel === "Licenciado en Enfermería",
+        },
+        {
+          tipo: "Acompañamiento",
+          tarifa_hora: Number(rateAcompanamiento),
+          activo: nivel === "Técnico en Enfermería" ? true : serviceAcompanamiento,
+          principal: nivel === "Técnico en Enfermería",
+        },
+      ];
+      await saveEnfermeroServiceTypes(user.id, servicesToSave);
+
+      // 3. Guardar zonas
+      await saveEnfermeroZones(user.id, zones);
+
+      // 4. Guardar idiomas
+      await saveEnfermeroLanguages(user.id, languages);
+
+      // 5. Guardar educación
+      await saveEnfermeroEducation(user.id, education);
+
+      // 6. Guardar certificaciones
+      await saveEnfermeroCertifications(user.id, certifications);
+
+      await refetchAuthProfile();
       showToast("Perfil guardado correctamente", "success");
-    }, 1200);
+    } catch (err: any) {
+      console.error("[Profile] Error al guardar cambios:", err);
+      showToast("Error al guardar cambios: " + (err.message || ""), "error");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  // Agregar Formación Académica con validación de tildes y longitud estricta
   const addEducation = () => {
     const cleanedDegree = newEdDegree.replace(/\s+/g, " ").trim();
     const cleanedInst = newEdInstitution.replace(/\s+/g, " ").trim();
@@ -475,7 +495,6 @@ export default function MiPerfilPage() {
     }
   };
 
-  // Agregar Certificación con validación alfabética y de presencia de letras
   const addCertification = () => {
     const cleanedName = newCertName.replace(/\s+/g, " ").trim();
     const cleanedIssuer = newCertIssuer.replace(/\s+/g, " ").trim();
@@ -506,7 +525,6 @@ export default function MiPerfilPage() {
     }
   };
 
-  // Iniciales del avatar dinámicas
   const getInitials = () => {
     if (!form.name) return "EN";
     const parts = form.name.split(" ");
@@ -516,54 +534,18 @@ export default function MiPerfilPage() {
     return parts[0].substring(0, 2).toUpperCase();
   };
 
+  if (pageLoading) {
+    return (
+      <div className="w-full h-[60vh] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="h-10 w-10 animate-spin text-teal-600" />
+        <p className="text-sm font-semibold text-slate-500">Cargando perfil profesional...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="relative w-full space-y-6">
       
-      {/* ─── SIMULADOR SUPERIOR (Pruebas de Frontend) ─── */}
-      <div className="bg-slate-900 text-white rounded-xl p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Simulador de Perfil (Solo Frontend)
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setSimulatedProfile("especializado")}
-            className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition cursor-pointer ${
-              simulatedProfile === "especializado"
-                ? "bg-teal-500 text-white shadow-sm"
-                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-            }`}
-          >
-            Enfermero Especializado
-          </button>
-          <button
-            type="button"
-            onClick={() => setSimulatedProfile("licenciado")}
-            className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition cursor-pointer ${
-              simulatedProfile === "licenciado"
-                ? "bg-teal-500 text-white shadow-sm"
-                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-            }`}
-          >
-            Licenciado en Enfermería
-          </button>
-          <button
-            type="button"
-            onClick={() => setSimulatedProfile("tecnico")}
-            className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition cursor-pointer ${
-              simulatedProfile === "tecnico"
-                ? "bg-teal-500 text-white shadow-sm"
-                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-            }`}
-          >
-            Técnico en Enfermería
-          </button>
-        </div>
-      </div>
-
       {/* Formulario Principal */}
       <form onSubmit={handleSave} className="space-y-6 w-full animate-in fade-in duration-300">
         
@@ -691,14 +673,13 @@ export default function MiPerfilPage() {
               )}
             </div>
 
-            {/* Selector de Idiomas Premium por Catalogo y Tags */}
+            {/* Selector de Idiomas */}
             <div>
               <label className="block text-xs font-semibold text-slate-400 mb-1.5 flex items-center gap-1">
                 <Languages className="h-3.5 w-3.5 text-slate-400" />
                 Idiomas que hablas
               </label>
               <div className="space-y-2">
-                {/* Desplegable cerrado */}
                 <select
                   onChange={handleAddLanguage}
                   defaultValue=""
@@ -716,7 +697,6 @@ export default function MiPerfilPage() {
                     ))}
                 </select>
 
-                {/* Tags de idiomas agregados */}
                 {languages.length > 0 ? (
                   <div className="flex flex-wrap gap-1.5 pt-1">
                     {languages.map((lang) => (
@@ -761,7 +741,7 @@ export default function MiPerfilPage() {
 
           <div className="flex flex-col gap-4">
             
-            {/* ESPECIALIZADO — Sólo Enfermero Especializado */}
+            {/* ESPECIALIZADO */}
             {nivel === "Enfermero Especializado" && (
               <div
                 className={`rounded-xl border p-5 transition duration-300 ${
@@ -811,7 +791,7 @@ export default function MiPerfilPage() {
               </div>
             )}
 
-            {/* ASISTENCIAL — Especialista (opcional) o Licenciado (principal) */}
+            {/* ASISTENCIAL */}
             {(nivel === "Enfermero Especializado" || nivel === "Licenciado en Enfermería") && (
               <div
                 className={`rounded-xl border p-5 transition duration-300 ${
@@ -892,7 +872,7 @@ export default function MiPerfilPage() {
               </div>
             )}
 
-            {/* ACOMPAÑAMIENTO — Técnico (principal) o resto (opcional) */}
+            {/* ACOMPAÑAMIENTO */}
             <div
               className={`rounded-xl border p-5 transition duration-300 ${
                 serviceAcompanamiento
@@ -981,7 +961,7 @@ export default function MiPerfilPage() {
             Selecciona los distritos donde puedes brindar servicios. Los clientes podrán filtrarte por estas zonas.
           </p>
 
-          {/* Listado de distritos seleccionados (Pills) */}
+          {/* Listado de distritos seleccionados */}
           {zones.length > 0 && (
             <div className="mb-4 animate-in fade-in duration-200">
               <p className="text-xs font-bold text-slate-500 mb-2">
@@ -1008,7 +988,7 @@ export default function MiPerfilPage() {
             </div>
           )}
 
-          {/* Buscador de distritos en tiempo real + Botones Rápidos */}
+          {/* Buscador de distritos */}
           <div className="flex flex-col md:flex-row gap-3 mb-4 items-center">
             <div className="relative flex-1 w-full">
               <input
@@ -1038,7 +1018,7 @@ export default function MiPerfilPage() {
             </div>
           </div>
 
-          {/* Rejilla de distritos compacta con scroll vertical interno */}
+          {/* Rejilla de distritos */}
           <div className="max-h-48 overflow-y-auto border border-slate-100 rounded-xl p-3 bg-slate-50/30 scrollbar-thin">
             {filteredDistricts.length === 0 ? (
               <div className="text-center py-6 text-slate-400 text-xs font-medium">
@@ -1095,20 +1075,20 @@ export default function MiPerfilPage() {
               </div>
             ))}
 
-            {/* Inputs para agregar nueva formación con selector de años */}
+            {/* Inputs para agregar nueva formación */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
               <input
                 type="text"
                 value={newEdDegree}
                 onChange={(e) => setNewEdDegree(e.target.value)}
-                placeholder="Nombre de la licenciatura"
+                placeholder="Nombre de la formación (ej. Licenciatura)"
                 className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition"
               />
               <input
                 type="text"
                 value={newEdInstitution}
                 onChange={(e) => setNewEdInstitution(e.target.value)}
-                placeholder="Nombre de la universidad"
+                placeholder="Nombre de la institución"
                 className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition"
               />
               <div className="flex gap-2">
@@ -1193,20 +1173,20 @@ export default function MiPerfilPage() {
               </div>
             ))}
 
-            {/* Inputs para agregar nueva certificación con selector de años */}
+            {/* Inputs para agregar nueva certificación */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
               <input
                 type="text"
                 value={newCertName}
                 onChange={(e) => setNewCertName(e.target.value)}
-                placeholder="Nombre del curso"
+                placeholder="Nombre del curso / certificación"
                 className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition"
               />
               <input
                 type="text"
                 value={newCertIssuer}
                 onChange={(e) => setNewCertIssuer(e.target.value)}
-                placeholder="Organización que emite"
+                placeholder="Organización emisora"
                 className="border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 transition"
               />
               <div className="flex gap-2">
@@ -1238,7 +1218,7 @@ export default function MiPerfilPage() {
           <button
             type="submit"
             disabled={saving}
-            className="px-6 py-2.5 bg-teal-500 hover:bg-teal-600 text-white text-sm font-semibold rounded-xl disabled:bg-teal-300 shadow-sm cursor-pointer transition flex items-center gap-1.5"
+            className="px-6 py-2.5 bg-teal-500 hover:bg-teal-600 text-white text-sm font-semibold rounded-xl disabled:bg-teal-300 shadow-sm cursor-pointer transition flex items-center gap-1.5 animate-in fade-in"
           >
             {saving ? (
               <>
@@ -1253,7 +1233,7 @@ export default function MiPerfilPage() {
 
       </form>
 
-      {/* ─── SISTEMA DE TOAST NOTIFICACIONES FLOTANTES (LOCAL) ─── */}
+      {/* Sistema de Notificaciones flotantes */}
       {toast && toast.show && (
         <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-3 bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-xl border border-slate-800 animate-in fade-in slide-in-from-bottom-6 duration-300">
           {toast.type === "success" ? (

@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { Header, Footer } from "../../../shared/layout";
 import NurseCard from "../components/nurse/NurseCard";
 import type { Nurse } from "../../../core/models/nurse.model";
-import { Search, Star, X, MapPin, ShieldCheck, Users, Trophy } from "lucide-react";
+import { Search, Star, X, MapPin, ShieldCheck, Users, Trophy, Loader2 } from "lucide-react";
+import { fetchPublicNurses } from "../services/directorio.service";
 
 
 export const nurses: Nurse[] = [
@@ -614,6 +615,26 @@ const allDistricts = [
 const serviceTypes = ["Especializado", "Técnico", "Acompañamiento", "Asistencial"];
 
 export default function DirectorioPage() {
+  const [nursesList, setNursesList] = useState<Nurse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    fetchPublicNurses()
+      .then((data) => {
+        if (!active) return;
+        setNursesList(data);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error al cargar los enfermeros en el directorio:", err);
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const [filterService, setFilterService] = useState("");
   const [filterDistrict, setFilterDistrict] = useState("");
   const [filterTopRated, setFilterTopRated] = useState(false);
@@ -631,7 +652,7 @@ export default function DirectorioPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const cardsPerPage = 8;
 
-  const filteredNurses = nurses.filter((nurse) => {
+  const filteredNurses = nursesList.filter((nurse) => {
 
       // búsqueda
       // búsqueda
@@ -997,89 +1018,79 @@ export default function DirectorioPage() {
                     </div>
 
 
-                    {/* Grid de tarjetas */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-
-                        {paginatedNurses.map((nurse) => (
-                            <NurseCard
-                                key={nurse.id}
-                                nurse={nurse}
-                                isAuthenticated={isAuthenticated}
-                            />
-                        ))}
-
-                    </div>
-
-                    {filteredNurses.length > cardsPerPage && (
-
-<div className="mt-10 flex flex-col items-center gap-4">
-
-    {/* texto */}
-    <p className="text-sm text-slate-500">
-        Mostrando {startIndex + 1} - {Math.min(endIndex, filteredNurses.length)} de {filteredNurses.length} profesionales
-    </p>
-
-    {/* botones */}
-    <div className="flex items-center gap-2">
-
-        <button
-            onClick={() =>
-                setCurrentPage(prev => prev - 1)
-            }
-            disabled={currentPage===1}
-            className="px-4 py-2 rounded-xl border border-slate-200 disabled:opacity-40 hover:bg-slate-50 transition">
-            ←
-        </button>
-
-        {[...Array(totalPages)].map((_,index)=>(
-
-            <button
-                key={index}
-                onClick={() =>
-                    setCurrentPage(index+1)
-                }
-                className={`w-10 h-10 rounded-xl transition-all
-
-                ${
-                currentPage===index+1
-                ? "bg-teal-500 text-white shadow-md"
-                : "bg-white border border-slate-200 hover:bg-slate-50"
-                }
-            `}
-            >
-                {index+1}
-            </button>
-
-        ))}
-
-        <button
-            onClick={() =>
-                setCurrentPage(prev=>prev+1)
-            }
-            disabled={
-                currentPage===totalPages
-            }
-            className="px-4 py-2 rounded-xl border border-slate-200 disabled:opacity-40 hover:bg-slate-50 transition">
-            →
-        </button>
-
-    </div>
-
-</div>
-
-)}
-
-                    {/* Mensaje si no hay resultados */}
-                    {filteredNurses.length === 0 && (
-                        <div className="text-center py-12">
-                            <p className="text-slate-500">No se encontraron profesionales con esos filtros</p>
-                            <button
-                                onClick={clearFilters}
-                                className="mt-4 text-teal-600 font-medium hover:underline"
-                            >
-                                Limpiar filtros
-                            </button>
+                    {/* Loader o Grid de tarjetas */}
+                    {isLoading ? (
+                        <div className="flex flex-col items-center justify-center py-20 gap-3">
+                            <Loader2 className="w-10 h-10 animate-spin text-teal-600" />
+                            <p className="text-sm font-semibold text-slate-500">Cargando directorio de profesionales...</p>
                         </div>
+                    ) : (
+                        <>
+                            {/* Grid de tarjetas */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                                {paginatedNurses.map((nurse) => (
+                                    <NurseCard
+                                        key={nurse.id}
+                                        nurse={nurse}
+                                        isAuthenticated={isAuthenticated}
+                                    />
+                                ))}
+                            </div>
+
+                            {filteredNurses.length > cardsPerPage && (
+                                <div className="mt-10 flex flex-col items-center gap-4">
+                                    {/* texto */}
+                                    <p className="text-sm text-slate-500">
+                                        Mostrando {startIndex + 1} - {Math.min(endIndex, filteredNurses.length)} de {filteredNurses.length} profesionales
+                                    </p>
+
+                                    {/* botones */}
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setCurrentPage(prev => prev - 1)}
+                                            disabled={currentPage === 1}
+                                            className="px-4 py-2 rounded-xl border border-slate-200 disabled:opacity-40 hover:bg-slate-50 transition"
+                                        >
+                                            ←
+                                        </button>
+
+                                        {[...Array(totalPages)].map((_, index) => (
+                                            <button
+                                                key={index}
+                                                onClick={() => setCurrentPage(index + 1)}
+                                                className={`w-10 h-10 rounded-xl transition-all ${
+                                                    currentPage === index + 1
+                                                        ? "bg-teal-500 text-white shadow-md"
+                                                        : "bg-white border border-slate-200 hover:bg-slate-50"
+                                                }`}
+                                            >
+                                                {index + 1}
+                                            </button>
+                                        ))}
+
+                                        <button
+                                            onClick={() => setCurrentPage(prev => prev + 1)}
+                                            disabled={currentPage === totalPages}
+                                            className="px-4 py-2 rounded-xl border border-slate-200 disabled:opacity-40 hover:bg-slate-50 transition"
+                                        >
+                                            →
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {filteredNurses.length === 0 && (
+                                <div className="text-center py-12">
+                                    <p className="text-slate-500">No se encontraron profesionales con esos filtros</p>
+                                    <button
+                                        onClick={clearFilters}
+                                        className="mt-4 text-teal-600 font-medium hover:underline"
+                                    >
+                                        Limpiar filtros
+                                    </button>
+                                </div>
+                            )}
+                        </>
                     )}
 
                 </div>

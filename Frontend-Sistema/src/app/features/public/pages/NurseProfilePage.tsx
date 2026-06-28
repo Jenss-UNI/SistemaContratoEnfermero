@@ -1,4 +1,5 @@
 import { Link, useParams } from "react-router-dom";
+import { useState, useEffect } from "react";
 
 import NurseProfileHero from "../components/nurse/NurseProfileHero";
 import NurseAbout from "../components/nurse/NurseAbout";
@@ -7,23 +8,55 @@ import NurseEducation from "../components/nurse/NurseEducation";
 import NurseCertifications from "../components/nurse/NurseCertifications";
 import NurseReviews from "../components/nurse/NurseReviews";
 import NursePriceCard from "../components/nurse/NursePriceCard";
-import { nurses } from "./DirectorioPage";
 import { Footer, Header } from "../../../shared/layout";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Loader2 } from "lucide-react";
 import NurseZones from "../components/nurse/NurseZones";
 import NurseRatings from "../components/nurse/NurseRatings";
 import NurseLanguages from "../components/nurse/NurseLanguages";
-import { useState } from "react";
 import BookingModal from "../components/booking/BookingModal";
+import { fetchPublicNurseProfile } from "../services/directorio.service";
+import type { Nurse } from "../../../core/models/nurse.model";
 
 export default function NurseProfilePage() {
-
-  const [openBooking, setOpenBooking] =
-    useState(false);
-
+  const [openBooking, setOpenBooking] = useState(false);
   const { id } = useParams();
+  const [nurse, setNurse] = useState<Nurse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const nurse = nurses.find(n => n.id === id);
+  useEffect(() => {
+    if (!id) return;
+    let active = true;
+
+    fetchPublicNurseProfile(id)
+      .then((data) => {
+        if (!active) return;
+        setNurse(data);
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error al obtener perfil público del enfermero:", err);
+        if (active) setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [id]);
+
+  if (isLoading) {
+    return (
+      <>
+        <Header />
+        <main className="min-h-screen bg-slate-50 flex items-center justify-center pt-28 pb-20">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-10 w-10 animate-spin text-teal-600" />
+            <p className="text-sm font-semibold text-slate-500">Cargando perfil del profesional...</p>
+          </div>
+        </main>
+        <Footer />
+      </>
+    );
+  }
 
   if (!nurse) {
     return (
@@ -32,12 +65,12 @@ export default function NurseProfilePage() {
         <main className="min-h-screen bg-white pt-32">
           <div className="max-w-7xl mx-auto px-4 text-center">
             <h1 className="text-2xl font-bold text-slate-900">Profesional no encontrado</h1>
-                    <Link
-                        to="/directorio"
-                        className="mt-4 inline-block text-teal-600 hover:underline"
-                    >
-                        Volver al directorio
-                    </Link>
+            <Link
+              to="/directorio"
+              className="mt-4 inline-block text-teal-600 hover:underline"
+            >
+              Volver al directorio
+            </Link>
           </div>
         </main>
         <Footer />
