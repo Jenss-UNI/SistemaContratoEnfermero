@@ -1,18 +1,63 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Outlet, useLocation, useNavigate } from "react-router-dom";
 import EnfermeroPanelSidebar from "./EnfermeroPanelSidebar";
 import { ENFERMERO_NAV_ITEMS } from "../enfermeroNav";
 import { Bell, Menu, X, LogOut } from "lucide-react";
 import { useAuth } from "../../../../core/contexts/AuthContext";
+import { fetchEnfermeroProfile } from "../services/enfermeroProfile.service";
 
 export default function EnfermeroPanelLayout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, user, displayName, fotoUrl } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const [profileData, setProfileData] = useState<{
+    fullName: string;
+    nivel: string;
+    verificacionStatus: string;
+    fotoUrl: string | null;
+  }>({
+    fullName: "Profesional de la Salud",
+    nivel: "Técnico en Enfermería",
+    verificacionStatus: "not_submitted",
+    fotoUrl: null,
+  });
+
+  const getInitials = (name: string) => {
+    if (!name) return "EN";
+    const parts = name.split(" ");
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let active = true;
+
+    fetchEnfermeroProfile(user.id)
+      .then((data) => {
+        if (!active) return;
+        setProfileData({
+          fullName: `${data.nombres || ""} ${data.apellidos_pa || ""} ${data.apellidos_ma || ""}`.trim(),
+          nivel: data.nurse_profile?.nivel || "Técnico en Enfermería",
+          verificacionStatus: data.nurse_profile?.verificacion_status || "not_submitted",
+          fotoUrl: data.foto_url,
+        });
+      })
+      .catch((err) => {
+        console.error("Error al obtener perfil en el layout:", err);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [user?.id, displayName, fotoUrl]);
 
   // Obtener el título dinámico según la ruta activa
   const activeNavItem = ENFERMERO_NAV_ITEMS.find((item) =>
@@ -62,9 +107,17 @@ export default function EnfermeroPanelLayout() {
             <Bell className="text-slate-600 h-5 w-5" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-teal-500 rounded-full"></span>
           </button>
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-500 text-xs font-bold text-white">
-            CM
-          </div>
+          {profileData.fotoUrl ? (
+            <img
+              src={profileData.fotoUrl}
+              alt={profileData.fullName}
+              className="h-8 w-8 rounded-full object-cover border border-slate-100"
+            />
+          ) : (
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-teal-500 text-xs font-bold text-white">
+              {getInitials(profileData.fullName)}
+            </div>
+          )}
         </div>
       </div>
 
@@ -124,7 +177,13 @@ export default function EnfermeroPanelLayout() {
         
         {/* Barra Lateral Izquierda (Escritorio) */}
         <aside className="w-[260px] flex-shrink-0 border-r border-slate-200 bg-white hidden md:block">
-          <EnfermeroPanelSidebar onLogoutClick={() => setShowLogoutConfirm(true)} />
+          <EnfermeroPanelSidebar
+            fullName={profileData.fullName}
+            nivel={profileData.nivel}
+            verificacionStatus={profileData.verificacionStatus}
+            fotoUrl={profileData.fotoUrl}
+            onLogoutClick={() => setShowLogoutConfirm(true)}
+          />
         </aside>
 
         {/* Área de Contenido Principal (en blanco) */}
@@ -156,6 +215,10 @@ export default function EnfermeroPanelLayout() {
             </div>
             <div className="flex-1 overflow-hidden">
               <EnfermeroPanelSidebar
+                fullName={profileData.fullName}
+                nivel={profileData.nivel}
+                verificacionStatus={profileData.verificacionStatus}
+                fotoUrl={profileData.fotoUrl}
                 onLogoutClick={() => {
                   setShowLogoutConfirm(true);
                   setSidebarOpen(false);

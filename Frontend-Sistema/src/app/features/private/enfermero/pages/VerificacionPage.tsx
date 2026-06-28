@@ -21,6 +21,14 @@ import {
   Info,
   X,
 } from "lucide-react";
+import { useAuth } from "../../../../core/contexts/AuthContext";
+import {
+  fetchEnfermeroProfile,
+  fetchNurseDocuments,
+  uploadNurseDocument,
+  deleteNurseDocument,
+  submitVerificationRequest,
+} from "../services/enfermeroProfile.service";
 
 // Tipos de enfermeros
 type NurseType = "Enfermero Especializado" | "Licenciado en Enfermería" | "Técnico en Enfermería";
@@ -30,7 +38,7 @@ interface DocSlot {
   id: string;
   label: string;
   description: string;
-  icon: any; // Lucide icon component
+  icon: any;
 }
 
 interface NurseDoc {
@@ -151,12 +159,11 @@ const docSets: Record<NurseType, DocSlot[]> = {
   "Técnico en Enfermería": [...commonDocs, ...technicalDocs],
 };
 
-type ProfileKey = "especializado" | "licenciado" | "tecnico";
-
 export default function VerificacionPage() {
-  const [simulatedProfile, setSimulatedProfile] = useState<ProfileKey>("especializado");
+  const { user } = useAuth();
 
-  // Estados de carga y simulación
+  // Estados de carga y datos reales
+  const [pageLoading, setPageLoading] = useState(true);
   const [nurseType, setNurseType] = useState<NurseType>("Enfermero Especializado");
   const [requiredDocs, setRequiredDocs] = useState<DocSlot[]>(docSets["Enfermero Especializado"]);
   const [dbDocs, setDbDocs] = useState<NurseDoc[]>([]);
@@ -166,64 +173,53 @@ export default function VerificacionPage() {
   const [currentStatus, setCurrentStatus] = useState<DocStatus>("not_submitted");
   const [toast, setToast] = useState<{ show: boolean; type: "success" | "error"; message: string } | null>(null);
 
-  // Cargar datos estáticos iniciales basados en el perfil de simulación
-  useEffect(() => {
-    if (simulatedProfile === "especializado") {
-      setNurseType("Enfermero Especializado");
-      setRequiredDocs(docSets["Enfermero Especializado"]);
-      setCurrentStatus("approved");
+  const loadVerificationData = async () => {
+    if (!user?.id) return;
+    try {
+      setPageLoading(true);
       
-      // Precargar documentos aprobados para Carlos (coincide con captura)
-      const approvedDocs: NurseDoc[] = docSets["Enfermero Especializado"].map((doc) => ({
-        id: doc.id,
-        doc_type: doc.id,
-        label: doc.label,
-        file_url: doc.id === "dni_front" 
-          ? "archivo1.pdf" 
-          : doc.id === "dni_back" 
-          ? "archivo2.pdf" 
-          : doc.id === "antecedentes_penales"
-          ? "archivo3.png"
-          : doc.id === "antecedentes_policiales"
-          ? "archivo4.png"
-          : doc.id === "titulo_uni"
-          ? "archivo5.png"
-          : doc.id === "sunedu"
-          ? "archivo6.png"
-          : doc.id === "colegiatura"
-          ? "archivo7.png"
-          : "archivo8.png",
-        status: "approved",
-        admin_notes: null,
-      }));
-      setDbDocs(approvedDocs);
-    } else if (simulatedProfile === "licenciado") {
-      setNurseType("Licenciado en Enfermería");
-      setRequiredDocs(docSets["Licenciado en Enfermería"]);
-      setCurrentStatus("not_submitted");
-      setDbDocs([]);
-    } else {
-      setNurseType("Técnico en Enfermería");
-      setRequiredDocs(docSets["Técnico en Enfermería"]);
-      setCurrentStatus("not_submitted");
-      setDbDocs([]);
-    }
-  }, [simulatedProfile]);
+      // 1. Obtener perfil para tipo y estado de verificación
+      const profileData = await fetchEnfermeroProfile(user.id);
+      const level = (profileData.nurse_profile?.nivel || "Técnico en Enfermería") as NurseType;
+      setNurseType(level);
+      setRequiredDocs(docSets[level] || []);
+      setCurrentStatus((profileData.nurse_profile?.verificacion_status || "not_submitted") as DocStatus);
 
-  // Toast flotante
+      // 2. Obtener documentos subidos
+      const docs = await fetchNurseDocuments(user.id);
+      const mappedDocs: NurseDoc[] = docs.map((d) => ({
+        id: d.id,
+        doc_type: d.doc_type,
+        label: docSets[level]?.find((x) => x.id === d.doc_type)?.label || d.doc_type,
+        file_url: d.file_url,
+        status: d.status as any,
+        admin_notes: d.admin_notes || null,
+      }));
+
+      setDbDocs(mappedDocs);
+    } catch (err: any) {
+      console.error("[Verification] Error al cargar los datos:", err);
+      showToast("Error al cargar la información de verificación.", "error");
+    } finally {
+      setPageLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadVerificationData();
+  }, [user?.id]);
+
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ show: true, type, message });
     setTimeout(() => setToast(null), 4000);
   };
 
-  // Obtener estado individual de un documento
   const getDocStatus = (docId: string): "approved" | "pending" | "rejected" | "not_submitted" => {
     const doc = dbDocs.find((d) => d.doc_type === docId);
     if (!doc) return "not_submitted";
     return doc.status;
   };
 
-  // Obtener objeto de documento individual
   const getDoc = (docId: string): NurseDoc | undefined => {
     return dbDocs.find((d) => d.doc_type === docId);
   };
@@ -233,69 +229,56 @@ export default function VerificacionPage() {
     (d) => getDocStatus(d.id) !== "not_submitted"
   ).length;
   
-  const allUploaded = uploadedCount === requiredDocs.length;
+  const allUploaded = requiredDocs.length > 0 && uploadedCount === requiredDocs.length;
 
-  // Manejar cambio/subida simulada de archivos (usando input nativo)
-  const handleFileChange = (docId: string, e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (docId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !user?.id) return;
 
     setLoadingDocId(docId);
-    setTimeout(() => {
-      setLoadingDocId(null);
-      setDbDocs((prev) => {
-        const filtered = prev.filter((d) => d.doc_type !== docId);
-        return [
-          ...filtered,
-          {
-            id: docId,
-            doc_type: docId,
-            label: requiredDocs.find((d) => d.id === docId)?.label ?? docId,
-            file_url: file.name,
-            status: "pending",
-            admin_notes: null,
-          },
-        ];
-      });
-
-      // Si todos los documentos requeridos acaban de ser subidos, cambiar el estado global a "not_submitted" (pero listos para enviar)
+    try {
+      await uploadNurseDocument(user.id, docId, file);
+      await loadVerificationData();
       showToast("Documento subido correctamente", "success");
-    }, 1000);
-  };
-
-  // Eliminar archivo
-  const removeFile = (docId: string) => {
-    setDbDocs((prev) => prev.filter((d) => d.doc_type !== docId));
-    
-    // Si borra un archivo y estábamos en estado "En revisión", restaurar a "Sin enviar"
-    if (currentStatus === "pending") {
-      setCurrentStatus("not_submitted");
+    } catch (err: any) {
+      console.error("[Verification] Error al subir documento:", err);
+      showToast("Error al subir el archivo: " + (err.message || ""), "error");
+    } finally {
+      setLoadingDocId(null);
     }
-    showToast("Documento eliminado", "success");
   };
 
-  // Solicitar verificación (Enviar para Verificación)
-  const handleSubmit = (e: React.FormEvent) => {
+  const removeFile = async (docId: string) => {
+    const doc = getDoc(docId);
+    if (!doc || !doc.file_url || !user?.id) return;
+
+    try {
+      await deleteNurseDocument(user.id, docId, doc.file_url);
+      await loadVerificationData();
+      showToast("Documento eliminado correctamente", "success");
+    } catch (err: any) {
+      console.error("[Verification] Error al eliminar documento:", err);
+      showToast("Error al eliminar el archivo: " + (err.message || ""), "error");
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!allUploaded) return;
+    if (!allUploaded || !user?.id) return;
 
     setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
-      setCurrentStatus("pending");
-      
-      // Actualizar el estado de todos los documentos subidos a "pending" para simular
-      setDbDocs((prev) =>
-        prev.map((doc) => ({
-          ...doc,
-          status: doc.status === "approved" ? "approved" : "pending",
-        }))
-      );
+    try {
+      await submitVerificationRequest(user.id);
+      await loadVerificationData();
       showToast("Documentos enviados correctamente para verificación", "success");
-    }, 1500);
+    } catch (err: any) {
+      console.error("[Verification] Error al enviar verificación:", err);
+      showToast("Error al enviar la solicitud: " + (err.message || ""), "error");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
-  // Configurador visual de banners de estado
   const statusConfig: Record<
     DocStatus,
     { label: string; color: string; icon: any; desc: string }
@@ -326,56 +309,20 @@ export default function VerificacionPage() {
     },
   };
 
-  const statusInfo = statusConfig[currentStatus];
+  const statusInfo = statusConfig[currentStatus] || statusConfig["not_submitted"];
+
+  if (pageLoading) {
+    return (
+      <div className="w-full h-[60vh] flex flex-col items-center justify-center gap-3">
+        <Loader2 className="h-10 w-10 animate-spin text-teal-600" />
+        <p className="text-sm font-semibold text-slate-500">Cargando módulo de verificación...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full space-y-6">
       
-      {/* ─── SIMULADOR SUPERIOR (Pruebas de Frontend) ─── */}
-      <div className="bg-slate-900 text-white rounded-xl p-4 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Simulador de Verificación (Solo Frontend)
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => setSimulatedProfile("especializado")}
-            className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition cursor-pointer ${
-              simulatedProfile === "especializado"
-                ? "bg-teal-500 text-white shadow-sm"
-                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-            }`}
-          >
-            Carlos Sanchez (Verificado)
-          </button>
-          <button
-            type="button"
-            onClick={() => setSimulatedProfile("licenciado")}
-            className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition cursor-pointer ${
-              simulatedProfile === "licenciado"
-                ? "bg-teal-500 text-white shadow-sm"
-                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-            }`}
-          >
-            Alex Martinez (Sin enviar)
-          </button>
-          <button
-            type="button"
-            onClick={() => setSimulatedProfile("tecnico")}
-            className={`text-xs font-semibold px-4 py-1.5 rounded-lg transition cursor-pointer ${
-              simulatedProfile === "tecnico"
-                ? "bg-teal-500 text-white shadow-sm"
-                : "bg-slate-800 text-slate-300 hover:bg-slate-700"
-            }`}
-          >
-            Jair Chavez (Sin enviar)
-          </button>
-        </div>
-      </div>
-
       {/* Formulario Principal */}
       <form onSubmit={handleSubmit} className="space-y-6 w-full animate-in fade-in duration-300">
         
@@ -445,7 +392,7 @@ export default function VerificacionPage() {
           <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
             <div
               className="h-full bg-teal-500 rounded-full transition-all duration-500"
-              style={{ width: `${(uploadedCount / requiredDocs.length) * 100}%` }}
+              style={{ width: `${requiredDocs.length > 0 ? (uploadedCount / requiredDocs.length) * 100 : 0}%` }}
             ></div>
           </div>
           <p className="text-xs text-slate-400 mt-2.5">
@@ -494,12 +441,34 @@ export default function VerificacionPage() {
                   <div className="flex items-center gap-3 bg-teal-50/50 border border-teal-100/50 rounded-xl px-4 py-2.5 animate-in fade-in duration-200">
                     <Check className="text-teal-600 h-4.5 w-4.5 shrink-0 bg-teal-100 rounded-full p-0.5" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-bold text-teal-800 truncate">{existingDoc.file_url}</p>
-                      <p className="text-[9px] font-bold uppercase tracking-wider text-teal-600 mt-0.5">
-                        {existingDoc.status === "approved" ? "Aprobado" : "Pendiente"}
+                      <p className="text-xs font-bold text-teal-800 truncate">
+                        {existingDoc.file_url.split("/").pop()}
                       </p>
+                      <p className={`text-[9px] font-bold uppercase tracking-wider mt-0.5 ${
+                        existingDoc.status === "approved"
+                          ? "text-teal-600"
+                          : existingDoc.status === "pending"
+                          ? "text-amber-600"
+                          : existingDoc.status === "rejected"
+                          ? "text-rose-600"
+                          : "text-slate-500"
+                      }`}>
+                        {existingDoc.status === "approved"
+                          ? "Aprobado"
+                          : existingDoc.status === "pending"
+                          ? "Pendiente de revisión"
+                          : existingDoc.status === "rejected"
+                          ? "Rechazado"
+                          : "Sin enviar"}
+                      </p>
+                      {existingDoc.admin_notes && (
+                        <p className="text-[10px] text-rose-600 bg-rose-50 border border-rose-100 p-1.5 rounded-lg mt-1 italic">
+                          Nota: {existingDoc.admin_notes}
+                        </p>
+                      )}
                     </div>
-                    {/* Botón de eliminar habilitado si no está en revisión o aprobado */}
+                    
+                    {/* Botón de eliminar */}
                     {currentStatus !== "pending" && existingDoc.status !== "approved" && (
                       <button
                         type="button"
@@ -512,7 +481,9 @@ export default function VerificacionPage() {
                     )}
                   </div>
                 ) : (
-                  <label className="flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl py-3.5 cursor-pointer hover:border-teal-300 hover:bg-teal-50/10 transition duration-200">
+                  <label className={`flex items-center justify-center gap-2 border-2 border-dashed border-slate-200 rounded-xl py-3.5 cursor-pointer hover:border-teal-300 hover:bg-teal-50/10 transition duration-200 ${
+                    currentStatus === "pending" ? "opacity-50 pointer-events-none" : ""
+                  }`}>
                     <Upload className="text-slate-400 h-4 w-4" />
                     <span className="text-xs text-slate-500 font-semibold">Subir archivo</span>
                     <input
@@ -529,7 +500,7 @@ export default function VerificacionPage() {
           })}
         </div>
 
-        {/* ─── BOTÓN SOLICITAR VERIFICACIÓN ─── */}
+        {/* BOTÓN SOLICITAR VERIFICACIÓN */}
         {currentStatus !== "approved" && (
           <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-4">
             
@@ -541,12 +512,12 @@ export default function VerificacionPage() {
               </p>
             </div>
 
-            {/* Botón Desbloqueable al 100% */}
+            {/* Botón */}
             {allUploaded ? (
               <button
                 type="submit"
                 disabled={submitting || currentStatus === "pending"}
-                className="w-full bg-teal-500 hover:bg-teal-600 disabled:bg-teal-300 text-white font-bold py-3.5 rounded-xl transition cursor-pointer whitespace-nowrap text-sm shadow-sm flex items-center justify-center gap-2"
+                className="w-full bg-teal-500 hover:bg-teal-600 disabled:bg-teal-350 text-white font-bold py-3.5 rounded-xl transition cursor-pointer whitespace-nowrap text-sm shadow-sm flex items-center justify-center gap-2"
               >
                 {submitting ? (
                   <>
@@ -555,7 +526,7 @@ export default function VerificacionPage() {
                   </>
                 ) : currentStatus === "pending" ? (
                   <>
-                    <Clock className="h-4 w-4" />
+                    <Clock className="h-4 w-4 animate-pulse" />
                     Solicitud enviada (En revisión)
                   </>
                 ) : (
@@ -580,7 +551,7 @@ export default function VerificacionPage() {
           </div>
         )}
 
-        {/* Aviso de Perfil Verificado al 100% */}
+        {/* Aviso de Perfil Verificado */}
         {currentStatus === "approved" && (
           <div className="bg-teal-50/50 border border-teal-200 rounded-2xl p-5 flex items-center gap-3">
             <CheckCircle2 className="text-teal-600 h-6 w-6 shrink-0" />
@@ -595,7 +566,7 @@ export default function VerificacionPage() {
 
       </form>
 
-      {/* ─── SISTEMA DE TOAST NOTIFICACIONES FLOTANTES (LOCAL) ─── */}
+      {/* Notificaciones flotantes */}
       {toast && toast.show && (
         <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-3 bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-xl border border-slate-800 animate-in fade-in slide-in-from-bottom-6 duration-300">
           {toast.type === "success" ? (
@@ -609,7 +580,7 @@ export default function VerificacionPage() {
           )}
           <div className="min-w-0">
             <p className="text-xs font-bold">
-              {toast.type === "success" ? "Éxito" : "Alerta"}
+              {toast.type === "success" ? "Éxito" : "Alerta de Validación"}
             </p>
             <p className="text-[11px] text-slate-300 leading-tight mt-0.5">
               {toast.message}
@@ -621,3 +592,4 @@ export default function VerificacionPage() {
     </div>
   );
 }
+
