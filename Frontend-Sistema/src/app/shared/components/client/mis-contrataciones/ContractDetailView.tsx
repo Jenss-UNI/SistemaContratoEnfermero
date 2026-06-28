@@ -22,6 +22,10 @@ import { useEffect, useState } from "react";
 import type { ContratoDetalle } from "../../../../core/models/hiring.model";
 import { fetchContractDetail } from "../../../../features/private/client/services/hiring.service";
 import ConfirmarContratoModal from "./ConfirmarContratoModal";
+import { useNavigate } from "react-router-dom";
+import { CLIENT_PANEL_BASE } from "../../../../features/private/client/clientNav";
+import { createPortal } from "react-dom";
+import { PartyPopper } from "lucide-react";
 
 type ContractDetailViewProps = {
   serviceId: string;
@@ -38,6 +42,8 @@ export default function ContractDetailView({
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const [showFirmaModal, setShowFirmaModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const navigate = useNavigate();
 
   const loadContract = () => {
     setLoading(true);
@@ -473,10 +479,65 @@ export default function ContractDetailView({
           onClose={() => setShowFirmaModal(false)}
           onSuccess={() => {
             setShowFirmaModal(false);
-            loadContract();
-            if (onFirmado) onFirmado();
+            setShowSuccessModal(true);
           }}
         />
+      )}
+
+      {/* MODAL DE ÉXITO DE FIRMA */}
+      {showSuccessModal && createPortal(
+        <div
+          className="fixed inset-0 z-[130] flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="relative w-full max-w-md rounded-3xl bg-white p-8 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-300 flex flex-col items-center text-center">
+            {/* Icono de éxito */}
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50 mb-5 shadow-sm">
+              <PartyPopper className="h-10 w-10 text-emerald-500" />
+            </div>
+
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">¡Firma exitosa!</h2>
+            <p className="text-sm text-slate-500 leading-relaxed mb-1">
+              Tu firma fue registrada correctamente.
+            </p>
+            <p className="text-sm text-slate-500 leading-relaxed mb-6">
+              El estado de tu contrato pasó a
+              <span className="mx-1.5 inline-flex items-center gap-1 rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-bold text-sky-700">
+                Confirmado
+              </span>
+              y el servicio está listo para iniciar.
+            </p>
+
+            <div className="w-full flex flex-col gap-3 sm:flex-row">
+              {/* Cancelar / Continuar: cierra modal y recarga el contrato con datos actualizados */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  loadContract();
+                  if (onFirmado) onFirmado();
+                }}
+                className="flex-1 rounded-2xl border border-slate-200 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition"
+              >
+                Cancelar
+              </button>
+
+              {/* Ver estado: navega a Mis Contrataciones */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  navigate(`${CLIENT_PANEL_BASE}/mis-contrataciones`);
+                }}
+                className="flex-1 rounded-2xl bg-teal-500 hover:bg-teal-600 py-3 text-sm font-bold text-white transition shadow-sm"
+              >
+                Ver estado
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );
