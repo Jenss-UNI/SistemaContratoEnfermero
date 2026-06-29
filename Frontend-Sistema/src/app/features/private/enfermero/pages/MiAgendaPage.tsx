@@ -91,6 +91,23 @@ function generateHourlySlots(start: number, end: number) {
   return slots;
 }
 
+function addDays(d: Date, days: number) {
+  const result = new Date(d);
+  result.setDate(result.getDate() + days);
+  return result;
+}
+
+function getWeekStart(d: Date) {
+  const date = new Date(d);
+  const day = date.getDay();
+  const diff = date.getDate() - day;
+  return new Date(date.setDate(diff));
+}
+
+function formatHour24(h: number) {
+  return `${pad2(h)}:00`;
+}
+
 /* ─── Horario Semanal Recurrente por Defecto (Lun-Vie: 7am-3pm, Sáb: 8am-1pm, Dom: OFF) ─── */
 const defaultWeekly: WeeklySlot[] = [
   { dayOfWeek: 0, startHour: 8, endHour: 14, enabled: false }, // Domingo cerrado
@@ -106,7 +123,7 @@ const defaultWeekly: WeeklySlot[] = [
 
 export default function MiAgendaPage() {
   const { user } = useAuth();
-  const [view, setView] = useState<"calendar" | "weekly">("calendar");
+  const [view, setView] = useState<"calendar" | "weekly" | "timeline">("calendar");
   const [weeklySchedule, setWeeklySchedule] = useState<WeeklySlot[]>(defaultWeekly);
   const [exceptions, setExceptions] = useState<Exception[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -127,6 +144,9 @@ export default function MiAgendaPage() {
   // Navegación de meses
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+
+  // Navegación de semanas (vista timeline)
+  const [timelineWeekStart, setTimelineWeekStart] = useState(() => getWeekStart(new Date()));
 
   useEffect(() => {
     if (!user?.id) return;
@@ -343,6 +363,35 @@ export default function MiAgendaPage() {
       })
     : "";
 
+  // Timeline (Vista Semanal)
+  const timelineHours = Array.from({ length: 24 }, (_, h) => h);
+
+  const timelineDays = useMemo(() => {
+    const days: { date: string; dayOfWeek: number; dayNum: number; monthLabel: string }[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(timelineWeekStart, i);
+      days.push({
+        date: toDateStr(d),
+        dayOfWeek: d.getDay(),
+        dayNum: d.getDate(),
+        monthLabel: MONTH_NAMES[d.getMonth()],
+      });
+    }
+    return days;
+  }, [timelineWeekStart]);
+
+  const getTimelineStatus = (dateStr: string): "available" | "booked" | "blocked" | "vacation" => {
+    return getDayStatus(dateStr);
+  };
+
+  const getTimelineBookings = (dateStr: string) => {
+    return getDayBookings(dateStr);
+  };
+
+  const getTimelineAvailability = (dateStr: string) => {
+    return getDayAvailability(dateStr);
+  };
+
   if (isLoading) {
     return (
       <div className="flex h-[450px] w-full items-center justify-center bg-white rounded-2xl border border-slate-100 shadow-sm">
@@ -371,6 +420,14 @@ export default function MiAgendaPage() {
             }`}
           >
             Calendario
+          </button>
+          <button
+            onClick={() => setView("timeline")}
+            className={`px-4 py-2 rounded-lg text-xs font-bold transition cursor-pointer whitespace-nowrap ${
+              view === "timeline" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
+            }`}
+          >
+            Vista Semanal
           </button>
           <button
             onClick={() => setView("weekly")}
@@ -471,6 +528,150 @@ export default function MiAgendaPage() {
                 "Guardar horario semanal"
               )}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── VISTA SEMANAL (TIMELINE) ─── */}
+      {view === "timeline" && (
+        <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden animate-in fade-in duration-300">
+          {/* Header de navegación de semanas */}
+          <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setTimelineWeekStart((prev) => addDays(prev, -7))}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4 text-slate-600" />
+              </button>
+              <div>
+                <p className="text-sm font-bold text-slate-800">
+                  {timelineWeekStart.toLocaleDateString("es-PE", { day: "numeric", month: "long" })}
+                  {" — "}
+                  {addDays(timelineWeekStart, 6).toLocaleDateString("es-PE", { day: "numeric", month: "long", year: "numeric" })}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setTimelineWeekStart((prev) => addDays(prev, 7))}
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer transition-colors"
+              >
+                <ChevronRight className="h-4 w-4 text-slate-600" />
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setTimelineWeekStart(getWeekStart(new Date()))}
+              className="text-xs font-semibold text-teal-600 bg-teal-50 px-3 py-1.5 rounded-lg hover:bg-teal-100 transition-colors cursor-pointer whitespace-nowrap"
+            >
+              Hoy
+            </button>
+          </div>
+
+          {/* Contenedor con scroll horizontal */}
+          <div className="overflow-x-auto">
+            <div className="min-w-[800px]">
+              {/* Encabezados de día */}
+              <div className="grid grid-cols-[60px_repeat(7,1fr)] border-b border-slate-100">
+                <div className="p-2 border-r border-slate-100"></div>
+                {timelineDays.map((day) => {
+                  const isToday = day.date === toDateStr(new Date());
+                  const status = getTimelineStatus(day.date);
+                  const isBlocked = status === "blocked" || status === "vacation";
+                  return (
+                    <div
+                      key={day.date}
+                      className={`p-3 text-center border-r border-slate-100 ${isToday ? "bg-teal-50/50" : ""} ${isBlocked ? "bg-slate-50" : ""}`}
+                    >
+                      <p className={`text-xs font-bold ${isToday ? "text-teal-700" : "text-slate-800"}`}>
+                        {DAY_NAMES[day.dayOfWeek]}
+                      </p>
+                      <p className={`text-sm font-black ${isToday ? "text-teal-600" : "text-slate-700"}`}>
+                        {day.dayNum}
+                      </p>
+                      <p className="text-[10px] text-slate-400">{day.monthLabel}</p>
+                      {status === "vacation" && (
+                        <span className="text-[9px] text-amber-600 font-medium">Vacaciones</span>
+                      )}
+                      {status === "blocked" && (
+                        <span className="text-[9px] text-slate-400 font-medium">No disp.</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Grid de horas */}
+              <div className="grid grid-cols-[60px_repeat(7,1fr)]">
+                {timelineHours.map((hour) => (
+                  <div key={`row-${hour}`} className="contents">
+                    {/* Etiqueta de hora */}
+                    <div className="border-r border-b border-slate-100 p-2 text-center">
+                      <p className="text-[10px] text-slate-400 font-medium">{formatHour24(hour)}</p>
+                    </div>
+                    {/* Celdas por día para esta hora */}
+                    {timelineDays.map((day) => {
+                      const dayBookings = getTimelineBookings(day.date);
+                      const booking = dayBookings.find((b) => hour >= b.startHour && hour < b.endHour);
+                      const isFirstHour = booking && hour === booking.startHour;
+                      const avail = getTimelineAvailability(day.date);
+                      const isAvailable = avail && hour >= avail.startHour && hour < avail.endHour;
+                      const isBlocked = !isAvailable && !booking;
+                      const status = getTimelineStatus(day.date);
+
+                      return (
+                        <div
+                          key={`${day.date}-${hour}`}
+                          className={`border-r border-b border-slate-100 min-h-[60px] relative p-1 transition-colors ${
+                            isBlocked || status === "vacation" ? "bg-slate-50/50" : "hover:bg-slate-50/50"
+                          }`}
+                        >
+                          {/* Bloque de reserva (solo en la hora de inicio) */}
+                          {isFirstHour && booking && (
+                            <div
+                              className="absolute inset-1 bg-teal-500 rounded-lg text-white p-2 flex flex-col justify-center overflow-hidden shadow-sm"
+                              style={{
+                                height: `${(booking.endHour - booking.startHour) * 60 - 8}px`,
+                                zIndex: 10,
+                              }}
+                            >
+                              <p className="text-[10px] font-bold truncate leading-tight">{booking.patientName}</p>
+                              <p className="text-[9px] text-teal-100 truncate leading-tight">{booking.clientName}</p>
+                              <p className="text-[9px] text-teal-100 mt-0.5">
+                                {formatHour24(booking.startHour)} — {formatHour24(booking.endHour)}
+                              </p>
+                            </div>
+                          )}
+                          {/* Punto de disponibilidad */}
+                          {isAvailable && !booking && (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <span className="w-1.5 h-1.5 rounded-full bg-teal-200"></span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Leyenda */}
+          <div className="flex flex-wrap gap-4 px-5 py-3 border-t border-slate-100 text-xs text-slate-500">
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded bg-teal-500"></span>Cita confirmada
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded bg-teal-200"></span>Disponible
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded bg-slate-100"></span>No disponible
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded bg-amber-100"></span>Vacaciones
+            </span>
           </div>
         </div>
       )}
