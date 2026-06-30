@@ -1,5 +1,6 @@
 import { Zap, Clock, CheckCircle, Wallet, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import forProfImg from "../../../../assets/inicio/forProfessional-image.jpg";
 
 const benefits = [
   {
@@ -36,7 +37,8 @@ export default function ForProfessionals() {
           
       
           <div
-            className="absolute inset-0 bg-[url('https://readdy.ai/api/search-image?query=team%20of%20professional%20nurses%20and%20healthcare%20workers%20in%20uniforms%20smiling%20together%2C%20modern%20hospital%20corridor%20background%2C%20diverse%20group%2C%20professional%20and%20trustworthy%20atmosphere%2C%20warm%20lighting%2C%20high%20quality%20photography&width=1200&height=400&seq=cta-nurses&orientation=landscape')] bg-cover bg-center bg-no-repeat transition-transform duration-700 group-hover:scale-105"
+            className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-700 group-hover:scale-105"
+            style={{ backgroundImage: `url(${forProfImg})` }}
           ></div>
 
       

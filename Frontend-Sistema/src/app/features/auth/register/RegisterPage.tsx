@@ -4,9 +4,9 @@ import { Link } from "react-router-dom";
 import { Header } from "../../../shared/layout";
 import ClienteForm from "./components/ClientForm";
 import ProfesionalForm from "./components/ProfesionalForm";
+import registroImg from "../../../../assets/registro/registro-image.jpg";
 
-const HERO_IMAGE =
-  "https://readdy.ai/api/search-image?query=warm%20caring%20nurse%20helping%20elderly%20patient%20at%20home%20Peru%2C%20professional%20healthcare%2C%20soft%20natural%20light%2C%20emotional%20trustworthy%20atmosphere%2C%20high%20quality%20photography%2C%20teal%20and%20white%20tones%2C%20clean%20minimal%20background&width=800&height=900&seq=reg-bg-v2&orientation=portrait";
+const HERO_IMAGE = registroImg;
 
 const TRUST_BADGES = [
   { icon: ShieldCheck, label: "Profesionales verificados por SUNEDU" },
