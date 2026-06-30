@@ -1,5 +1,4 @@
 import { Outlet } from "react-router-dom";
-import { Footer } from "../../../../shared/layout";
 import ClientPanelHeader from "./ClientPanelHeader";
 import ClientPanelNav from "./ClientPanelNav";
 
@@ -13,7 +12,6 @@ export default function ClientPanelLayout() {
           <Outlet />
         </main>
       </div>
-      <Footer />
     </>
   );
 }

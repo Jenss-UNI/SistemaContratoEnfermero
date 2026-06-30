@@ -7,6 +7,7 @@ export interface Review {
   punctuality: number;
   treatment: number;
   technical: number;
+  authorPhoto?: string;
 }
 
 export interface Education {

@@ -1,4 +1,4 @@
-import { Calendar, FileText, X } from "lucide-react";
+import { Calendar, FileText, X, AlertTriangle, CheckCircle2, Check } from "lucide-react";
 import type { Contratacion } from "../../../../core/models/hiring.model";
 import { formatDuracion, formatPeriodo } from "../../../../core/utils/hiringFormat";
 import ContratacionStatusBadge from "./ContratacionStatusBadge";
@@ -12,6 +12,7 @@ type ContratacionCardProps = {
   onFirmarContrato?: () => void;
   onVerJornadas?: () => void;
   onVerContrato?: () => void;
+  onLiberarPago?: () => void;
 };
 
 function ProfesionalHeader({ contratacion }: { contratacion: Contratacion }) {
@@ -82,6 +83,7 @@ export default function ContratacionCard({
   onFirmarContrato,
   onVerJornadas,
   onVerContrato,
+  onLiberarPago,
 }: ContratacionCardProps) {
   const { estado } = contratacion;
 
@@ -110,7 +112,7 @@ export default function ContratacionCard({
           codigoExtra={contratacion.codigoContrato}
         />
 
-        <div className="flex flex-wrap gap-2 sm:justify-end">
+        <div className="flex flex-wrap gap-2 sm:justify-end items-center">
           {estado === "pendiente" && (
             <>
               <button type="button" onClick={onCancelar} className={outlineRed}>
@@ -130,6 +132,28 @@ export default function ContratacionCard({
           )}
           {(estado === "confirmado" || estado === "en_curso" || estado === "completado") && (
             <>
+              {estado === "completado" && contratacion.hasOpenIncident && (
+                <span className="inline-flex items-center gap-1 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 px-3 py-2 text-xs font-bold whitespace-nowrap shadow-sm">
+                  <AlertTriangle className="h-3.5 w-3.5 text-rose-500" />
+                  Pago Retenido · En disputa
+                </span>
+              )}
+              {estado === "completado" && !contratacion.hasOpenIncident && contratacion.pagoEstado === "preautorizado" && (
+                <button
+                  type="button"
+                  onClick={onLiberarPago}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-teal-500 hover:bg-teal-600 px-4 py-2 text-sm font-extrabold text-white shadow-sm hover:shadow transition-all cursor-pointer"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Liberar pago
+                </button>
+              )}
+              {estado === "completado" && !contratacion.hasOpenIncident && contratacion.pagoEstado === "liberado" && (
+                <span className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-50 border border-emerald-250/20 text-emerald-700 px-3 py-2 text-xs font-bold shadow-sm">
+                  <Check className="h-3.5 w-3.5 text-emerald-650" />
+                  Pago Transferido
+                </span>
+              )}
               <button type="button" onClick={onVerJornadas} className={outlineTeal}>
                 <Calendar className="h-4 w-4" />
                 Ver jornadas

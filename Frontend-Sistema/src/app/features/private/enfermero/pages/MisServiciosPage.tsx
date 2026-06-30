@@ -182,6 +182,12 @@ export default function MisServiciosPage() {
     const { service, dayIndex } = pinModal;
     const pinCode = service.pin_code || "123456";
 
+    const targetDay = service.service_days[dayIndex];
+    if (targetDay && !isServiceDayPinActive(targetDay)) {
+      setPinError("El PIN de asistencia no está activo en este momento.");
+      return;
+    }
+
     if (pinInput.trim().toUpperCase() !== pinCode.trim().toUpperCase()) {
       setPinError("PIN incorrecto. Verifica con el cliente.");
       return;
@@ -191,10 +197,12 @@ export default function MisServiciosPage() {
     const realStart = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
     // Persistir inicio de jornada en base de datos
-    const targetDay = service.service_days[dayIndex];
     if (targetDay?.id) {
       updateServiceDayStart(Number(targetDay.id), realStart)
-        .catch((err) => console.error("Error persiting day start in DB:", err));
+        .catch((err) => {
+          console.error("Error persiting day start in DB:", err);
+          showToast("Error al guardar hora de entrada en la base de datos.", "error");
+        });
     }
 
     setServices((prev) =>
@@ -236,16 +244,22 @@ export default function MisServiciosPage() {
     const allDone = updatedDays.every((d) => d.status === "completed");
 
     // Persistir fin de jornada en base de datos
-    const targetDay = service.service_days[dayIndex];
-    if (targetDay?.id) {
-      updateServiceDayEnd(Number(targetDay.id), realEnd, endNotes)
+    const targetDayEnd = service.service_days[dayIndex];
+    if (targetDayEnd?.id) {
+      updateServiceDayEnd(Number(targetDayEnd.id), realEnd, endNotes)
         .then(() => {
           if (allDone) {
             updateServiceStatus(Number(service.id), "completed")
-              .catch((err) => console.error("Error updating service status to completed in DB:", err));
+              .catch((err) => {
+                console.error("Error updating service status to completed in DB:", err);
+                showToast("Error al finalizar el servicio en la base de datos.", "error");
+              });
           }
         })
-        .catch((err) => console.error("Error persiting day end in DB:", err));
+        .catch((err) => {
+          console.error("Error persiting day end in DB:", err);
+          showToast("Error al guardar hora de salida en la base de datos.", "error");
+        });
     }
 
     setServices((prev) =>
@@ -267,6 +281,24 @@ export default function MisServiciosPage() {
   };
 
   // Helper check methods
+  const isServiceDayPinActive = (d: ServiceDay): boolean => {
+    const now = new Date();
+    const [year, month, day] = d.day_date.split("-").map(Number);
+    const startTime = new Date(year, month - 1, day, d.start_hour, 0, 0, 0);
+    const endTime = new Date(year, month - 1, day, d.end_hour, 0, 0, 0);
+    const activationTime = new Date(startTime.getTime() - 10 * 60 * 1000);
+    return now >= activationTime && now <= endTime;
+  };
+
+  const formatTimeHM = (date: Date): string => {
+    let hours = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const ampm = hours >= 12 ? "pm" : "am";
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    return `${hours}:${minutes} ${ampm}`;
+  };
+
   const getTodaysPendingDay = (s: ServiceRow) => {
     const idx = s.service_days.findIndex((d) => d.status === "scheduled");
     return idx;
@@ -564,16 +596,52 @@ export default function MisServiciosPage() {
                             <Eye className="h-4 w-4" />
                             Ver jornada activa
                           </button>
-                        ) : todayIdx >= 0 ? (
-                          <button
-                            type="button"
-                            onClick={() => setPinModal({ service, dayIndex: todayIdx })}
-                            className="flex-1 py-2.5 bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold rounded-xl cursor-pointer shadow-sm transition flex items-center justify-center gap-1.5 whitespace-nowrap animate-pulse"
-                          >
-                            <PlayCircle className="h-4 w-4" />
-                            Iniciar PIN
-                          </button>
-                        ) : (
+                        ) : todayIdx >= 0 ? (() => {
+                          const targetDay = service.service_days[todayIdx];
+                          const pinActive = isServiceDayPinActive(targetDay);
+                          
+                          if (pinActive) {
+                            return (
+                              <button
+                                type="button"
+                                onClick={() => setPinModal({ service, dayIndex: todayIdx })}
+                                className="flex-1 py-2.5 bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold rounded-xl cursor-pointer shadow-sm transition flex items-center justify-center gap-1.5 whitespace-nowrap animate-pulse"
+                              >
+                                <PlayCircle className="h-4 w-4" />
+                                Iniciar PIN
+                              </button>
+                            );
+                          } else {
+                            const now = new Date();
+                            const [year, month, day] = targetDay.day_date.split("-").map(Number);
+                            const startTime = new Date(year, month - 1, day, targetDay.start_hour, 0, 0, 0);
+                            const endTime = new Date(year, month - 1, day, targetDay.end_hour, 0, 0, 0);
+                            const activationTime = new Date(startTime.getTime() - 10 * 60 * 1000);
+                            
+                            const isFutureDay = now.toDateString() !== startTime.toDateString() && now < activationTime;
+                            const isTodayEarly = now.toDateString() === startTime.toDateString() && now < activationTime;
+                            
+                            let disabledText = "Iniciar PIN (Inactivo)";
+                            if (isTodayEarly) {
+                              disabledText = `Iniciar PIN (Disponible a las ${formatTimeHM(activationTime)})`;
+                            } else if (isFutureDay) {
+                              disabledText = `Iniciar PIN (Disponible el ${formatDateShort(targetDay.day_date)})`;
+                            } else if (now > endTime) {
+                              disabledText = "Iniciar PIN (Expirado)";
+                            }
+                            
+                            return (
+                              <button
+                                type="button"
+                                disabled
+                                className="flex-1 py-2.5 bg-slate-100 border border-slate-200 text-slate-400 text-xs font-bold rounded-xl cursor-not-allowed flex items-center justify-center gap-1.5 whitespace-nowrap"
+                              >
+                                <Lock className="h-3.5 w-3.5 text-slate-350" />
+                                <span>{disabledText}</span>
+                              </button>
+                            );
+                          }
+                        })() : (
                           <span className="flex-1 text-center text-xs text-slate-450 italic font-medium bg-slate-50 py-2.5 rounded-xl border border-slate-100 flex items-center justify-center">
                             Próx: {firstDay ? formatDateShort(firstDay.day_date) : "—"}
                           </span>
@@ -948,19 +1016,6 @@ export default function MisServiciosPage() {
                     </div>
                   </div>
 
-                  {/* Evidencia Fotográfica Box */}
-                  <div>
-                    <label className="text-xs font-bold text-slate-650 block mb-1.5">
-                      Evidencia fotográfica
-                    </label>
-                    <div className="border-2 border-dashed border-slate-200 hover:border-teal-400 rounded-xl p-5 flex flex-col items-center justify-center text-center cursor-pointer transition bg-slate-50/30">
-                      <div className="w-10 h-10 bg-slate-100 border border-slate-200/50 rounded-xl flex items-center justify-center text-slate-400 mb-2">
-                        <Camera className="h-5 w-5" />
-                      </div>
-                      <p className="text-xs font-bold text-slate-700">Tomar foto o subir imagen</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">JPG, PNG hasta 10MB</p>
-                    </div>
-                  </div>
 
                   {/* Evidencia del servicio Textarea */}
                   <div>

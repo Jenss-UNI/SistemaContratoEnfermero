@@ -1,4 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useAuth } from "../../../../core/contexts/AuthContext";
+import {
+  fetchNursePatientsAndServices,
+  fetchServiceDaysForBinnacle,
+  createServiceBinnacle,
+  updateServiceBinnacle,
+  fetchNurseBinnaclesList,
+  uploadBinnaclePhoto,
+} from "../services/enfermeroProfile.service";
 import {
   FileText,
   Send,
@@ -8,992 +17,992 @@ import {
   ChevronLeft,
   ChevronRight,
   Trash2,
+  Loader2,
+  Lock,
+  Plus,
+  Edit2,
+  Image as ImageIcon,
 } from "lucide-react";
 
-interface Bitacora {
+interface DBBitacora {
   id: number;
   paciente: string;
   servicio: string;
   fecha: string;
+  fecha_raw: string;
   estado: string;
   resumen: string;
   actividades: string[];
   observaciones: string;
   recomendaciones: string;
+  photos: string[];
+  serviceId: number;
+  serviceDayId: number;
 }
 
-const mockBitacoras: Bitacora[] = [
-  {
-    id: 1,
-    paciente: "Roberto Pasco",
-    servicio: "Especializado",
-    fecha: "18 may. 2026",
-    estado: "Enviada",
-    resumen: "medida de presión · toma de medicamentos",
-    actividades: [
-      "Medición de presión",
-      "Toma de signos vitales",
-      "Administración de medicamentos",
-    ],
-    observaciones:
-      "Paciente estable. Presión arterial dentro de parámetros normales.",
-    recomendaciones:
-      "Mantener hidratación y continuar tratamiento indicado.",
-  },
-  {
-    id: 2,
-    paciente: "Carmen Mendoza",
-    servicio: "Asistencial",
-    fecha: "10 jun. 2026",
-    estado: "Sin estado",
-    resumen:
-      "Evaluación cognitiva inicial · Establecimiento de rutina · Administración de Donepezilo",
-    actividades: [
-      "Evaluación cognitiva inicial",
-      "Establecimiento de rutina",
-      "Administración de Donepezilo",
-    ],
-    observaciones:
-      "Paciente orientada en tiempo y espacio por momentos. Responde bien a estímulos visuales.",
-    recomendaciones:
-      "Establecer rutina diaria con horarios fijos. Usar recordatorios visuales.",
-  },
-  {
-    id: 3,
-    paciente: "Carmen Mendoza",
-    servicio: "Asistencial",
-    fecha: "11 jun. 2026",
-    estado: "Sin estado",
-    resumen:
-      "Actividades cognitivas · Control de signos vitales · Acompañamiento en comidas",
-    actividades: [
-      "Control de signos vitales",
-      "Estimulación cognitiva",
-      "Acompañamiento alimentario",
-    ],
-    observaciones: "Participación adecuada en actividades programadas.",
-    recomendaciones: "Continuar ejercicios cognitivos diariamente.",
-  },
-];
+interface PatientGroup {
+  nombre: string;
+  iniciales: string;
+  serviciosCount: number;
+  services: any[];
+}
 
 export default function BitacorasPage() {
-
-  const [view, setView] = useState<
-    "lista" | "patients" | "services" | "days" | "form"
-  >("lista");
-
-  const [selectedBitacora, setSelectedBitacora] =
-    useState<Bitacora | null>(null);
-
-  const [photos, setPhotos] = useState<File[]>([]);
-
-  const [currentPage, setCurrentPage] = useState(1);
-
-  const [status, setStatus] = useState("Pendiente");
-
+  const { user } = useAuth();
+  
+  // Navigation states
+  const [view, setView] = useState<"lista" | "patients" | "services" | "days" | "form">("lista");
+  const [selectedBitacora, setSelectedBitacora] = useState<DBBitacora | null>(null);
+  
+  // Edit mode state
+  const [editingBinnacleId, setEditingBinnacleId] = useState<number | null>(null);
+  
+  // Data loading states
+  const [binnacles, setBinnacles] = useState<DBBitacora[]>([]);
+  const [patients, setPatients] = useState<PatientGroup[]>([]);
+  const [selectedPatientObj, setSelectedPatientObj] = useState<PatientGroup | null>(null);
+  const [selectedServiceObj, setSelectedServiceObj] = useState<any | null>(null);
+  const [serviceDays, setServiceDays] = useState<any[]>([]);
+  const [selectedDayObj, setSelectedDayObj] = useState<any | null>(null);
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingDays, setIsLoadingDays] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  
+  // Form states
+  const [activities, setActivities] = useState<{ id: number; text: string }[]>([{ id: 1, text: "" }]);
+  const [observations, setObservations] = useState("");
+  const [recommendations, setRecommendations] = useState("");
+  
+  // Photo states
+  const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
+  const [photosToUpload, setPhotosToUpload] = useState<File[]>([]);
+  const [newPhotosPreview, setNewPhotosPreview] = useState<string[]>([]);
 
-  const [activities, setActivities] = useState([
-    { id: 1, text: "" },
-  ]);
-
-  const handleSave = () => {
-
-    setShowSuccess(true);
-
-    setTimeout(() => {
-      setShowSuccess(false);
-
-      setView("lista");
-
-      setSelectedPatient("");
-      setSelectedService("");
-      setSelectedDay("");
-
-    }, 2000);
+  const formatShortDay = (dateStr: string) => {
+    if (!dateStr) return "—";
+    const d = new Date(dateStr + "T12:00:00");
+    return d.toLocaleDateString("es-PE", { weekday: "short", day: "numeric", month: "short" });
   };
 
-  const handlePhotoUpload = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    if (!e.target.files) return;
+  const formatHour = (h: number) => {
+    const suffix = h >= 12 ? "pm" : "am";
+    const display = h > 12 ? h - 12 : h === 0 ? 12 : h;
+    return `${display}:00 ${suffix}`;
+  };
 
-    setPhotos([
-      ...photos,
-      ...Array.from(e.target.files),
-    ]);
+  // Load binnacles on mount
+  const loadBinnacles = async () => {
+    if (!user?.id) return;
+    setIsLoading(true);
+    try {
+      const data = await fetchNurseBinnaclesList(user.id);
+      const mapped = data.map((b: any) => {
+        const patientName = b.services?.patient_name || "Paciente";
+        const serviceType = b.services?.service_type || "Servicio";
+        const dateFormatted = b.service_days?.day_date ? formatShortDay(b.service_days.day_date) : "—";
+        const acts = Array.isArray(b.activities) ? b.activities : [];
+        return {
+          id: b.id,
+          paciente: patientName,
+          servicio: serviceType,
+          fecha: dateFormatted,
+          fecha_raw: b.service_days?.day_date || "",
+          estado: b.status === "sent" ? "Enviada" : "Borrador",
+          resumen: acts.slice(0, 3).join(" · "),
+          actividades: acts,
+          observaciones: b.observations || "",
+          recomendaciones: b.recommendations || "",
+          photos: b.photos || [],
+          serviceId: b.services?.id || 0,
+          serviceDayId: b.service_day_id || 0,
+        };
+      });
+      setBinnacles(mapped);
+    } catch (err) {
+      console.error("Error loading nurse binnacles:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadBinnacles();
+  }, [user?.id]);
+
+  // Load patients and services when clicking "Nueva bitácora"
+  const startNewBinnacle = async () => {
+    if (!user?.id) return;
+    setIsLoading(true);
+    try {
+      const services = await fetchNursePatientsAndServices(user.id);
+      
+      // Group by patient name
+      const groups: Record<string, any[]> = {};
+      services.forEach((s: any) => {
+        if (!groups[s.patient_name]) {
+          groups[s.patient_name] = [];
+        }
+        groups[s.patient_name].push(s);
+      });
+
+      const mappedGroups = Object.keys(groups).map((name) => {
+        const ini = name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase() || "PA";
+        return {
+          nombre: name,
+          iniciales: ini,
+          serviciosCount: groups[name].length,
+          services: groups[name]
+        };
+      });
+
+      setPatients(mappedGroups);
+      setEditingBinnacleId(null);
+      setExistingPhotos([]);
+      setPhotosToUpload([]);
+      setNewPhotosPreview([]);
+      setView("patients");
+    } catch (err) {
+      console.error("Error loading patients and services:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Load service days when selecting a service
+  const handleSelectService = async (service: any) => {
+    setSelectedServiceObj(service);
+    setIsLoadingDays(true);
+    setView("days");
+    try {
+      const days = await fetchServiceDaysForBinnacle(service.id);
+      setServiceDays(days);
+    } catch (err) {
+      console.error("Error loading service days:", err);
+    } finally {
+      setIsLoadingDays(false);
+    }
+  };
+
+  const handleSelectDay = (day: any) => {
+    setEditingBinnacleId(null);
+    setSelectedDayObj(day);
+    setActivities([{ id: Date.now(), text: "" }]);
+    setObservations("");
+    setRecommendations("");
+    setExistingPhotos([]);
+    setPhotosToUpload([]);
+    setNewPhotosPreview([]);
+    setView("form");
+  };
+
+  const handleSelectDayForEdit = (day: any) => {
+    const b = Array.isArray(day.service_binnacles) ? day.service_binnacles[0] : day.service_binnacles;
+    if (!b) return;
+    setEditingBinnacleId(b.id);
+    setSelectedDayObj(day);
+    
+    // Populate form
+    const acts = Array.isArray(b.activities) ? b.activities.map((a: string, index: number) => ({ id: index, text: a })) : [];
+    setActivities(acts.length > 0 ? acts : [{ id: Date.now(), text: "" }]);
+    setObservations(b.observations || "");
+    setRecommendations(b.recommendations || "");
+    setExistingPhotos(b.photos || []);
+    setPhotosToUpload([]);
+    setNewPhotosPreview([]);
+    setView("form");
+  };
+
+  const handleStartEditFromList = (b: DBBitacora) => {
+    setEditingBinnacleId(b.id);
+    setSelectedPatientObj({
+      nombre: b.paciente,
+      iniciales: b.paciente.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase() || "PA",
+      serviciosCount: 1,
+      services: []
+    });
+    setSelectedServiceObj({
+      id: b.serviceId,
+      service_type: b.servicio
+    });
+    setSelectedDayObj({
+      id: b.serviceDayId,
+      day_date: b.fecha_raw
+    });
+    
+    const acts = b.actividades.map((act, idx) => ({ id: idx, text: act }));
+    setActivities(acts.length > 0 ? acts : [{ id: Date.now(), text: "" }]);
+    setObservations(b.observaciones || "");
+    setRecommendations(b.recomendaciones || "");
+    setExistingPhotos(b.photos || []);
+    setPhotosToUpload([]);
+    setNewPhotosPreview([]);
+    setView("form");
   };
 
   const addActivity = () => {
-    setActivities([
-      ...activities,
-      {
-        id: Date.now(),
-        text: "",
-      },
-    ]);
+    setActivities([...activities, { id: Date.now(), text: "" }]);
   };
 
   const removeActivity = (id: number) => {
     if (activities.length === 1) return;
-
-    setActivities(
-      activities.filter((activity) => activity.id !== id)
-    );
+    setActivities(activities.filter((act) => act.id !== id));
   };
 
-  const updateActivity = (
-    id: number,
-    value: string
-  ) => {
-    setActivities(
-      activities.map((activity) =>
-        activity.id === id
-          ? { ...activity, text: value }
-          : activity
-      )
-    );
+  const updateActivity = (id: number, value: string) => {
+    setActivities(activities.map((act) => act.id === id ? { ...act, text: value } : act));
   };
 
+  // Photo handlers
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files) return;
+    const filesArray = Array.from(e.target.files);
+    setPhotosToUpload([...photosToUpload, ...filesArray]);
+    
+    const newPreviews = filesArray.map(file => URL.createObjectURL(file));
+    setNewPhotosPreview([...newPhotosPreview, ...newPreviews]);
+  };
 
+  const removePhotoToUpload = (index: number) => {
+    URL.revokeObjectURL(newPhotosPreview[index]);
+    setPhotosToUpload(photosToUpload.filter((_, idx) => idx !== index));
+    setNewPhotosPreview(newPhotosPreview.filter((_, idx) => idx !== index));
+  };
+
+  const removeExistingPhoto = (index: number) => {
+    setExistingPhotos(existingPhotos.filter((_, idx) => idx !== index));
+  };
+
+  const handleSave = async () => {
+    if (!selectedServiceObj || !selectedDayObj || !user?.id) return;
+    const filterActivities = activities.map((a) => a.text.trim()).filter(Boolean);
+    if (filterActivities.length === 0) {
+      alert("Por favor ingresa al menos una actividad realizada.");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // 1. Upload new photos
+      const uploadedUrls = await Promise.all(
+        photosToUpload.map(file => uploadBinnaclePhoto(user.id, file))
+      );
+      
+      const finalPhotos = [...existingPhotos, ...uploadedUrls];
+
+      // 2. Perform save/update
+      if (editingBinnacleId) {
+        await updateServiceBinnacle(editingBinnacleId, {
+          activities: filterActivities,
+          observations: (observations || "").trim(),
+          recommendations: (recommendations || "").trim(),
+          photos: finalPhotos
+        });
+      } else {
+        await createServiceBinnacle({
+          service_id: Number(selectedServiceObj.id),
+          service_day_id: Number(selectedDayObj.id),
+          activities: filterActivities,
+          observations: (observations || "").trim(),
+          recommendations: (recommendations || "").trim(),
+          photos: finalPhotos,
+          status: "sent"
+        });
+      }
+
+      // Cleanup previews
+      newPhotosPreview.forEach(url => URL.revokeObjectURL(url));
+
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        setView("lista");
+        setSelectedPatientObj(null);
+        setSelectedServiceObj(null);
+        setSelectedDayObj(null);
+        setEditingBinnacleId(null);
+        loadBinnacles();
+      }, 2000);
+    } catch (err: any) {
+      console.error("Error saving clinical binnacle:", err);
+      alert(`Error al guardar la bitácora: ${err.message || err}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const itemsPerPage = 5;
+  const totalPages = Math.ceil(binnacles.length / itemsPerPage);
+  const paginatedBitacoras = useMemo(() => {
+    return binnacles.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  }, [binnacles, currentPage]);
 
-  const totalPages = Math.ceil(
-    mockBitacoras.length / itemsPerPage
-  );
+  // Stats computation
+  const stats = useMemo(() => {
+    const total = binnacles.length;
+    const sent = binnacles.filter((b) => b.estado === "Enviada").length;
+    const uniquePatientsCount = new Set(binnacles.map((b) => b.paciente)).size;
+    const activeServs = patients.reduce((acc, p) => acc + p.services.filter(s => s.status === "active").length, 0);
 
-  const paginatedBitacoras = mockBitacoras.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+    return {
+      total,
+      sent,
+      patientsCount: uniquePatientsCount,
+      activeServices: activeServs || 1
+    };
+  }, [binnacles, patients]);
 
-  const [selectedPatient, setSelectedPatient] = useState("");
-  const [selectedService, setSelectedService] = useState("");
-  const [selectedDay, setSelectedDay] = useState("");
+  if (isLoading && view === "lista") {
+    return (
+      <div className="flex flex-col justify-center items-center py-20 gap-3">
+        <Loader2 className="w-10 h-10 animate-spin text-teal-600" />
+        <p className="text-sm text-slate-500 font-semibold">Cargando bitácoras...</p>
+      </div>
+    );
+  }
 
   return (
     <>
       <div className="space-y-6">
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-
-          <StatCard
-            icon={<FileText size={18} />}
-            value="8"
-            label="Total bitácoras"
-          />
-
-          <StatCard
-            icon={<Send size={18} />}
-            value="1"
-            label="Enviadas"
-          />
-
-          <StatCard
-            icon={<UserRound size={18} />}
-            value="3"
-            label="Pacientes"
-          />
-
-          <StatCard
-            icon={<ClipboardCheck size={18} />}
-            value="1"
-            label="Servicios activos"
-          />
-        </div>
+        {/* Stats Cards */}
+        {view === "lista" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+            <StatCard icon={<FileText size={18} />} value={String(stats.total)} label="Total bitácoras" />
+            <StatCard icon={<Send size={18} />} value={String(stats.sent)} label="Enviadas" />
+            <StatCard icon={<UserRound size={18} />} value={String(stats.patientsCount)} label="Pacientes" />
+            <StatCard icon={<ClipboardCheck size={18} />} value={String(stats.activeServices)} label="Servicios activos" />
+          </div>
+        )}
 
         {/* Header */}
         <div className="flex items-center justify-between">
-
-          <h2 className="text-sm font-semibold text-teal-600">
-            Bitácoras
-          </h2>
-
-          <button
-            onClick={() => setView("patients")}
-            className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
-          >
-            Nueva bitácora
-          </button>
-        </div>
-
-        {/* Lista */}
-        <div className="space-y-3">
+          <div>
+            <h2 className="text-lg font-bold text-slate-800">Bitácoras Clínicas</h2>
+            <p className="text-xs text-slate-400">Registra y comparte las bitácoras de cuidados con los clientes</p>
+          </div>
 
           {view === "lista" && (
-            <>
-              {paginatedBitacoras.map((bitacora) => (
-                <div
-                  key={bitacora.id}
-                  className="bg-white border border-slate-100 rounded-xl p-4"
-                >
-                  <div className="flex items-start justify-between">
+            <button
+              onClick={startNewBinnacle}
+              className="bg-teal-500 hover:bg-teal-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition shadow-sm cursor-pointer"
+            >
+              Nueva bitácora
+            </button>
+          )}
+        </div>
 
-                    <div className="flex gap-3">
-
-                      <div className="h-10 w-10 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-sm font-semibold">
-                        {bitacora.paciente
-                          .split(" ")
-                          .map((n) => n[0])
-                          .slice(0, 2)
-                          .join("")}
+        {/* Views */}
+        <div className="space-y-3">
+          {/* LIST VIEW */}
+          {view === "lista" && (
+            <div className="space-y-3">
+              {binnacles.length === 0 ? (
+                <div className="bg-white border border-dashed border-slate-200 rounded-2xl p-12 text-center">
+                  <FileText className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                  <p className="text-sm font-semibold text-slate-655">No hay bitácoras redactadas todavía</p>
+                  <p className="text-xs text-slate-400 mt-1">Crea tu primera bitácora haciendo clic en "Nueva bitácora"</p>
+                </div>
+              ) : (
+                paginatedBitacoras.map((b) => (
+                  <div key={b.id} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow transition">
+                    <div className="flex items-start justify-between">
+                      <div className="flex gap-3">
+                        <div className="h-10 w-10 rounded-full bg-teal-50 text-teal-700 flex items-center justify-center text-sm font-black shrink-0">
+                          {b.paciente.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-slate-800 text-sm">{b.paciente}</h3>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {b.servicio} · {b.fecha}
+                          </p>
+                          {b.resumen && (
+                            <p className="text-xs text-slate-500 mt-2.5 leading-relaxed bg-slate-50/50 border border-slate-100 px-3 py-2 rounded-xl italic">
+                              "{b.resumen}"
+                            </p>
+                          )}
+                        </div>
                       </div>
-
-                      <div>
-                        <h3 className="font-semibold text-slate-800">
-                          {bitacora.paciente}
-                        </h3>
-
-                        <p className="text-xs text-slate-500">
-                          {bitacora.servicio} · {bitacora.fecha}
-                        </p>
-
-                        <p className="text-xs text-slate-600 mt-2">
-                          {bitacora.resumen}
-                        </p>
-                      </div>
-
+                      <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-lg tracking-wide uppercase ${
+                        b.estado === "Enviada" ? "bg-sky-100 text-sky-700" : "bg-slate-100 text-slate-500"
+                      }`}>
+                        {b.estado}
+                      </span>
                     </div>
 
-                    <span
-                      className={`text-[11px] px-3 py-1 rounded-full ${bitacora.estado === "Enviada"
-                        ? "bg-sky-100 text-sky-700"
-                        : "bg-slate-100 text-slate-500"
-                        }`}
-                    >
-                      {bitacora.estado}
-                    </span>
-
+                    <div className="flex gap-2 mt-4">
+                      <button
+                        onClick={() => setSelectedBitacora(b)}
+                        className="flex-1 rounded-xl bg-slate-50 hover:bg-slate-100/85 py-2.5 text-xs font-bold text-slate-655 transition cursor-pointer"
+                      >
+                        Ver detalle completo
+                      </button>
+                      <button
+                        onClick={() => handleStartEditFromList(b)}
+                        className="px-3 rounded-xl bg-teal-50 hover:bg-teal-100 text-teal-700 border border-teal-100/50 transition cursor-pointer flex items-center justify-center"
+                        title="Editar bitácora"
+                      >
+                        <Edit2 size={14} />
+                      </button>
+                    </div>
                   </div>
-
-                  <button
-                    onClick={() => setSelectedBitacora(bitacora)}
-                    className="mt-4 w-full rounded-lg bg-slate-50 hover:bg-slate-100 py-2 text-sm text-slate-700 transition"
-                  >
-                    Ver detalle
-                  </button>
-                </div>
-              ))}
-            </>
+                ))
+              )}
+            </div>
           )}
 
+          {/* SELECT PATIENT VIEW */}
           {view === "patients" && (
-            <div className="space-y-5">
-
-              <div className="flex items-center gap-2 text-sm">
-
-                <button
-                  onClick={() => setView("lista")}
-                  className="text-slate-500 hover:text-teal-600"
-                >
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2 text-xs">
+                <button onClick={() => setView("lista")} className="text-slate-400 hover:text-teal-600 transition font-medium">
                   Bitácoras
                 </button>
-
-                <span>›</span>
-
-                <span className="font-semibold text-teal-600">
-                  Pacientes
-                </span>
-
+                <span className="text-slate-300">›</span>
+                <span className="font-bold text-teal-600">Pacientes</span>
               </div>
 
-              <div className="flex justify-between items-center">
+              <div>
+                <h3 className="text-base font-bold text-slate-800">Selecciona un Paciente</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Elige el paciente del cual vas a redactar la bitácora diaria</p>
+              </div>
 
-                <div>
-                  <h2 className="text-xl font-bold">
-                    Selecciona un paciente
-                  </h2>
-
-                  <p className="text-sm text-slate-500">
-                    Elige un paciente para continuar.
-                  </p>
+              {patients.length === 0 ? (
+                <div className="bg-white border border-slate-100 rounded-2xl p-8 text-center text-slate-500 text-xs">
+                  No tienes servicios activos registrados para redactar bitácoras.
                 </div>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-4">
+                  {patients.map((p) => (
+                    <div key={p.nombre} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm hover:shadow transition flex flex-col justify-between">
+                      <div className="flex gap-3">
+                        <div className="h-12 w-12 rounded-2xl bg-teal-50 flex items-center justify-center font-bold text-teal-700 shrink-0">
+                          {p.iniciales}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-slate-800 text-sm">{p.nombre}</h4>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            {p.serviciosCount} {p.serviciosCount === 1 ? "servicio" : "servicios"} contratado(s)
+                          </p>
+                        </div>
+                      </div>
 
-                <input
-                  placeholder="Buscar paciente..."
-                  className="border rounded-xl px-4 py-2 text-sm"
-                />
+                      <button
+                        onClick={() => {
+                          setSelectedPatientObj(p);
+                          if (p.services.length === 1) {
+                            handleSelectService(p.services[0]);
+                          } else {
+                            setView("services");
+                          }
+                        }}
+                        className="w-full mt-4 bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold py-2.5 rounded-xl text-xs transition cursor-pointer"
+                      >
+                        Ver servicios
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SELECT SERVICE VIEW */}
+          {view === "services" && selectedPatientObj && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2 text-xs">
+                <button onClick={() => setView("lista")} className="text-slate-400 hover:text-teal-600 transition font-medium">
+                  Bitácoras
+                </button>
+                <span className="text-slate-300">›</span>
+                <button onClick={() => setView("patients")} className="text-slate-400 hover:text-teal-600 transition font-medium">
+                  Pacientes
+                </button>
+                <span className="text-slate-300">›</span>
+                <span className="font-bold text-teal-600">Servicios</span>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
+              <h3 className="text-base font-bold text-slate-800">Servicios de {selectedPatientObj.nombre}</h3>
 
-                {[
-                  {
-                    nombre: "Carmen Mendoza",
-                    iniciales: "CM",
-                    servicios: 1,
-                  },
-                  {
-                    nombre: "Roberto Pasco",
-                    iniciales: "RP",
-                    servicios: 1,
-                  },
-                ].map((p) => (
-                  <div
-                    key={p.nombre}
-                    className="bg-white border border-slate-100 rounded-2xl p-5"
-                  >
-                    <div className="flex gap-3">
-
-                      <div className="h-12 w-12 rounded-full bg-teal-100 flex items-center justify-center font-semibold text-teal-700">
-                        {p.iniciales}
-                      </div>
-
-                      <div>
-                        <h3 className="font-semibold">
-                          {p.nombre}
-                        </h3>
-
-                        <p className="text-xs text-slate-500">
-                          {p.servicios} servicio
-                        </p>
-                      </div>
-
+              <div className="grid gap-4">
+                {selectedPatientObj.services.map((s) => (
+                  <div key={s.id} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex flex-col sm:flex-row justify-between sm:items-center gap-4">
+                    <div>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                        {s.contract_code || s.service_code || `SRV-${s.id}`}
+                      </span>
+                      <h4 className="font-extrabold text-slate-800 text-sm mt-0.5">{s.service_type}</h4>
                     </div>
 
                     <button
-                      onClick={() => {
-                        setSelectedPatient(p.nombre);
-                        setView("services");
-                      }}
-                      className="w-full mt-4 bg-teal-50 hover:bg-teal-100 py-2 rounded-lg text-sm"
+                      onClick={() => handleSelectService(s)}
+                      className="bg-teal-50 hover:bg-teal-100 text-teal-700 font-bold px-5 py-2.5 rounded-xl text-xs transition-all cursor-pointer whitespace-nowrap"
                     >
-                      Ver servicios
+                      Ver jornadas
                     </button>
                   </div>
                 ))}
-
               </div>
             </div>
           )}
 
-          {view === "services" && (
-            <div className="space-y-5">
-
-              <div className="flex items-center gap-2 text-sm">
-
-                <button
-                  onClick={() => setView("lista")}
-                  className="text-slate-500 hover:text-teal-600"
-                >
+          {/* SELECT DAY VIEW */}
+          {view === "days" && selectedPatientObj && selectedServiceObj && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2 text-xs">
+                <button onClick={() => setView("lista")} className="text-slate-400 hover:text-teal-600 transition font-medium">
                   Bitácoras
                 </button>
-
-                <span>›</span>
-
-                <button
-                  onClick={() => setView("patients")}
-                  className="text-slate-500 hover:text-teal-600"
-                >
+                <span className="text-slate-300">›</span>
+                <button onClick={() => setView("patients")} className="text-slate-400 hover:text-teal-600 transition font-medium">
                   Pacientes
                 </button>
-
-                <span>›</span>
-
-                <span className="font-semibold text-teal-600">
-                  Servicios
-                </span>
-
+                <span className="text-slate-300">›</span>
+                {selectedPatientObj.services.length > 1 && (
+                  <>
+                    <button onClick={() => setView("services")} className="text-slate-400 hover:text-teal-600 transition font-medium">
+                      Servicios
+                    </button>
+                    <span className="text-slate-300">›</span>
+                  </>
+                )}
+                <span className="font-bold text-teal-600">Jornadas</span>
               </div>
 
-              <h2 className="text-xl font-bold">
-                Servicios de {selectedPatient}
-              </h2>
+              <div>
+                <h3 className="text-base font-bold text-slate-800">Jornadas: {selectedPatientObj.nombre}</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Selecciona la jornada completada que deseas reportar u optimizar</p>
+              </div>
 
-              <div className="bg-white border border-teal-200 rounded-2xl p-5">
-
-                <div className="flex justify-between">
-
-                  <div>
-
-                    <span className="text-xs text-slate-400">
-                      SRV-2026-0004
-                    </span>
-
-                    <h3 className="font-bold mt-2">
-                      Asistencial
-                    </h3>
-
-                    <div className="mt-4 text-sm text-slate-500">
-                      10 jornadas terminadas
-                    </div>
-
-                    <div className="text-sm text-teal-600">
-                      3 bitácoras
-                    </div>
-
-                  </div>
-
-                  <span className="bg-green-100 text-green-700 text-xs px-3 py-1 rounded-full h-fit">
-                    Activo
-                  </span>
-
+              {isLoadingDays ? (
+                <div className="flex flex-col justify-center items-center py-10 gap-2">
+                  <Loader2 className="w-6 h-6 animate-spin text-teal-600" />
+                  <p className="text-xs text-slate-400 font-medium">Cargando jornadas...</p>
                 </div>
+              ) : (
+                <div className="grid sm:grid-cols-2 gap-4">
+                  {serviceDays.map((d, index) => {
+                    const binnacleObj = d.service_binnacles?.[0] || d.service_binnacles || null;
+                    const hasBinnacle = !!binnacleObj;
+                    const isCompleted = d.status === "completed";
+                    const isSelectable = isCompleted && !hasBinnacle;
 
-                <button
-                  onClick={() => {
-                    setSelectedService("Asistencial");
-                    setView("days");
-                  }}
-                  className="w-full mt-5 rounded-lg bg-teal-50 py-2 text-sm text-teal-700 transition-all hover:bg-teal-100 hover:text-teal-800 active:scale-[0.98]"
-                >
-                  Ver jornadas
-                </button>
+                    return (
+                      <div key={d.id} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
+                        <div className="flex justify-between items-start gap-2 mb-3">
+                          <div>
+                            <h4 className="font-bold text-slate-800 text-sm">
+                              Jornada {index + 1}: {formatShortDay(d.day_date)}
+                            </h4>
+                            <p className="text-xs text-slate-400 mt-0.5">
+                              Horario: {formatHour(d.start_hour)} - {formatHour(d.end_hour)}
+                            </p>
+                          </div>
 
-              </div>
+                          <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg uppercase tracking-wide shrink-0 ${
+                            hasBinnacle ? "bg-emerald-50 text-emerald-700 border border-emerald-100" :
+                            isCompleted ? "bg-teal-50 text-teal-700 border border-teal-100" :
+                            "bg-slate-100 text-slate-500 border border-slate-100"
+                          }`}>
+                            {hasBinnacle ? "Ya redactada" : isCompleted ? "Completada" : "No finalizada"}
+                          </span>
+                        </div>
 
-            </div>
-          )}
-
-          {view === "days" && (
-            <div className="space-y-5">
-
-              <div className="flex items-center gap-2 text-sm">
-
-                <button
-                  onClick={() => setView("lista")}
-                  className="text-slate-500 hover:text-teal-600"
-                >
-                  Bitácoras
-                </button>
-
-                <span>›</span>
-
-                <button
-                  onClick={() => setView("patients")}
-                  className="text-slate-500 hover:text-teal-600"
-                >
-                  Pacientes
-                </button>
-
-                <span>›</span>
-
-                <button
-                  onClick={() => setView("services")}
-                  className="text-slate-500 hover:text-teal-600"
-                >
-                  Servicios
-                </button>
-
-                <span>›</span>
-
-                <span className="font-semibold text-teal-600">
-                  Jornadas
-                </span>
-
-              </div>
-
-              <h2 className="text-xl font-bold">
-                Jornadas: {selectedPatient}
-              </h2>
-
-              {[
-                "10 jun. 2026",
-                "11 jun. 2026",
-                "12 jun. 2026",
-                "13 jun. 2026",
-                "15 jun. 2026",
-              ].map((fecha, index) => (
-                <div
-                  key={fecha}
-                  className="bg-white border border-slate-100 rounded-2xl p-5"
-                >
-                  <div className="flex justify-between">
-
-                    <div>
-
-                      <h3 className="font-semibold">
-                        {fecha}
-                      </h3>
-
-                      <p className="text-xs text-slate-500">
-                        08:00 - 12:00
-                      </p>
-
-                    </div>
-
-                    {index < 2 && (
-                      <span className="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-full">
-                        Sin estado
-                      </span>
-                    )}
-
-                  </div>
-
-                  <button
-                    onClick={() => {
-                      setSelectedDay(fecha);
-                      setView("form");
-                    }}
-                    className={`w-full mt-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 border ${index < 2
-                      ? "bg-teal-50 text-teal-700 border-teal-100 hover:bg-teal-100 hover:border-teal-200"
-                      : "bg-teal-500 text-white border-teal-500 hover:bg-teal-600 hover:border-teal-600 shadow-sm hover:shadow-md"
-                      }
-  `}
-                  >
-                    {index < 2 ? "Ver / Editar" : "+ Crear bitácora"}
-                  </button>
-
+                        {isSelectable ? (
+                          <button
+                            onClick={() => handleSelectDay(d)}
+                            className="w-full bg-teal-500 hover:bg-teal-600 text-white font-bold py-2.5 rounded-xl text-xs shadow-sm transition cursor-pointer"
+                          >
+                            Redactar bitácora
+                          </button>
+                        ) : hasBinnacle ? (
+                          <button
+                            onClick={() => handleSelectDayForEdit(d)}
+                            className="w-full bg-amber-50 hover:bg-amber-100/80 text-amber-700 border border-amber-250 font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-pointer transition shadow-sm"
+                          >
+                            <Edit2 size={13} />
+                            Editar bitácora
+                          </button>
+                        ) : (
+                          <button
+                            disabled
+                            className="w-full bg-slate-50 border border-slate-100 text-slate-400 font-bold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 cursor-not-allowed"
+                          >
+                            <Lock className="w-3.5 h-3.5" />
+                            Jornada no finalizada
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-
+              )}
             </div>
           )}
 
-          {view === "form" && (
-            <div className="space-y-5">
-
-              {/* Breadcrumb */}
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-
-                <button
-                  onClick={() => setView("lista")}
-                  className="hover:text-teal-600"
-                >
+          {/* CREATE/EDIT BINNACLE FORM VIEW */}
+          {view === "form" && selectedPatientObj && selectedServiceObj && selectedDayObj && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="flex items-center gap-2 text-xs">
+                <button onClick={() => setView("lista")} className="text-slate-400 hover:text-teal-600 transition font-medium">
                   Bitácoras
                 </button>
-
-                <span>›</span>
-
-                <button
-                  onClick={() => setView("patients")}
-                  className="hover:text-teal-600"
-                >
+                <span className="text-slate-300">›</span>
+                <button onClick={() => setView("patients")} className="text-slate-400 hover:text-teal-600 transition font-medium">
                   Pacientes
                 </button>
-
-                <span>›</span>
-
-                <button
-                  onClick={() => setView("services")}
-                  className="hover:text-teal-600"
-                >
-                  Servicios
-                </button>
-
-                <span>›</span>
-
-                <button
-                  onClick={() => setView("days")}
-                  className="hover:text-teal-600"
-                >
+                <span className="text-slate-300">›</span>
+                <button onClick={() => setView("days")} className="text-slate-400 hover:text-teal-600 transition font-medium">
                   Jornadas
                 </button>
-
-                <span>›</span>
-
-                <span className="font-medium text-teal-600">
-                  Bitácora
-                </span>
-
+                <span className="text-slate-300">›</span>
+                <span className="font-bold text-teal-600">{editingBinnacleId ? "Editar" : "Redactar"}</span>
               </div>
 
-              {/* Header */}
               <div className="flex items-start gap-3">
-
-                <button
-                  onClick={() => setView("days")}
-                  className="mt-1 text-slate-500 hover:text-teal-600"
-                >
+                <button onClick={() => setView("days")} className="mt-0.5 text-slate-400 hover:text-teal-600 font-bold text-base transition">
                   ←
                 </button>
-
                 <div>
-                  <h2 className="text-xl font-bold text-slate-800">
-                    Nueva bitácora
-                  </h2>
-
-                  <p className="text-xs text-slate-400">
-                    {selectedPatient} · {selectedDay} · SRV-2026-00001
+                  <h3 className="text-base font-bold text-slate-800">
+                    {editingBinnacleId ? "Editar Bitácora Clínica" : "Nueva Bitácora Clínica"}
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Paciente: {selectedPatientObj.nombre} · Jornada: {formatShortDay(selectedDayObj.day_date)}
                   </p>
                 </div>
-
               </div>
 
-              {/* Formulario */}
-              <div className="bg-white border border-slate-100 rounded-2xl p-6">
-
-                {/* Datos */}
-                <div className="bg-slate-50 rounded-2xl p-5 grid md:grid-cols-2 gap-6 mb-8">
-
+              <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm space-y-6">
+                {/* Resumen box */}
+                <div className="bg-slate-50/70 border border-slate-100 rounded-2xl p-4 grid grid-cols-2 gap-4 text-xs">
                   <div>
-                    <p className="text-xs text-slate-400 mb-1">
-                      Paciente
-                    </p>
-
-                    <p className="font-semibold text-slate-800">
-                      {selectedPatient}
-                    </p>
+                    <span className="text-slate-400 font-medium block">Servicio</span>
+                    <strong className="text-slate-700 font-bold block mt-0.5">{selectedServiceObj.service_type}</strong>
                   </div>
-
                   <div>
-                    <p className="text-xs text-slate-400 mb-1">
-                      Tipo
-                    </p>
-
-                    <p className="font-semibold text-slate-800">
-                      {selectedService}
-                    </p>
+                    <span className="text-slate-400 font-medium block">Código</span>
+                    <strong className="text-slate-700 font-bold block mt-0.5">{selectedServiceObj.contract_code || selectedServiceObj.service_code || `SRV-${selectedServiceObj.id}`}</strong>
                   </div>
-
                   <div>
-                    <p className="text-xs text-slate-400 mb-1">
-                      Fecha
-                    </p>
-
-                    <p className="font-semibold text-slate-800">
-                      {selectedDay}
-                    </p>
+                    <span className="text-slate-400 font-medium block">Fecha</span>
+                    <strong className="text-slate-700 font-bold block mt-0.5">{formatShortDay(selectedDayObj.day_date)}</strong>
                   </div>
-
                   <div>
-                    <p className="text-xs text-slate-400 mb-1">
-                      Horario
-                    </p>
-
-                    <p className="font-semibold text-slate-800">
-                      08:00 - 12:00
-                    </p>
+                    <span className="text-slate-400 font-medium block">Horario Programado</span>
+                    <strong className="text-slate-700 font-bold block mt-0.5">
+                      {formatHour(selectedDayObj.start_hour)} - {formatHour(selectedDayObj.end_hour)}
+                    </strong>
                   </div>
-
                 </div>
 
                 {/* Actividades */}
-                <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase mb-4">
-                  Actividades realizadas
-                </h3>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+                    Actividades Realizadas
+                  </h4>
 
-                <div className="space-y-3">
-
-                  {activities.map((activity, index) => (
-                    <div
-                      key={activity.id}
-                      className="flex items-center gap-3"
-                    >
-
-                      <div className="h-6 w-6 rounded-full bg-teal-100 text-teal-700 text-xs font-semibold flex items-center justify-center shrink-0">
-                        {index + 1}
-                      </div>
-
-                      <input
-                        type="text"
-                        value={activity.text}
-                        onChange={(e) =>
-                          updateActivity(
-                            activity.id,
-                            e.target.value
-                          )
-                        }
-                        placeholder="Describe la actividad"
-                        className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-teal-300"
-                      />
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          removeActivity(activity.id)
-                        }
-                        disabled={activities.length === 1}
-                        className="text-slate-400 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-
-                    </div>
-                  ))}
-
-                </div>
-
-                <button
-                  type="button"
-                  onClick={addActivity}
-                  className="mt-4 text-sm font-medium text-teal-600 hover:text-teal-700"
-                >
-                  + Agregar actividad
-                </button>
-
-                {/* Observaciones */}
-                <div className="mt-8">
-
-                  <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase mb-3">
-                    Observaciones
-                  </h3>
-
-                  <textarea
-                    rows={4}
-                    placeholder="Observaciones clínicas sobre el paciente..."
-                    className="w-full border border-slate-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:border-teal-300"
-                  />
-
-                </div>
-
-                {/* Recomendaciones */}
-                <div className="mt-8">
-
-                  <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase mb-3">
-                    Recomendaciones
-                  </h3>
-
-                  <textarea
-                    rows={4}
-                    placeholder="Recomendaciones para el paciente o familia..."
-                    className="w-full border border-slate-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:border-teal-300"
-                  />
-
-                </div>
-
-                {/* Fotos */}
-                <div className="mt-8">
-
-                  <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase mb-3">
-                    Fotos
-                  </h3>
-
-                  <label className="inline-flex items-center gap-2 border border-dashed border-slate-300 rounded-xl px-5 py-3 text-sm cursor-pointer hover:bg-slate-50">
-
-                    📷 Agregar foto
-
-                    <input
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handlePhotoUpload}
-                      className="hidden"
-                    />
-
-                  </label>
-
-                  {photos.length > 0 && (
-                    <div className="mt-4 flex flex-wrap gap-2">
-
-                      {photos.map((photo, index) => (
-                        <div
-                          key={index}
-                          className="px-3 py-2 bg-slate-100 rounded-lg text-xs"
-                        >
-                          {photo.name}
+                  <div className="space-y-2">
+                    {activities.map((act, index) => (
+                      <div key={act.id} className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-full bg-teal-50 text-teal-700 text-[10px] font-black flex items-center justify-center shrink-0">
+                          {index + 1}
                         </div>
-                      ))}
-
-                    </div>
-                  )}
-
-                </div>
-
-                {/* Estado */}
-                <div className="mt-8">
-
-                  <h3 className="text-xs font-bold tracking-wider text-slate-400 uppercase mb-3">
-                    Estado
-                  </h3>
-
-                  <div className="grid grid-cols-3 bg-slate-100 rounded-xl p-1">
-
-                    {["Borrador", "Pendiente", "Enviar al cliente"].map(
-                      (item) => (
+                        <input
+                          type="text"
+                          value={act.text}
+                          onChange={(e) => updateActivity(act.id, e.target.value)}
+                          placeholder="Ej: Control de presión arterial, toma de Donepezilo, etc."
+                          className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 bg-slate-50/20"
+                        />
                         <button
-                          key={item}
                           type="button"
-                          onClick={() => setStatus(item)}
-                          className={`py-3 rounded-lg text-sm transition ${status === item
-                            ? "bg-white shadow font-semibold text-slate-800"
-                            : "text-slate-500 hover:bg-slate-200"
-                            }`}
+                          onClick={() => removeActivity(act.id)}
+                          disabled={activities.length === 1}
+                          className="text-slate-400 hover:text-rose-500 disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer p-1"
                         >
-                          {item}
+                          <Trash2 size={15} />
                         </button>
-                      )
-                    )}
-
+                      </div>
+                    ))}
                   </div>
-
-                </div>
-
-                {/* Botones */}
-                <div className="grid md:grid-cols-2 gap-4 mt-8">
-
-                  <button
-                    onClick={() => {
-                      setSelectedPatient("");
-                      setSelectedService("");
-                      setSelectedDay("");
-                      setActivities([{ id: 1, text: "" }]);
-                      setPhotos([]);
-                      setStatus("Pendiente");
-                      setView("lista");
-                    }}
-                    className="border border-slate-200 rounded-xl py-3 text-sm font-medium hover:bg-slate-50"
-                  >
-                    Cancelar
-                  </button>
 
                   <button
                     type="button"
-                    onClick={handleSave}
-                    className="bg-teal-500 hover:bg-teal-600 text-white rounded-xl py-3 text-sm font-medium"
+                    onClick={addActivity}
+                    className="inline-flex items-center gap-1 mt-3 text-xs font-bold text-teal-600 hover:text-teal-700 bg-teal-50/40 border border-teal-200/30 px-2.5 py-1.5 rounded-lg cursor-pointer transition"
                   >
-                    Guardar bitácora
+                    <Plus size={14} />
+                    Agregar otra actividad
                   </button>
-
                 </div>
 
-              </div>
+                {/* Observaciones */}
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Observaciones Clínicas / Novedades
+                  </h4>
+                  <textarea
+                    rows={4}
+                    value={observations}
+                    onChange={(e) => setObservations(e.target.value)}
+                    placeholder="Describe el estado del paciente, estado de ánimo, alimentación, sueño, etc."
+                    className="w-full border border-slate-200 rounded-xl p-3 text-xs text-slate-700 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 bg-slate-50/20 resize-none"
+                  />
+                </div>
 
+                {/* Recomendaciones */}
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Recomendaciones para el Cliente o Familia
+                  </h4>
+                  <textarea
+                    rows={3}
+                    value={recommendations}
+                    onChange={(e) => setRecommendations(e.target.value)}
+                    placeholder="Sugerencias de cuidado, medicamentos por comprar o citas médicas sugeridas."
+                    className="w-full border border-slate-200 rounded-xl p-3 text-xs text-slate-700 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 bg-slate-50/20 resize-none"
+                  />
+                </div>
+
+                {/* Fotos / Evidencia */}
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">
+                    Fotos / Evidencia de la bitácora (Opcional)
+                  </h4>
+
+                  <div className="flex flex-wrap gap-3 items-center">
+                    {/* Botón para subir fotos */}
+                    <label className="flex flex-col items-center justify-center w-20 h-20 border border-dashed border-slate-300 hover:border-teal-400 rounded-2xl cursor-pointer hover:bg-slate-50 transition shrink-0">
+                      <ImageIcon className="w-5 h-5 text-slate-400" />
+                      <span className="text-[9px] text-slate-400 font-bold mt-1">Agregar</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={handlePhotoUpload}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {/* Fotos ya guardadas en la BD */}
+                    {existingPhotos.map((url, index) => (
+                      <div key={`existing-${index}`} className="relative w-20 h-20 rounded-2xl overflow-hidden border border-slate-100 shadow-sm shrink-0 group">
+                        <img src={url} alt="Guardada" className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removeExistingPhoto(index)}
+                          className="absolute -top-1.5 -right-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-full p-1 shadow transition cursor-pointer scale-90"
+                          title="Eliminar foto guardada"
+                        >
+                          <X size={11} />
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* Previsualización de fotos nuevas a subir */}
+                    {newPhotosPreview.map((previewUrl, index) => (
+                      <div key={`new-${index}`} className="relative w-20 h-20 rounded-2xl overflow-hidden border border-slate-150 shadow-sm shrink-0 group">
+                        <img src={previewUrl} alt="Nueva" className="w-full h-full object-cover" />
+                        <div className="absolute top-1 left-1 bg-teal-500 text-white text-[8px] font-bold px-1 py-0.2 rounded uppercase">
+                          Nueva
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removePhotoToUpload(index)}
+                          className="absolute -top-1.5 -right-1.5 bg-rose-500 hover:bg-rose-600 text-white rounded-full p-1 shadow transition cursor-pointer scale-90"
+                          title="Eliminar foto elegida"
+                        >
+                          <X size={11} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Botones de acción */}
+                <div className="grid grid-cols-2 gap-3 border-t border-slate-50 pt-5">
+                  <button
+                    type="button"
+                    onClick={() => setView("days")}
+                    disabled={isSaving}
+                    className="border border-slate-200 text-slate-500 font-bold py-3 rounded-xl hover:bg-slate-50 transition cursor-pointer text-xs disabled:opacity-50"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={isSaving}
+                    className="bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 rounded-xl cursor-pointer text-xs shadow-sm transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    {isSaving ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Guardando...</span>
+                      </>
+                    ) : (
+                      <span>{editingBinnacleId ? "Actualizar Bitácora" : "Enviar Bitácora"}</span>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
-
         </div>
 
         {/* Paginación */}
         {view === "lista" && totalPages > 1 && (
           <div className="flex justify-center items-center gap-2 pt-2">
-
             <button
               disabled={currentPage === 1}
               onClick={() => setCurrentPage((p) => p - 1)}
-              className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center disabled:opacity-50"
+              className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center disabled:opacity-50 hover:bg-slate-50 transition cursor-pointer"
             >
               <ChevronLeft size={16} />
             </button>
-
             {Array.from({ length: totalPages }, (_, i) => (
               <button
                 key={i + 1}
                 onClick={() => setCurrentPage(i + 1)}
-                className={`h-8 w-8 rounded-lg ${currentPage === i + 1
-                  ? "bg-teal-500 text-white"
-                  : "border border-slate-200"
-                  }`}
+                className={`h-8 w-8 rounded-lg text-xs font-bold transition cursor-pointer ${
+                  currentPage === i + 1 ? "bg-teal-500 text-white shadow" : "border border-slate-200 hover:bg-slate-50"
+                }`}
               >
                 {i + 1}
               </button>
             ))}
-
             <button
               disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage((p) => p + 1)}
-              className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center disabled:opacity-50"
+              onClick={() => setCurrentPage((p) => p - 1)}
+              className="h-8 w-8 rounded-lg border border-slate-200 flex items-center justify-center disabled:opacity-50 hover:bg-slate-50 transition cursor-pointer"
             >
               <ChevronRight size={16} />
             </button>
-
           </div>
         )}
       </div>
 
-      {/* Modal */}
+      {/* DETAIL MODAL */}
       {selectedBitacora && (
-        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center">
-
-          <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-5">
-
-            <div className="flex items-center justify-between mb-5">
-
-              <h2 className="text-2xl font-bold text-slate-800">
-                Detalle de Bitácora
-              </h2>
-
-              <button
-                onClick={() => setSelectedBitacora(null)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="flex justify-between items-start mb-5">
-
-              <div className="flex gap-3">
-
-                <div className="h-10 w-10 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-semibold">
-                  {selectedBitacora.paciente
-                    .split(" ")
-                    .map((n) => n[0])
-                    .slice(0, 2)
-                    .join("")}
-                </div>
-
-                <div>
-                  <p className="font-semibold text-slate-800">
-                    {selectedBitacora.paciente}
-                  </p>
-
-                  <p className="text-xs text-slate-500">
-                    {selectedBitacora.servicio} · {selectedBitacora.fecha}
-                  </p>
-                </div>
-              </div>
-
-              <span className="text-[11px] bg-slate-100 text-slate-600 px-3 py-1 rounded-full">
-                {selectedBitacora.estado}
-              </span>
-            </div>
-
-            <h3 className="text-xs font-bold text-slate-400 uppercase mb-3">
-              Actividades
-            </h3>
-
-            <div className="space-y-2 mb-5">
-
-              {selectedBitacora.actividades.map((actividad, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-3"
-                >
-                  <div className="h-5 w-5 rounded-full bg-teal-100 text-teal-700 text-xs flex items-center justify-center">
-                    {index + 1}
-                  </div>
-
-                  <span className="text-sm text-slate-700">
-                    {actividad}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="bg-slate-50 rounded-xl p-3 mb-3">
-
-              <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">
-                Observaciones
-              </h4>
-
-              <p className="text-sm text-slate-700">
-                {selectedBitacora.observaciones}
-              </p>
-            </div>
-
-            <div className="bg-slate-50 rounded-xl p-3 mb-4">
-
-              <h4 className="text-xs font-bold text-slate-400 uppercase mb-2">
-                Recomendaciones
-              </h4>
-
-              <p className="text-sm text-slate-700">
-                {selectedBitacora.recomendaciones}
-              </p>
-            </div>
-
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 shadow-2xl border border-slate-100 w-full max-w-md relative animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setSelectedBitacora(null)}
-              className="w-full bg-slate-100 hover:bg-slate-200 py-2 rounded-lg text-sm transition"
+              className="absolute right-5 top-5 p-2 rounded-xl text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition cursor-pointer"
+              aria-label="Cerrar"
             >
-              Cerrar
+              <X className="h-5 w-5" />
             </button>
 
+            <div className="flex items-center gap-3 mb-5 border-b border-slate-50 pb-4 mt-2">
+              <div className="h-11 w-11 rounded-2xl bg-teal-50 text-teal-700 flex items-center justify-center font-black">
+                {selectedBitacora.paciente.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900 leading-tight">{selectedBitacora.paciente}</h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {selectedBitacora.servicio} · {selectedBitacora.fecha}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              {/* Actividades */}
+              {selectedBitacora.actividades.length > 0 && (
+                <div>
+                  <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">
+                    Actividades Realizadas
+                  </h4>
+                  <ul className="list-none space-y-1.5 pl-0.5">
+                    {selectedBitacora.actividades.map((act, index) => (
+                      <li key={index} className="flex items-start gap-2 text-xs text-slate-700 font-medium">
+                        <span className="text-emerald-500 font-bold select-none">✓</span>
+                        <span>{act}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Observaciones */}
+              {selectedBitacora.observaciones && (
+                <div className="bg-slate-50/70 border border-slate-100 rounded-xl p-3.5">
+                  <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                    Observaciones
+                  </h4>
+                  <p className="text-xs text-slate-650 leading-relaxed italic">
+                    "{selectedBitacora.observaciones}"
+                  </p>
+                </div>
+              )}
+
+              {/* Recomendaciones */}
+              {selectedBitacora.recomendaciones && (
+                <div className="bg-slate-50/70 border border-slate-100 rounded-xl p-3.5">
+                  <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-1.5">
+                    Recomendaciones
+                  </h4>
+                  <p className="text-xs text-slate-655 leading-relaxed font-semibold">
+                    "{selectedBitacora.recomendaciones}"
+                  </p>
+                </div>
+              )}
+
+              {/* Fotos */}
+              {selectedBitacora.photos && selectedBitacora.photos.length > 0 && (
+                <div>
+                  <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 mb-2">
+                    Evidencia Fotográfica
+                  </h4>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {selectedBitacora.photos.map((photoUrl, pIdx) => (
+                      <a
+                        key={pIdx}
+                        href={photoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shadow-sm hover:scale-105 transition block shrink-0"
+                      >
+                        <img
+                          src={photoUrl}
+                          alt={`Evidencia ${pIdx + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={() => {
+                  const b = selectedBitacora;
+                  setSelectedBitacora(null);
+                  handleStartEditFromList(b);
+                }}
+                className="flex-1 bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 rounded-xl cursor-pointer text-xs transition shadow-sm"
+              >
+                Editar Bitácora
+              </button>
+              <button
+                onClick={() => setSelectedBitacora(null)}
+                className="flex-1 bg-slate-100 hover:bg-slate-200/80 text-slate-655 font-bold py-3 rounded-xl cursor-pointer text-xs transition"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Success banner */}
       {showSuccess && (
-        <div className="fixed top-6 right-6 z-50">
-
-          <div className="bg-green-500 text-white px-5 py-3 rounded-xl shadow-lg">
-
-            ✅ Bitácora guardada correctamente
-
-          </div>
-
+        <div className="fixed top-6 right-6 z-[120] flex items-center gap-3 bg-emerald-500 text-white px-5 py-3.5 rounded-2xl shadow-xl animate-in fade-in slide-in-from-top-6 duration-300">
+          <span className="font-bold text-xs">✅ Bitácora guardada correctamente</span>
         </div>
       )}
     </>
@@ -1010,19 +1019,12 @@ function StatCard({
   label: string;
 }) {
   return (
-    <div className="bg-white border border-slate-100 rounded-xl p-5 shadow-sm">
-
-      <div className="w-9 h-9 rounded-lg bg-slate-50 flex items-center justify-center text-slate-600 mb-3">
+    <div className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm">
+      <div className="w-9 h-9 rounded-xl bg-slate-50 flex items-center justify-center text-slate-600 mb-3 border border-slate-100/50">
         {icon}
       </div>
-
-      <h3 className="text-2xl font-bold text-slate-800">
-        {value}
-      </h3>
-
-      <p className="text-xs text-slate-400">
-        {label}
-      </p>
+      <h3 className="text-2xl font-black text-slate-800">{value}</h3>
+      <p className="text-xs font-semibold text-slate-400 mt-0.5">{label}</p>
     </div>
   );
 }

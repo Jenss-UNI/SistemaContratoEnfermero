@@ -50,7 +50,7 @@ export default function NurseReviews({
               <div className="flex gap-4">
 
                 <img
-                  src={`https://i.pravatar.cc/150?u=${review.id}`}
+                  src={review.authorPhoto || `https://i.pravatar.cc/150?u=${review.id}`}
                   className="w-14 h-14 rounded-full object-cover"
                 />
 

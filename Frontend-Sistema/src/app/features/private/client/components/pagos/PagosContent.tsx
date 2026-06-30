@@ -1,10 +1,13 @@
-import { DollarSign, Plus, Shield } from "lucide-react";
-import { useState } from "react";
+import { DollarSign, Plus, Shield, Loader2, X, AlertTriangle } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "../../../../../core/contexts/AuthContext";
+import { supabase } from "../../../../../core/services/supabase";
 import type {
   CardFormData,
   PaymentMethod,
   PaymentMethodType,
   WalletFormData,
+  PaymentHistoryItem,
 } from "../../../../../core/models/payment.model";
 import {
   AddPaymentMethodModal,
@@ -12,33 +15,106 @@ import {
   PaymentMethodCard,
   SecurityBanner,
 } from "../../../../../shared/components/client/pagos";
-import { MOCK_PAYMENT_HISTORY, MOCK_PAYMENT_METHODS } from "../../data/mockPayments";
+import { MOCK_PAYMENT_METHODS } from "../../data/mockPayments";
 
 function createId(): string {
   return `pm-${Date.now()}`;
 }
 
 export default function PagosContent() {
-  const [methods, setMethods] = useState<PaymentMethod[]>(MOCK_PAYMENT_METHODS);
+  const { user } = useAuth();
+  
+  const [methods, setMethods] = useState<PaymentMethod[]>(() => {
+    const saved = localStorage.getItem("cuidame_payment_methods");
+    return saved ? JSON.parse(saved) : MOCK_PAYMENT_METHODS;
+  });
+  
+  const [history, setHistory] = useState<PaymentHistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [methodToDelete, setMethodToDelete] = useState<string | null>(null);
+
+  const saveMethods = (newMethods: PaymentMethod[]) => {
+    setMethods(newMethods);
+    localStorage.setItem("cuidame_payment_methods", JSON.stringify(newMethods));
+  };
+
+  const fetchPayments = useCallback(async () => {
+    if (!user?.id) return;
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from("services")
+        .select(`
+          id,
+          created_at,
+          payment_status,
+          total_amount,
+          service_type,
+          profiles:nurse_id (
+            nombres,
+            apellidos_pa
+          )
+        `)
+        .eq("client_id", user.id);
+
+      if (error) throw error;
+
+      const mapped: PaymentHistoryItem[] = (data || []).map((s: any) => {
+        const nurseName = s.profiles 
+          ? `${s.profiles.nombres} ${s.profiles.apellidos_pa || ""}`.trim() 
+          : "Enfermero por asignar";
+        
+        let estado: "pagado" | "custodia" | "pendiente" = "pendiente";
+        if (s.payment_status === "released") {
+          estado = "pagado";
+        } else if (s.payment_status === "in_custody") {
+          estado = "custodia";
+        }
+
+        return {
+          id: String(s.id),
+          fecha: new Date(s.created_at).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" }),
+          enfermero: nurseName,
+          tipo: s.service_type || "Asistencia General",
+          monto: Number(s.total_amount) || 0,
+          estado,
+          factura: `FAC-${s.id}`,
+        };
+      });
+
+      setHistory(mapped);
+    } catch (err) {
+      console.error("Error loading payment history:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    fetchPayments();
+  }, [fetchPayments]);
 
   const setPrincipal = (id: string) => {
-    setMethods((prev) =>
-      prev.map((m) => ({ ...m, esPrincipal: m.id === id }))
-    );
+    const updated = methods.map((m) => ({ ...m, esPrincipal: m.id === id }));
+    saveMethods(updated);
   };
 
   const deleteMethod = (id: string) => {
-    const target = methods.find((m) => m.id === id);
+    setMethodToDelete(id);
+  };
+
+  const confirmDeleteMethod = () => {
+    if (!methodToDelete) return;
+    const target = methods.find((m) => m.id === methodToDelete);
     if (!target) return;
-    if (!window.confirm("¿Eliminar este método de pago?")) return;
-    setMethods((prev) => {
-      const next = prev.filter((m) => m.id !== id);
-      if (target.esPrincipal && next.length > 0) {
-        next[0] = { ...next[0], esPrincipal: true };
-      }
-      return next;
-    });
+    
+    const next = methods.filter((m) => m.id !== methodToDelete);
+    if (target.esPrincipal && next.length > 0) {
+      next[0] = { ...next[0], esPrincipal: true };
+    }
+    saveMethods(next);
+    setMethodToDelete(null);
   };
 
   const handleAdd = (tipo: PaymentMethodType, data: CardFormData | WalletFormData) => {
@@ -65,12 +141,30 @@ export default function PagosContent() {
       };
     }
 
-    setMethods((prev) => [
-      ...(isFirst ? prev.map((m) => ({ ...m, esPrincipal: false })) : prev),
-      nuevo,
-    ]);
+    const updated = isFirst 
+      ? [...methods.map((m) => ({ ...m, esPrincipal: false })), nuevo]
+      : [...methods, nuevo];
+      
+    saveMethods(updated);
     setShowAddModal(false);
   };
+
+  const totalPaid = history
+    .filter((h) => h.estado === "pagado")
+    .reduce((acc, h) => acc + h.monto, 0);
+
+  const totalInCustody = history
+    .filter((h) => h.estado === "custodia")
+    .reduce((acc, h) => acc + h.monto, 0);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-3">
+        <Loader2 className="w-10 h-10 animate-spin text-teal-600" />
+        <p className="text-sm text-slate-500 font-medium">Cargando datos de pagos...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-10">
@@ -85,7 +179,7 @@ export default function PagosContent() {
           <button
             type="button"
             onClick={() => setShowAddModal(true)}
-            className="inline-flex items-center justify-center gap-2 self-start rounded-full bg-teal-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-600"
+            className="inline-flex items-center justify-center gap-2 self-start rounded-full bg-teal-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-600 cursor-pointer"
           >
             <Plus className="h-4 w-4" />
             Agregar
@@ -93,14 +187,20 @@ export default function PagosContent() {
         </div>
 
         <div className="max-w-lg space-y-5">
-          {methods.map((method) => (
-            <PaymentMethodCard
-              key={method.id}
-              method={method}
-              onSetPrincipal={() => setPrincipal(method.id)}
-              onDelete={() => deleteMethod(method.id)}
-            />
-          ))}
+          {methods.length === 0 ? (
+            <div className="p-6 border border-dashed border-slate-200 rounded-2xl text-center text-xs text-slate-400">
+              No tienes métodos de pago agregados.
+            </div>
+          ) : (
+            methods.map((method) => (
+              <PaymentMethodCard
+                key={method.id}
+                method={method}
+                onSetPrincipal={() => setPrincipal(method.id)}
+                onDelete={() => deleteMethod(method.id)}
+              />
+            ))
+          )}
         </div>
 
         <SecurityBanner />
@@ -108,32 +208,77 @@ export default function PagosContent() {
 
       <section className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white px-4 py-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-50">
+          {/* Card Total Pagado */}
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-105 bg-white px-5 py-4 shadow-sm">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-50 border border-emerald-100">
               <DollarSign className="h-5 w-5 text-emerald-600" />
             </div>
             <div>
-              <p className="text-xs text-slate-500">Total pagado</p>
-              <p className="text-xl font-bold text-slate-900">S/ 100</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total pagado</p>
+              <p className="text-2xl font-black text-slate-850">
+                S/ {totalPaid.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+              </p>
             </div>
           </div>
-          <div className="flex items-center gap-3 rounded-xl border border-slate-100 bg-white px-4 py-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-teal-50">
+          
+          {/* Card En Custodia */}
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-105 bg-white px-5 py-4 shadow-sm">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-50 border border-teal-100">
               <Shield className="h-5 w-5 text-teal-600" />
             </div>
             <div>
-              <p className="text-xs text-slate-500">En custodia</p>
-              <p className="text-xl font-bold text-slate-900">S/ 318</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">En custodia (Escrow)</p>
+              <p className="text-2xl font-black text-slate-850">
+                S/ {totalInCustody.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+              </p>
             </div>
           </div>
         </div>
 
-        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">Historial de Pagos</h2>
-        <PaymentHistoryTable items={MOCK_PAYMENT_HISTORY} />
+        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl pt-4">Historial de Pagos</h2>
+        
+        {history.length === 0 ? (
+          <div className="p-12 border border-dashed border-slate-200 rounded-3xl text-center text-xs text-slate-400">
+            Aún no posees transacciones en tu historial.
+          </div>
+        ) : (
+          <PaymentHistoryTable items={history} />
+        )}
       </section>
 
       {showAddModal && (
         <AddPaymentMethodModal onClose={() => setShowAddModal(false)} onAdd={handleAdd} />
+      )}
+
+      {/* CONFIRM DELETE MODAL */}
+      {methodToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setMethodToDelete(null)}>
+          <div className="bg-white rounded-3xl w-full max-w-sm p-6 shadow-2xl border border-slate-100 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="text-center">
+              <div className="w-12 h-12 flex items-center justify-center bg-rose-50 border border-rose-100 rounded-full mx-auto mb-4 text-rose-500">
+                <AlertTriangle className="h-6 w-6 animate-bounce" />
+              </div>
+              <h3 className="text-base font-bold text-slate-800 mb-2">¿Eliminar método de pago?</h3>
+              <p className="text-xs text-slate-400 leading-relaxed mb-6 font-medium">
+                Esta acción no se puede deshacer. Deberás volver a asociar tu tarjeta o billetera si deseas utilizarla nuevamente.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => setMethodToDelete(null)}
+                  className="border border-slate-200 text-slate-500 font-bold py-2.5 rounded-xl hover:bg-slate-50 transition cursor-pointer text-xs"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmDeleteMethod}
+                  className="bg-rose-500 hover:bg-rose-600 text-white font-bold py-2.5 rounded-xl transition cursor-pointer text-xs shadow-sm"
+                >
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

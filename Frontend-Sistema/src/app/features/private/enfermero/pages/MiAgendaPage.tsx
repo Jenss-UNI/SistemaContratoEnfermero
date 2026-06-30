@@ -50,7 +50,7 @@ interface Booking {
   patientName: string;
   clientName: string;
   serviceId: string;
-  status: "confirmed" | "pending" | "active";
+  status: "confirmed" | "pending" | "active" | "completed";
 }
 
 /* ─── Predefined Data Constants ─── */
@@ -231,9 +231,8 @@ export default function MiAgendaPage() {
     return slot ? { startHour: slot.startHour, endHour: slot.endHour } : null;
   };
 
-  // Obtener citas de un día (cualquier cita activa bloquea el horario)
   const getDayBookings = (dateStr: string) => {
-    return bookings.filter((b) => b.date === dateStr && ["pending", "confirmed", "active"].includes(b.status));
+    return bookings.filter((b) => b.date === dateStr && ["pending", "confirmed", "active", "completed"].includes(b.status));
   };
 
   // Calcular horas disponibles en un día (excluyendo horas ocupadas por reservas)
@@ -902,8 +901,14 @@ export default function MiAgendaPage() {
                                     Cliente: {b.clientName}
                                   </p>
                                 </div>
-                                <span className="text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100 shrink-0">
-                                  Confirmado
+                                <span className={`text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full shrink-0 border ${
+                                  b.status === "completed"
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                                    : b.status === "active"
+                                    ? "bg-teal-50 text-teal-700 border-teal-100"
+                                    : "bg-blue-50 text-blue-700 border-blue-100"
+                                }`}>
+                                  {b.status === "completed" ? "Completado" : b.status === "active" ? "En curso" : "Confirmado"}
                                 </span>
                               </div>
                               <div className="flex items-center gap-2 text-xs text-slate-500 mb-2">

@@ -214,8 +214,18 @@ export default function NurseAvailability({ nurseId }: Props) {
       slots.push(h);
     }
 
-    // Filtrar slots ocupados
+    const todayVal = new Date();
+    const isToday =
+      date.getDate() === todayVal.getDate() &&
+      date.getMonth() === todayVal.getMonth() &&
+      date.getFullYear() === todayVal.getFullYear();
+    const currentHour = todayVal.getHours();
+
+    // Filtrar slots ocupados y horas pasadas
     const freeSlots = slots.filter((hour) => {
+      if (isToday && hour <= currentHour) {
+        return false;
+      }
       return !blockedRanges.some((range) => {
         const rStart = parseHour(range.start);
         const rEnd = parseHour(range.end);

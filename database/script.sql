@@ -348,7 +348,6 @@ CREATE TABLE public.notifications (
   CONSTRAINT notifications_pkey PRIMARY KEY (id),
   CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
 );
-
 --Bucket de foto_perfil
 
 -- 1. Permitir acceso público de lectura para cualquier persona a las fotos de perfil y pacientes

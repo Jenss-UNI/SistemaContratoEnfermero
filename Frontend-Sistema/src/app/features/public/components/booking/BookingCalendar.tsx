@@ -170,7 +170,17 @@ export default function BookingCalendar({
       slots.push(h);
     }
 
+    const today = new Date();
+    const isToday =
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear();
+    const currentHour = today.getHours();
+
     return slots.filter((hour) => {
+      if (isToday && hour <= currentHour) {
+        return false;
+      }
       return !blockedRanges.some((range) => {
         const rStart = parseHour(range.start);
         const rEnd = parseHour(range.end);
@@ -264,24 +274,6 @@ export default function BookingCalendar({
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
-  const hours = [
-    "6:00 am",
-    "7:00 am",
-    "8:00 am",
-    "9:00 am",
-    "10:00 am",
-    "11:00 am",
-    "12:00 pm",
-    "1:00 pm",
-    "2:00 pm",
-    "3:00 pm",
-    "4:00 pm",
-    "5:00 pm",
-    "6:00 pm",
-    "7:00 pm",
-    "8:00 pm"
-  ];
 
   {/* agregar día */ }
 
@@ -549,9 +541,6 @@ export default function BookingCalendar({
               const validation = validateRange(item.start, item.end, item.date);
               const blockedRanges = getDateBlockedRanges(item.date);
               const hoursCount = calculateHours(item.start, item.end);
-              // getDaySchedule puede retornar null si el día quedó bloqueado,
-              // usamos el fallback mínimo para evitar crash en el selector
-              const daySchedule = getDaySchedule(item.date) ?? { start: "6:00 am", end: "8:00 pm" };
 
               return (
                 <div
