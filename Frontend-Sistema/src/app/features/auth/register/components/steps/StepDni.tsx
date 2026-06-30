@@ -14,6 +14,7 @@ export default function StepDni({ dni, nombres, apellidos_pa, apellidos_ma, onNe
         apellidos_ma: apellidos_ma
     });
     const [errorMsg, setErrorMsg] = useState("");
+    const [errorFields, setErrorFields] = useState<string[]>([]);
     const [loadingStep, setLoadingStep] = useState<LoadingStep>(0);
 
     // Función de normalización de cadenas para una comparación robusta
@@ -58,7 +59,12 @@ export default function StepDni({ dni, nombres, apellidos_pa, apellidos_ma, onNe
             const inputMa = normalizeText(apellidos_ma);
 
             if (officialNombres !== inputNombres || officialPa !== inputPa || officialMa !== inputMa) {
-                setErrorMsg("Los datos oficiales de la RENIEC no coinciden con los nombres y apellidos ingresados en el formulario de registro. Por favor, regresa al primer paso y corrígelos.");
+                const fields: string[] = [];
+                if (officialNombres !== inputNombres) fields.push("Nombres");
+                if (officialPa !== inputPa) fields.push("Apellido Paterno");
+                if (officialMa !== inputMa) fields.push("Apellido Materno");
+                setErrorFields(fields);
+                setErrorMsg("Los datos ingresados no coinciden con el DNI consultado. Regresa al paso anterior y corrige los campos indicados.");
                 setIsDniVerified(false);
                 return;
             }
@@ -132,24 +138,16 @@ export default function StepDni({ dni, nombres, apellidos_pa, apellidos_ma, onNe
                             <p className="text-xs text-rose-700 mt-1 leading-relaxed">
                                 {errorMsg}
                             </p>
-                            <div className="mt-3 bg-white/70 p-2.5 rounded-lg border border-rose-100 grid grid-cols-1 sm:grid-cols-2 gap-3 text-[11px] leading-relaxed">
-                                <div>
-                                    <span className="font-bold text-rose-900">Ingresado en Formulario:</span>
+                            {errorFields.length > 0 && (
+                                <div className="mt-3 bg-white/70 p-2.5 rounded-lg border border-rose-100 text-[11px] leading-relaxed">
+                                    <span className="font-bold text-rose-900">Campos con error:</span>
                                     <ul className="list-disc pl-4 mt-1 text-rose-800 space-y-0.5">
-                                        <li>Nombres: <span className="font-semibold">{nombres}</span></li>
-                                        <li>Ape. Paterno: <span className="font-semibold">{apellidos_pa}</span></li>
-                                        <li>Ape. Materno: <span className="font-semibold">{apellidos_ma}</span></li>
+                                        {errorFields.map((field) => (
+                                            <li key={field}><span className="font-semibold">{field}</span></li>
+                                        ))}
                                     </ul>
                                 </div>
-                                <div>
-                                    <span className="font-bold text-rose-900">Registrado en RENIEC:</span>
-                                    <ul className="list-disc pl-4 mt-1 text-rose-800 space-y-0.5">
-                                        <li>Nombres: <span className="font-semibold">{verifiedData.nombres || "—"}</span></li>
-                                        <li>Ape. Paterno: <span className="font-semibold">{verifiedData.apellidos_pa || "—"}</span></li>
-                                        <li>Ape. Materno: <span className="font-semibold">{verifiedData.apellidos_ma || "No registra"}</span></li>
-                                    </ul>
-                                </div>
-                            </div>
+                            )}
                         </div>
                     </div>
                 )}

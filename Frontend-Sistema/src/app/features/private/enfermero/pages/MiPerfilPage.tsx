@@ -184,7 +184,11 @@ export default function MiPerfilPage() {
       setServiceEspecializado(esp?.activo ?? false);
 
       setRateAsistencial(asis?.tarifa_hora ? String(asis.tarifa_hora) : "0");
-      setServiceAsistencial(asis?.activo ?? false);
+      setServiceAsistencial(
+        profileData.nurse_profile?.nivel === "Licenciado en Enfermería"
+          ? true
+          : (asis?.activo ?? false)
+      );
 
       setRateAcompanamiento(acop?.tarifa_hora ? String(acop.tarifa_hora) : "0");
       setServiceAcompanamiento(acop?.activo ?? false);
@@ -421,17 +425,22 @@ export default function MiPerfilPage() {
       });
 
       // 2. Guardar tipos de servicio y sus tarifas
-      const servicesToSave = [
-        {
+      const servicesToSave: { tipo: string; tarifa_hora: number; activo: boolean; principal: boolean }[] = [];
+
+      if (nivel === "Enfermero Especializado") {
+        servicesToSave.push({
           tipo: "Especializado",
           tarifa_hora: Number(rateEspecializado),
-          activo: nivel === "Enfermero Especializado" ? serviceEspecializado : false,
-          principal: nivel === "Enfermero Especializado",
-        },
+          activo: serviceEspecializado,
+          principal: true,
+        });
+      }
+
+      servicesToSave.push(
         {
           tipo: "Asistencial",
           tarifa_hora: Number(rateAsistencial),
-          activo: nivel === "Técnico en Enfermería" ? false : (nivel === "Licenciado en Enfermería" ? true : serviceAsistencial),
+          activo: nivel === "Técnico en Enfermería" ? false : true,
           principal: nivel === "Licenciado en Enfermería",
         },
         {
@@ -440,7 +449,7 @@ export default function MiPerfilPage() {
           activo: nivel === "Técnico en Enfermería" ? true : serviceAcompanamiento,
           principal: nivel === "Técnico en Enfermería",
         },
-      ];
+      );
       await saveEnfermeroServiceTypes(user.id, servicesToSave);
 
       // 3. Guardar zonas

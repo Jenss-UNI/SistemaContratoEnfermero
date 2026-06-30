@@ -28,10 +28,11 @@ import {
   uploadNurseDocument,
   deleteNurseDocument,
   submitVerificationRequest,
+  updateProfileVisibility,
 } from "../services/enfermeroProfile.service";
 
 // Tipos de enfermeros
-type NurseType = "Enfermero Especializado" | "Licenciado en Enfermería" | "Técnico en Enfermería";
+type NurseType = "Licenciado con Especialidad" | "Licenciado en Enfermería" | "Técnico Titulado";
 type DocStatus = "not_submitted" | "pending" | "approved" | "rejected";
 
 interface DocSlot {
@@ -154,9 +155,9 @@ const technicalDocs: DocSlot[] = [
 ];
 
 const docSets: Record<NurseType, DocSlot[]> = {
-  "Enfermero Especializado": [...commonDocs, ...specialistDocs],
+  "Licenciado con Especialidad": [...commonDocs, ...specialistDocs],
   "Licenciado en Enfermería": [...commonDocs, ...assistentialDocs],
-  "Técnico en Enfermería": [...commonDocs, ...technicalDocs],
+  "Técnico Titulado": [...commonDocs, ...technicalDocs],
 };
 
 export default function VerificacionPage() {
@@ -164,13 +165,15 @@ export default function VerificacionPage() {
 
   // Estados de carga y datos reales
   const [pageLoading, setPageLoading] = useState(true);
-  const [nurseType, setNurseType] = useState<NurseType>("Enfermero Especializado");
-  const [requiredDocs, setRequiredDocs] = useState<DocSlot[]>(docSets["Enfermero Especializado"]);
+  const [nurseType, setNurseType] = useState<NurseType>("Licenciado con Especialidad");
+  const [requiredDocs, setRequiredDocs] = useState<DocSlot[]>(docSets["Licenciado con Especialidad"]);
   const [dbDocs, setDbDocs] = useState<NurseDoc[]>([]);
   
   const [loadingDocId, setLoadingDocId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [currentStatus, setCurrentStatus] = useState<DocStatus>("not_submitted");
+  const [visibilidad, setVisibilidad] = useState<"publicado" | "despublicado" | "borrador">("despublicado");
+  const [togglingVisibility, setTogglingVisibility] = useState(false);
   const [toast, setToast] = useState<{ show: boolean; type: "success" | "error"; message: string } | null>(null);
 
   const loadVerificationData = async () => {
@@ -180,10 +183,11 @@ export default function VerificacionPage() {
       
       // 1. Obtener perfil para tipo y estado de verificación
       const profileData = await fetchEnfermeroProfile(user.id);
-      const level = (profileData.nurse_profile?.nivel || "Técnico en Enfermería") as NurseType;
+      const level = (profileData.nurse_profile?.nivel || "Técnico Titulado") as NurseType;
       setNurseType(level);
       setRequiredDocs(docSets[level] || []);
       setCurrentStatus((profileData.nurse_profile?.verificacion_status || "not_submitted") as DocStatus);
+      setVisibilidad((profileData.nurse_profile?.visibilidad || "despublicado") as "publicado" | "despublicado" | "borrador");
 
       // 2. Obtener documentos subidos
       const docs = await fetchNurseDocuments(user.id);
@@ -202,6 +206,22 @@ export default function VerificacionPage() {
       showToast("Error al cargar la información de verificación.", "error");
     } finally {
       setPageLoading(false);
+    }
+  };
+
+  const handleToggleVisibility = async () => {
+    if (!user?.id || currentStatus !== "approved") return;
+    setTogglingVisibility(true);
+    try {
+      const newVisibility = visibilidad === "publicado" ? "despublicado" : "publicado";
+      await updateProfileVisibility(user.id, newVisibility);
+      setVisibilidad(newVisibility);
+      showToast(`Perfil configurado como ${newVisibility === "publicado" ? "público" : "privado"} correctamente.`, "success");
+    } catch (err: any) {
+      console.error("[Verification] Error al cambiar visibilidad:", err);
+      showToast("Error al cambiar la visibilidad de tu perfil: " + (err.message || ""), "error");
+    } finally {
+      setTogglingVisibility(false);
     }
   };
 
@@ -551,15 +571,47 @@ export default function VerificacionPage() {
           </div>
         )}
 
-        {/* Aviso de Perfil Verificado */}
+        {/* Aviso de Perfil Verificado y Toggle de Visibilidad */}
         {currentStatus === "approved" && (
-          <div className="bg-teal-50/50 border border-teal-200 rounded-2xl p-5 flex items-center gap-3">
-            <CheckCircle2 className="text-teal-600 h-6 w-6 shrink-0" />
-            <div>
-              <p className="font-bold text-teal-800 text-sm">Perfil verificado</p>
-              <p className="text-xs text-teal-600 mt-0.5">
-                Tu perfil está aprobado y visible en el directorio. No se requieren acciones adicionales.
-              </p>
+          <div className="bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-4">
+            <div className="flex items-center gap-3">
+              <CheckCircle2 className="text-teal-600 h-6 w-6 shrink-0" />
+              <div>
+                <p className="font-bold text-slate-800 text-sm">Documentación Verificada</p>
+                <p className="text-xs text-slate-500 mt-0.5 font-medium">
+                  El administrador ha verificado y aprobado todos tus documentos con éxito.
+                </p>
+              </div>
+            </div>
+            
+            <div className="border-t border-slate-100 pt-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold text-slate-700">Estado de Publicación</p>
+                <p className="text-[11px] text-slate-450 mt-0.5 leading-normal font-medium">
+                  {visibilidad === "publicado" 
+                    ? "Tu perfil es público y visible para todos los clientes en el directorio de búsqueda pública." 
+                    : "Tu perfil es privado y está oculto de las búsquedas en la aplicación."
+                  }
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleToggleVisibility}
+                disabled={togglingVisibility}
+                className={`px-5 py-2.5 text-xs font-bold rounded-xl transition shadow-sm cursor-pointer flex items-center justify-center gap-1.5 min-w-[130px] shrink-0 border ${
+                  visibilidad === "publicado"
+                    ? "bg-rose-50 border-rose-100 text-rose-600 hover:bg-rose-100"
+                    : "bg-teal-50 border-teal-100 text-teal-600 hover:bg-teal-100"
+                }`}
+              >
+                {togglingVisibility ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : visibilidad === "publicado" ? (
+                  "Ocultar Perfil"
+                ) : (
+                  "Publicar Perfil"
+                )}
+              </button>
             </div>
           </div>
         )}

@@ -3,7 +3,7 @@ import { CalendarDays, Clock, ChevronLeft, ChevronRight, Loader2 } from "lucide-
 import { DayPicker } from "react-day-picker";
 import "react-day-picker/dist/style.css";
 import { es } from "date-fns/locale";
-import { fetchNurseAvailabilityData, formatHour } from "../../../private/client/services/hiring.service";
+import { fetchNurseAvailabilityData, formatHour, parseHour } from "../../../private/client/services/hiring.service";
 
 interface Props {
   nurseId?: string;
@@ -111,6 +111,63 @@ export default function NurseAvailability({ nurseId }: Props) {
     return bookings.filter((b) => b.fecha === formattedDate);
   };
 
+  const getDaySchedule = (date: Date): { start: string; end: string } | null => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const dateStr = String(date.getDate()).padStart(2, "0");
+    const formattedDate = `${year}-${month}-${dateStr}`;
+
+    const matchExc = exceptions.find(e => e.fecha === formattedDate);
+    if (matchExc) {
+      if (matchExc.tipo === "vacation") return null;
+
+      if (matchExc.tipo === "block" && (matchExc.start_hour === null || matchExc.start_hour === undefined)) {
+        return null;
+      }
+
+      if (matchExc.tipo === "block" && matchExc.start_hour !== null && matchExc.start_hour !== undefined) {
+        return {
+          start: formatHour(matchExc.start_hour),
+          end: formatHour(matchExc.end_hour),
+        };
+      }
+
+      if (matchExc.tipo === "extra") {
+        return {
+          start: formatHour(matchExc.start_hour ?? 8),
+          end: formatHour(matchExc.end_hour ?? 18),
+        };
+      }
+    }
+
+    return schedules[date.getDay()] || null;
+  };
+
+  const getDateBlockedRanges = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const dateStr = String(date.getDate()).padStart(2, "0");
+    const formattedDate = `${year}-${month}-${dateStr}`;
+
+    const ranges: { start: string; end: string; label: string }[] = [];
+
+    const dateBookings = bookings.filter((b) => b.fecha === formattedDate);
+    dateBookings.forEach((b) => {
+      ranges.push({ start: b.start, end: b.end, label: "Reserva" });
+    });
+
+    const matchExc = exceptions.find(e => e.fecha === formattedDate);
+    if (matchExc && matchExc.tipo === "block" && matchExc.start_hour !== null && matchExc.start_hour !== undefined) {
+      ranges.push({
+        start: formatHour(matchExc.start_hour),
+        end: formatHour(matchExc.end_hour),
+        label: "Bloqueo agenda"
+      });
+    }
+
+    return ranges;
+  };
+
   const isDisabledDate = (date: Date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -134,20 +191,49 @@ export default function NurseAvailability({ nurseId }: Props) {
       if (matchExc.tipo === "block" && (matchExc.start_hour === null || matchExc.start_hour === undefined)) {
         return true;
       }
-      if (matchExc.tipo === "extra") return false; // día extra habilitado
+      // Si es extra, se evalúa disponibilidad abajo usando extra como schedule base
     }
 
-    // Si el día de semana no está habilitado en la agenda recurrente → deshabilitado
-    if (unavailableWeekDays.includes(date.getDay())) return true;
+    // Si no es extra y el día de semana no está habilitado en la agenda recurrente → deshabilitado
+    const isExtra = matchExc && matchExc.tipo === "extra";
+    if (!isExtra && unavailableWeekDays.includes(date.getDay())) return true;
 
-    // Bloquear día si hay cualquier reserva en ese día
-    const daySchedule = schedules[date.getDay()];
-    if (daySchedule) {
-      const dayBookings = getDateBookings(date);
-      if (dayBookings.length > 0) return true;
+    const daySchedule = getDaySchedule(date);
+    if (!daySchedule) return true;
+
+    const startH = parseHour(daySchedule.start);
+    const endH = parseHour(daySchedule.end);
+    if (endH - startH <= 0) return true;
+
+    // Obtener reservas y bloqueos de agenda
+    const blockedRanges = getDateBlockedRanges(date);
+
+    // Generar horas de disponibilidad
+    const slots: number[] = [];
+    for (let h = startH; h < endH; h++) {
+      slots.push(h);
     }
 
-    return false;
+    const todayVal = new Date();
+    const isToday =
+      date.getDate() === todayVal.getDate() &&
+      date.getMonth() === todayVal.getMonth() &&
+      date.getFullYear() === todayVal.getFullYear();
+    const currentHour = todayVal.getHours();
+
+    // Filtrar slots ocupados y horas pasadas
+    const freeSlots = slots.filter((hour) => {
+      if (isToday && hour <= currentHour) {
+        return false;
+      }
+      return !blockedRanges.some((range) => {
+        const rStart = parseHour(range.start);
+        const rEnd = parseHour(range.end);
+        return hour >= rStart && hour < rEnd;
+      });
+    });
+
+    return freeSlots.length === 0;
   };
 
 

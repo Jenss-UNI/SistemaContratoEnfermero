@@ -85,6 +85,57 @@ export default function ResumenContent({ onPinRegenerado: _onPinRegenerado }: Re
     ciclo: subscription?.ciclo ?? "—",
   };
 
+  const getActivePinData = () => {
+    const now = new Date();
+    const activeContracts = contrataciones.filter(
+      (c) => c.estado === "confirmado" || c.estado === "en_curso"
+    );
+
+    let nextScheduledDay: any = null;
+    let nextContract: any = null;
+    let minTimeDiff = Infinity;
+
+    for (const c of activeContracts) {
+      if (!c.service_days) continue;
+      for (const d of c.service_days) {
+        if (d.status !== "scheduled") continue;
+
+        const [year, month, day] = d.day_date.split("-").map(Number);
+        const startTime = new Date(year, month - 1, day, d.start_hour, 0, 0, 0);
+        const endTime = new Date(year, month - 1, day, d.end_hour, 0, 0, 0);
+
+        if (now > endTime) continue;
+
+        const timeDiff = startTime.getTime() - now.getTime();
+        if (timeDiff < minTimeDiff) {
+          minTimeDiff = timeDiff;
+          nextScheduledDay = d;
+          nextContract = c;
+        }
+      }
+    }
+
+    if (!nextScheduledDay || !nextContract) return { isActive: false };
+
+    const [year, month, day] = nextScheduledDay.day_date.split("-").map(Number);
+    const startTime = new Date(year, month - 1, day, nextScheduledDay.start_hour, 0, 0, 0);
+    const endTime = new Date(year, month - 1, day, nextScheduledDay.end_hour, 0, 0, 0);
+    const activationTime = new Date(startTime.getTime() - 10 * 60 * 1000);
+
+    const isActive = now >= activationTime && now <= endTime;
+
+    return {
+      isActive,
+      pinCode: nextContract.pin_code,
+      activationTime,
+      startTime,
+      endTime,
+      nurseName: nextContract.profesionalNombre
+    };
+  };
+
+  const pinCardProps = getActivePinData();
+
   const activeOrUpcoming = contrataciones.filter(
     (c) => c.estado === "en_curso" || c.estado === "confirmado" || c.estado === "firma_requerida" || c.estado === "pendiente"
   );
@@ -109,7 +160,7 @@ export default function ResumenContent({ onPinRegenerado: _onPinRegenerado }: Re
   return (
     <div className="space-y-8 w-full">
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <PinCodeCard />
+        <PinCodeCard {...pinCardProps} />
         <PlanSummaryCard {...planData} />
       </div>
 

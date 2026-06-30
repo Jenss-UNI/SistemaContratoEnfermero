@@ -29,6 +29,17 @@ export type Contratacion = {
   montoTotal: number;
   calificacion?: number;
   comentarioCalificacion?: string;
+  pin_code?: string;
+  service_days?: {
+    id: number;
+    day_date: string;
+    start_hour: number;
+    end_hour: number;
+    status: string;
+    real_start?: string;
+    real_end?: string;
+  }[];
+  hasOpenIncident?: boolean;
 };
 
 export type JornadaProgramada = {

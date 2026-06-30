@@ -130,6 +130,7 @@ export async function fetchClientHirings(clientId: string): Promise<Contratacion
       notes,
       patient_name,
       created_at,
+      pin_code,
       nurse:nurse_id (
         nombres,
         apellidos_pa,
@@ -141,7 +142,16 @@ export async function fetchClientHirings(clientId: string): Promise<Contratacion
         )
       ),
       service_days (
-        day_date
+        id,
+        day_date,
+        start_hour,
+        end_hour,
+        status,
+        real_start,
+        real_end
+      ),
+      incident_reports (
+        status
       )
     `)
     .eq("client_id", clientId)
@@ -172,10 +182,18 @@ export async function fetchClientHirings(clientId: string): Promise<Contratacion
     // Map DB status to hiring.model.ts ContratacionEstado
     // DB: pending → "pendiente", confirmed → "firma_requerida", active → "confirmado", completed → "completado"
     let estado: any = "pendiente";
-    if (row.status === "confirmed") estado = "firma_requerida";
-    else if (row.status === "active") estado = "confirmado";
-    else if (row.status === "in_progress") estado = "en_curso";
-    else if (row.status === "completed") estado = "completado";
+    if (row.status === "confirmed") {
+      estado = "firma_requerida";
+    } else if (row.status === "active") {
+      const hasActiveDay = (row.service_days || []).some(
+        (d: any) => d.status === "active"
+      );
+      estado = hasActiveDay ? "en_curso" : "confirmado";
+    } else if (row.status === "in_progress") {
+      estado = "en_curso";
+    } else if (row.status === "completed") {
+      estado = "completado";
+    }
 
     // Map DB payment_status: pending, in_custody, released, refunded
     // PagoEstado: "pendiente" | "preautorizado" | "liberado"
@@ -187,6 +205,10 @@ export async function fetchClientHirings(clientId: string): Promise<Contratacion
       (n.nombres || "").charAt(0),
       (n.apellidos_pa || "").charAt(0),
     ].filter(Boolean).join("").toUpperCase() || "EN";
+
+    const hasOpenIncident = (row.incident_reports || []).some(
+      (inc: any) => inc.status === "abierto"
+    );
 
     return {
       id: String(row.id),
@@ -207,6 +229,17 @@ export async function fetchClientHirings(clientId: string): Promise<Contratacion
       duracionDias: dayDates.length || 1,
       duracionHoras: row.total_hours || 0,
       montoTotal: Number(row.total_amount || 0),
+      pin_code: row.pin_code,
+      service_days: (row.service_days || []).map((d: any) => ({
+        id: d.id,
+        day_date: d.day_date,
+        start_hour: d.start_hour,
+        end_hour: d.end_hour,
+        status: d.status,
+        real_start: d.real_start || undefined,
+        real_end: d.real_end || undefined,
+      })),
+      hasOpenIncident,
     };
   });
 }
@@ -515,7 +548,7 @@ export async function fetchNurseAvailabilityData(nurseId: string) {
       )
     `)
     .eq("services.nurse_id", nurseId)
-    .in("services.status", ["pending", "confirmed", "active"])
+    .in("services.status", ["pending", "confirmed", "active", "completed"])
     .gte("day_date", todayStr);
 
   if (bookingsErr) throw bookingsErr;
@@ -552,15 +585,41 @@ export async function cancelHiring(serviceId: number, reason: string = "Cancelad
   if (error) throw error;
 }
 
-/**
- * Obtiene los días de servicio asociados a una contratación/servicio específico.
- */
 export async function fetchHiringDays(
   serviceId: number
-): Promise<{ fecha: string; horario: string; estado: string }[]> {
+): Promise<{
+  fecha: string;
+  horario: string;
+  estado: string;
+  realStart?: string;
+  realEnd?: string;
+  reporte?: string;
+  binnacle?: {
+    id: number;
+    activities: string[];
+    observations: string;
+    recommendations: string;
+    photos: string[];
+  };
+}[]> {
   const { data, error } = await supabase
     .from("service_days")
-    .select("day_date, start_hour, end_hour, status")
+    .select(`
+      day_date,
+      start_hour,
+      end_hour,
+      status,
+      real_start,
+      real_end,
+      report,
+      service_binnacles (
+        id,
+        activities,
+        observations,
+        recommendations,
+        photos
+      )
+    `)
     .eq("service_id", serviceId)
     .order("day_date", { ascending: true });
 
@@ -571,9 +630,37 @@ export async function fetchHiringDays(
     return d.toLocaleDateString("es-PE", { weekday: "short", day: "numeric", month: "short" });
   };
 
-  return (data || []).map((d: any) => ({
-    fecha: formatShortDay(d.day_date),
-    horario: `${formatHour(Number(d.start_hour))} - ${formatHour(Number(d.end_hour))}`,
-    estado: d.status === "completed" ? "completada" : d.status === "cancelled" ? "cancelada" : d.status === "active" ? "activa" : "pendiente",
-  }));
+  return (data || []).map((d: any) => {
+    const b = Array.isArray(d.service_binnacles) ? d.service_binnacles[0] : d.service_binnacles;
+    return {
+      fecha: formatShortDay(d.day_date),
+      horario: `${formatHour(Number(d.start_hour))} - ${formatHour(Number(d.end_hour))}`,
+      estado: d.status === "completed" ? "completada" : d.status === "cancelled" ? "cancelada" : d.status === "active" ? "activa" : "pendiente",
+      realStart: d.real_start || undefined,
+      realEnd: d.real_end || undefined,
+      reporte: d.report || undefined,
+      binnacle: b ? {
+        id: b.id,
+        activities: b.activities || [],
+        observations: b.observations || "",
+        recommendations: b.recommendations || "",
+        photos: b.photos || [],
+      } : undefined,
+    };
+  });
+}
+
+/**
+ * Libera el pago para una contratación en Supabase.
+ */
+export async function releasePayment(serviceId: number): Promise<void> {
+  const { error } = await supabase
+    .from("services")
+    .update({
+      payment_status: "released",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", serviceId);
+
+  if (error) throw error;
 }

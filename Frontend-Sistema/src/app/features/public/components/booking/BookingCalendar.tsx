@@ -156,6 +156,67 @@ export default function BookingCalendar({
     return hour;
   };
 
+  const getDayFreeSlots = (date: Date): number[] => {
+    const daySchedule = getDaySchedule(date);
+    if (!daySchedule) return [];
+
+    const startH = parseHour(daySchedule.start);
+    const endH = parseHour(daySchedule.end);
+
+    const blockedRanges = getDateBlockedRanges(date);
+
+    const slots: number[] = [];
+    for (let h = startH; h < endH; h++) {
+      slots.push(h);
+    }
+
+    const today = new Date();
+    const isToday =
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear();
+    const currentHour = today.getHours();
+
+    return slots.filter((hour) => {
+      if (isToday && hour <= currentHour) {
+        return false;
+      }
+      return !blockedRanges.some((range) => {
+        const rStart = parseHour(range.start);
+        const rEnd = parseHour(range.end);
+        return hour >= rStart && hour < rEnd;
+      });
+    });
+  };
+
+  const getValidExitHours = (date: Date, startHourStr: string): string[] => {
+    const daySchedule = getDaySchedule(date);
+    if (!daySchedule) return [];
+
+    const startH = parseHour(startHourStr);
+    const endH = parseHour(daySchedule.end);
+
+    const blockedRanges = getDateBlockedRanges(date);
+
+    // Encuentra el límite superior del segmento continuo
+    let maxHour = endH;
+    for (const range of blockedRanges) {
+      const rStart = parseHour(range.start);
+      // Si la reserva empieza después de nuestra hora de entrada,
+      // el cliente no puede pasar de ahí.
+      if (rStart > startH && rStart < maxHour) {
+        maxHour = rStart;
+      }
+    }
+
+    const validExits: string[] = [];
+    for (let h = startH + 1; h <= maxHour; h++) {
+      validExits.push(formatHour(h));
+    }
+
+    return validExits;
+  };
+
   const isDisabledDate = (date: Date) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -179,42 +240,40 @@ export default function BookingCalendar({
       if (matchExc.tipo === "block" && (matchExc.start_hour === null || matchExc.start_hour === undefined)) {
         return true;
       }
-      if (matchExc.tipo === "extra") return false; // día extra habilitado
+      // Si es extra, se evalúa disponibilidad abajo usando extra como schedule base
     }
 
-    // Si el día de semana no está en la agenda recurrente → deshabilitado
-    if (unavailableWeekDays.includes(date.getDay())) return true;
+    // Si no es extra y el día de semana no está en la agenda recurrente → deshabilitado
+    const isExtra = matchExc && matchExc.tipo === "extra";
+    if (!isExtra && unavailableWeekDays.includes(date.getDay())) return true;
 
-    // Bloquear día si hay cualquier reserva en ese día
-    const daySchedule = schedules[date.getDay()];
-    if (daySchedule) {
-      const dayBookings = bookings.filter(b => b.fecha === formattedDate);
-      if (dayBookings.length > 0) return true;
+    const freeSlots = getDayFreeSlots(date);
+    return freeSlots.length === 0;
+  };
+
+  const getFirstAvailableSegment = (date: Date): { start: string; end: string } | null => {
+    const freeSlots = getDayFreeSlots(date);
+    if (freeSlots.length === 0) return null;
+
+    // Buscar primer segmento contiguo de al menos 1 hora
+    const segStart = freeSlots[0];
+    let segEnd = segStart + 1;
+    for (let i = 1; i < freeSlots.length; i++) {
+      if (freeSlots[i] === freeSlots[i - 1] + 1) {
+        segEnd = freeSlots[i] + 1;
+      } else {
+        break;
+      }
     }
 
-    return false;
+    return {
+      start: formatHour(segStart),
+      end: formatHour(segEnd),
+    };
   };
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
-  const hours = [
-    "6:00 am",
-    "7:00 am",
-    "8:00 am",
-    "9:00 am",
-    "10:00 am",
-    "11:00 am",
-    "12:00 pm",
-    "1:00 pm",
-    "2:00 pm",
-    "3:00 pm",
-    "4:00 pm",
-    "5:00 pm",
-    "6:00 pm",
-    "7:00 pm",
-    "8:00 pm"
-  ];
 
   {/* agregar día */ }
 
@@ -222,19 +281,19 @@ export default function BookingCalendar({
 
   {/* actualizar horarios */ }
   const updateTime = (
-
     index: number,
-
     field: "start" | "end",
-
     value: string
-
   ) => {
-
     const copy = [...selectedDays];
+    copy[index][field] = value;
 
-    copy[index][field] =
-      value;
+    if (field === "start") {
+      const validExits = getValidExitHours(copy[index].date, value);
+      if (validExits.length > 0 && !validExits.includes(copy[index].end)) {
+        copy[index].end = validExits[0];
+      }
+    }
 
     setSelectedDays(copy);
   };
@@ -389,7 +448,7 @@ export default function BookingCalendar({
         const key = date.toDateString();
 
         if (!map.has(key)) {
-          const schedule = getDaySchedule(date);
+          const schedule = getFirstAvailableSegment(date);
 
           if (schedule) {
             filtered.push({
@@ -482,9 +541,6 @@ export default function BookingCalendar({
               const validation = validateRange(item.start, item.end, item.date);
               const blockedRanges = getDateBlockedRanges(item.date);
               const hoursCount = calculateHours(item.start, item.end);
-              // getDaySchedule puede retornar null si el día quedó bloqueado,
-              // usamos el fallback mínimo para evitar crash en el selector
-              const daySchedule = getDaySchedule(item.date) ?? { start: "6:00 am", end: "8:00 pm" };
 
               return (
                 <div
@@ -605,35 +661,15 @@ export default function BookingCalendar({
                         "
                       >
 
-                        {hours
-
-                          .filter((hour) => {
-
-                            return (
-
-                              parseHour(hour) >=
-                              parseHour(daySchedule.start)
-
-                              &&
-
-                              parseHour(hour) <
-                              parseHour(daySchedule.end)
-
-                            );
-
-                          })
-
+                        {getDayFreeSlots(item.date)
+                          .map((h) => formatHour(h))
                           .map((hour) => (
-
                             <option
                               key={hour}
                               value={hour}
                             >
-
                               {hour}
-
                             </option>
-
                           ))}
 
                       </select>
@@ -685,32 +721,14 @@ export default function BookingCalendar({
                         `}
                       >
 
-                        {hours
-
-                          .filter((hour) => {
-
-                            const hourValue = parseHour(hour);
-                            const rangeStart = parseHour(daySchedule.start);
-                            const rangeEnd = parseHour(daySchedule.end);
-
-                            return (
-                              hourValue >= rangeStart &&
-                              hourValue <= rangeEnd
-                            );
-
-                          })
-
+                        {getValidExitHours(item.date, item.start)
                           .map((hour) => (
-
                             <option
                               key={hour}
                               value={hour}
                             >
-
                               {hour}
-
                             </option>
-
                           ))}
 
                       </select>

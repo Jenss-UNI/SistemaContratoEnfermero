@@ -380,123 +380,6 @@ export async function uploadProfilePhoto(userId: string, file: File): Promise<st
 }
 
 /**
- * Obtiene todos los documentos subidos de un enfermero.
- */
-export async function fetchNurseDocuments(userId: string) {
-  const { data, error } = await supabase
-    .from("nurse_documents")
-    .select("id, doc_type, file_url, status, admin_notes")
-    .eq("nurse_id", userId);
-
-  if (error) throw error;
-  return data || [];
-}
-
-/**
- * Sube un archivo de verificación al bucket privado `nurse_documents` y registra la URL/ruta en la BD.
- */
-export async function uploadNurseDocument(
-  userId: string,
-  docType: string,
-  file: File
-): Promise<void> {
-  const fileExt = file.name.split(".").pop() || "pdf";
-  const fileName = `${docType}_${Date.now()}.${fileExt}`;
-  const filePath = `verificacion/${userId}/${fileName}`;
-
-  // Subir al bucket privado
-  const { error: uploadError } = await supabase.storage
-    .from("nurse_documents")
-    .upload(filePath, file, { upsert: true });
-
-  if (uploadError) throw uploadError;
-
-  // Registrar en la tabla nurse_documents
-  const { data: existing } = await supabase
-    .from("nurse_documents")
-    .select("id")
-    .eq("nurse_id", userId)
-    .eq("doc_type", docType)
-    .maybeSingle();
-
-  if (existing) {
-    const { error: dbError } = await supabase
-      .from("nurse_documents")
-      .update({
-        file_url: filePath,
-        status: "not_submitted", // Regresa a sin enviar hasta que guarde todo
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", existing.id);
-
-    if (dbError) throw dbError;
-  } else {
-    const { error: dbError } = await supabase
-      .from("nurse_documents")
-      .insert({
-        nurse_id: userId,
-        doc_type: docType,
-        file_url: filePath,
-        status: "not_submitted",
-      });
-
-    if (dbError) throw dbError;
-  }
-}
-
-/**
- * Elimina un documento tanto del storage como de la base de datos.
- */
-export async function deleteNurseDocument(userId: string, docType: string, filePath: string): Promise<void> {
-  // 1. Eliminar del Storage
-  const { error: storageError } = await supabase.storage
-    .from("nurse_documents")
-    .remove([filePath]);
-
-  if (storageError) {
-    console.warn("Storage warning: Could not delete file path", filePath, storageError);
-  }
-
-  // 2. Eliminar de la base de datos
-  const { error: dbError } = await supabase
-    .from("nurse_documents")
-    .delete()
-    .eq("nurse_id", userId)
-    .eq("doc_type", docType);
-
-  if (dbError) throw dbError;
-}
-
-/**
- * Envía la solicitud general de verificación.
- * Actualiza todos los documentos subidos no aprobados a 'pending' y el estado del perfil a 'pending'.
- */
-export async function submitVerificationRequest(userId: string): Promise<void> {
-  // 1. Cambiar estado general a pending
-  const { error: profileError } = await supabase
-    .from("nurse_profiles")
-    .update({
-      verificacion_status: "pending",
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", userId);
-
-  if (profileError) throw profileError;
-
-  // 2. Actualizar estado de documentos subidos no aprobados a pending
-  const { error: docsError } = await supabase
-    .from("nurse_documents")
-    .update({
-      status: "pending",
-      updated_at: new Date().toISOString(),
-    })
-    .eq("nurse_id", userId)
-    .neq("status", "approved");
-
-  if (docsError) throw docsError;
-}
-
-/**
  * Consulta métricas, solicitudes pendientes y próximos servicios.
  */
 export async function fetchDashboardMetrics(userId: string): Promise<DashboardMetrics> {
@@ -1044,3 +927,298 @@ export async function updateServiceDayEnd(
   if (error) throw error;
 }
 
+/**
+ * Obtiene los pacientes y servicios asignados al enfermero.
+ */
+export async function fetchNursePatientsAndServices(nurseId: string): Promise<any[]> {
+  const { data, error } = await supabase
+    .from("services")
+    .select(`
+      id,
+      patient_name,
+      service_type,
+      contract_code,
+      service_code,
+      status
+    `)
+    .eq("nurse_id", nurseId)
+    .neq("status", "cancelled");
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Obtiene las jornadas de un servicio para redactar bitácoras.
+ */
+export async function fetchServiceDaysForBinnacle(serviceId: number): Promise<any[]> {
+  const { data, error } = await supabase
+    .from("service_days")
+    .select(`
+      id,
+      day_date,
+      start_hour,
+      end_hour,
+      status,
+      service_binnacles (
+        id,
+        activities,
+        observations,
+        recommendations,
+        photos
+      )
+    `)
+    .eq("service_id", serviceId)
+    .order("day_date", { ascending: true });
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Registra una nueva bitácora clínica en Supabase.
+ */
+export async function createServiceBinnacle(binnacle: {
+  service_id: number;
+  service_day_id: number;
+  activities: string[];
+  observations: string;
+  recommendations: string;
+  photos: string[];
+  status?: string;
+}): Promise<void> {
+  const { error } = await supabase
+    .from("service_binnacles")
+    .insert([
+      {
+        service_id: binnacle.service_id,
+        service_day_id: binnacle.service_day_id,
+        activities: binnacle.activities,
+        observations: binnacle.observations,
+        recommendations: binnacle.recommendations,
+        photos: binnacle.photos,
+        status: binnacle.status || "sent",
+        updated_at: new Date().toISOString(),
+      },
+    ]);
+
+  if (error) throw error;
+}
+
+/**
+ * Actualiza una bitácora clínica existente en Supabase.
+ */
+export async function updateServiceBinnacle(
+  binnacleId: number,
+  updates: {
+    activities: string[];
+    observations: string;
+    recommendations: string;
+    photos: string[];
+  }
+): Promise<void> {
+  const { error } = await supabase
+    .from("service_binnacles")
+    .update({
+      activities: updates.activities,
+      observations: updates.observations,
+      recommendations: updates.recommendations,
+      photos: updates.photos,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", binnacleId);
+
+  if (error) throw error;
+}
+
+/**
+ * Obtiene las bitácoras redactadas por el enfermero.
+ */
+export async function fetchNurseBinnaclesList(nurseId: string): Promise<any[]> {
+  const { data, error } = await supabase
+    .from("service_binnacles")
+    .select(`
+      id,
+      activities,
+      observations,
+      recommendations,
+      photos,
+      status,
+      created_at,
+      service_day_id,
+      service_days (
+        day_date
+      ),
+      services!inner (
+        id,
+        patient_name,
+        service_type,
+        nurse_id
+      )
+    `)
+    .eq("services.nurse_id", nurseId)
+    .order("created_at", { ascending: false });
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Sube una foto de bitácora al bucket imagens.
+ */
+export async function uploadBinnaclePhoto(userId: string, file: File): Promise<string> {
+  const fileExt = file.name.split(".").pop() || "jpg";
+  const fileName = `binnacle_${Date.now()}_${Math.floor(Math.random() * 1000)}.${fileExt}`;
+  const filePath = `binnacles/${userId}/${fileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("imagens")
+    .upload(filePath, file, { upsert: true });
+
+  if (uploadError) throw uploadError;
+
+  const { data } = supabase.storage
+    .from("imagens")
+    .getPublicUrl(filePath);
+
+  return data.publicUrl;
+}
+
+/**
+ * Obtiene todos los documentos subidos por el enfermero.
+ */
+export async function fetchNurseDocuments(nurseId: string): Promise<any[]> {
+  const { data, error } = await supabase
+    .from("nurse_documents")
+    .select("id, doc_type, file_url, status, admin_notes, uploaded_at")
+    .eq("nurse_id", nurseId);
+
+  if (error) throw error;
+  return data || [];
+}
+
+/**
+ * Sube un documento al bucket nurse_documents y registra/actualiza en la BD.
+ */
+export async function uploadNurseDocument(
+  nurseId: string,
+  docType: string,
+  file: File
+): Promise<string> {
+  const fileExt = file.name.split(".").pop() || "pdf";
+  const fileName = `${docType}_${Date.now()}_${Math.floor(Math.random() * 1000)}.${fileExt}`;
+  const filePath = `documents/${nurseId}/${fileName}`;
+
+  // 1. Upload to storage
+  const { error: uploadError } = await supabase.storage
+    .from("nurse_documents")
+    .upload(filePath, file, { upsert: true });
+
+  if (uploadError) throw uploadError;
+
+  const { data } = supabase.storage
+    .from("nurse_documents")
+    .getPublicUrl(filePath);
+
+  const fileUrl = data.publicUrl;
+
+  // 2. Upsert in nurse_documents table
+  const { data: existing } = await supabase
+    .from("nurse_documents")
+    .select("id")
+    .eq("nurse_id", nurseId)
+    .eq("doc_type", docType)
+    .maybeSingle();
+
+  if (existing) {
+    const { error: updateError } = await supabase
+      .from("nurse_documents")
+      .update({
+        file_url: fileUrl,
+        status: "pending",
+        admin_notes: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", existing.id);
+
+    if (updateError) throw updateError;
+  } else {
+    const { error: insertError } = await supabase
+      .from("nurse_documents")
+      .insert([
+        {
+          nurse_id: nurseId,
+          doc_type: docType,
+          file_url: fileUrl,
+          status: "pending",
+          admin_notes: null,
+          uploaded_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ]);
+
+    if (insertError) throw insertError;
+  }
+
+  return fileUrl;
+}
+
+/**
+ * Elimina un documento de la base de datos y de storage.
+ */
+export async function deleteNurseDocument(
+  nurseId: string,
+  docType: string,
+  fileUrl: string
+): Promise<void> {
+  try {
+    const pathParts = fileUrl.split("/nurse_documents/");
+    if (pathParts.length > 1) {
+      const storagePath = decodeURIComponent(pathParts[1]);
+      await supabase.storage.from("nurse_documents").remove([storagePath]);
+    }
+  } catch (err) {
+    console.error("Error removing file from storage:", err);
+  }
+
+  const { error } = await supabase
+    .from("nurse_documents")
+    .delete()
+    .eq("nurse_id", nurseId)
+    .eq("doc_type", docType);
+
+  if (error) throw error;
+}
+
+/**
+ * Envía la solicitud de verificación general cambiando verificacion_status a pending.
+ */
+export async function submitVerificationRequest(nurseId: string): Promise<void> {
+  const { error } = await supabase
+    .from("nurse_profiles")
+    .update({
+      verificacion_status: "pending",
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", nurseId);
+
+  if (error) throw error;
+}
+
+/**
+ * Permite cambiar la visibilidad del perfil (pública / privada).
+ */
+export async function updateProfileVisibility(
+  nurseId: string,
+  visibilidad: "publicado" | "despublicado" | "borrador"
+): Promise<void> {
+  const { error } = await supabase
+    .from("nurse_profiles")
+    .update({
+      visibilidad,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", nurseId);
+
+  if (error) throw error;
+}

@@ -20,17 +20,7 @@ const validarDistrito = (v: string) => (!v || v === "Selecciona tu distrito" ? "
 const validarPassword = (v: string) => (v.length < 6 ? "Mínimo 6 caracteres" : !/[A-Za-z]/.test(v) || !/\d/.test(v) ? "Debe incluir letra y número" : "");
 const validarConfirmPassword = (pwd: string, confirm: string) => (pwd !== confirm ? "No coinciden" : "");
 
-const getPasswordStrength = (password: string) => {
-  if (!password) return { label: "", color: "", width: "0%", text: "" };
-  let score = 0;
-  if (password.length >= 6) score++;
-  if (/[A-Z]/.test(password)) score++;
-  if (/\d/.test(password)) score++;
-  if (/[^A-Za-z0-9]/.test(password)) score++;
-  return score <= 2 ? { label: "Contraseña débil", color: "bg-red-500", width: "33%", text: "text-red-500" } :
-         score <= 3 ? { label: "Contraseña media", color: "bg-yellow-500", width: "66%", text: "text-yellow-500" } :
-         { label: "Contraseña fuerte", color: "bg-emerald-500", width: "100%", text: "text-emerald-500" };
-};
+
 
 function StepProSuccess({ formData }: { formData: any }) {
   const navigate = useNavigate();
@@ -39,7 +29,7 @@ function StepProSuccess({ formData }: { formData: any }) {
 
   useEffect(() => {
     const interval = setInterval(() => setRedirectDots(p => p.length >= 3 ? "" : p + "."), 500);
-    const timer = setTimeout(() => navigate("/profesional/dashboard"), 5000);
+    const timer = setTimeout(() => navigate("/panel-enfermero/resumen"), 5000);
     return () => { clearInterval(interval); clearTimeout(timer); };
   }, [navigate]);
 
@@ -125,7 +115,7 @@ export default function ProfesionalForm() {
     }
   };
 
-  const passwordStrength = getPasswordStrength(formData.password);
+
 
   const handleChange = (e: any) => {
     const { name, value } = e.target;
@@ -164,12 +154,7 @@ export default function ProfesionalForm() {
 
       {step <= 4 && <div className="mb-7"><ProgressTracker key="pro-tracker" currentStep={step} isPro={true} /></div>}
       
-      {step === 1 && formData.password && (
-        <div className="mb-5 mt-2">
-          <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden"><div className={`h-full transition-all duration-500 ${passwordStrength.color}`} style={{ width: passwordStrength.width }} /></div>
-          <p className={`text-xs mt-1 font-semibold ${passwordStrength.text}`}>{passwordStrength.label}</p>
-        </div>
-      )}
+
 
       <div className="mt-8">
         {step === 1 && <StepProDatos formData={formData} onChange={handleChange} onNext={() => { if(validate()) { setStep(2); window.scrollTo(0, 0); } }} errors={errors} />}

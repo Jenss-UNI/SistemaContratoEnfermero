@@ -1,751 +1,353 @@
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+-- WARNING: This schema is for context only and is not meant to be run.
+-- Table order and constraints may not be valid for execution.
 
--- ============================================================
--- 1. FUNCIONES BASE
--- ============================================================
-
-CREATE OR REPLACE FUNCTION public.set_updated_at()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$;
-
- /*CREATE OR REPLACE FUNCTION public.get_my_role()
-RETURNS TEXT
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT role FROM public.profiles WHERE id = auth.uid();
-$$;
-
-CREATE OR REPLACE FUNCTION public.is_admin()
-RETURNS BOOLEAN
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = public
-AS $$
-  SELECT COALESCE(public.get_my_role() = 'admin', FALSE);
-$$;
-*/
--- ============================================================
--- 2. PROFILES
--- ============================================================
-CREATE TABLE profiles (
-  id             UUID         PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  role           TEXT         NOT NULL DEFAULT 'cliente'
-                              CHECK (role IN ('cliente', 'enfermero', 'admin')),
-  nombres        TEXT         NOT NULL CHECK (char_length(nombres) BETWEEN 2 AND 80),
-  apellidos_ma      TEXT         NOT NULL CHECK (char_length(apellidos_ma) BETWEEN 2 AND 80),
-  apellidos_pa      TEXT         NOT NULL CHECK (char_length(apellidos_pa) BETWEEN 2 AND 80),
-  correo         TEXT         NOT NULL UNIQUE,
-  telefono       VARCHAR(9)   CHECK (telefono ~ '^\d{9}$'),
-  dni            VARCHAR(8)   UNIQUE CHECK (dni ~ '^\d{8}$'),
-  distrito       TEXT,        -- distrito de residencia (compartido por todos los roles)
-  foto_url       TEXT,        -- URL en Supabase Storage
-  dni_verified        boolean     not null default false,
-  email_verified      boolean     not null default false,
-  account_status TEXT         NOT NULL DEFAULT 'activo'
-                              CHECK (account_status IN ('activo', 'suspendido', 'eliminado')),
-  suspension_reason   text,                            
-  created_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-  updated_at     TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+CREATE TABLE public.profiles (
+  id uuid NOT NULL,
+  role text NOT NULL DEFAULT 'cliente'::text CHECK (role = ANY (ARRAY['cliente'::text, 'enfermero'::text, 'admin'::text])),
+  nombres text NOT NULL CHECK (char_length(nombres) >= 2 AND char_length(nombres) <= 80),
+  apellidos_ma text NOT NULL CHECK (char_length(apellidos_ma) >= 2 AND char_length(apellidos_ma) <= 80),
+  apellidos_pa text NOT NULL CHECK (char_length(apellidos_pa) >= 2 AND char_length(apellidos_pa) <= 80),
+  correo text NOT NULL UNIQUE,
+  telefono character varying CHECK (telefono::text ~ '^\d{9}$'::text),
+  dni character varying UNIQUE CHECK (dni::text ~ '^\d{8}$'::text),
+  distrito text,
+  foto_url text,
+  account_status text NOT NULL DEFAULT 'activo'::text CHECK (account_status = ANY (ARRAY['activo'::text, 'suspendido'::text, 'eliminado'::text])),
+  suspension_reason text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  dni_verified boolean NOT NULL DEFAULT false,
+  email_verified boolean NOT NULL DEFAULT false,
+  direccion text,
+  CONSTRAINT profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)
 );
-
-COMMENT ON TABLE profiles IS 'Perfil base de todos los usuarios (cliente, enfermero, admin).';
-COMMENT ON COLUMN profiles.dni IS 'DNI peruano de 8 dígitos. Único por usuario.';
-COMMENT ON COLUMN profiles.distrito IS 'Distrito de residencia del usuario. En enfermeros define su distrito principal de operación.';
-
-CREATE INDEX IF NOT EXISTS idx_profiles_role
-ON public.profiles(role);
-
-CREATE INDEX IF NOT EXISTS idx_profiles_account_status
-ON public.profiles(account_status);
-
-DROP TRIGGER IF EXISTS trg_profiles_updated_at ON public.profiles;
-
-CREATE TRIGGER trg_profiles_updated_at
-BEFORE UPDATE ON public.profiles
-FOR EACH ROW
-EXECUTE FUNCTION public.set_updated_at();
-
--- ============================================================
--- 3. VERIFICATION CODES
--- ============================================================
-
-CREATE TABLE verification_codes (
-  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  email      TEXT        NOT NULL,                    -- correo al que se envió
-  code       VARCHAR(6)  NOT NULL,                    -- código de 6 dígitos: '123456'
-  purpose    TEXT        NOT NULL 
-                         CHECK (purpose IN (
-                           'email_verification',      -- verificar correo (paso 2 del registro)
-                           'password_reset'          -- recuperar contraseña olvidada
-                         )),
-  used       BOOLEAN     NOT NULL DEFAULT FALSE,
-  expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '15 minutes'),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE TABLE public.verification_codes (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  email text NOT NULL,
+  code character varying NOT NULL,
+  purpose text NOT NULL CHECK (purpose = ANY (ARRAY['email_verification'::text, 'password_reset'::text])),
+  used boolean NOT NULL DEFAULT false,
+  expires_at timestamp with time zone NOT NULL DEFAULT (now() + '00:15:00'::interval),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT verification_codes_pkey PRIMARY KEY (id)
 );
-
-COMMENT ON TABLE verification_codes IS 'Códigos OTP de 6 dígitos para verificación de correo y recuperación de contraseña.';
-COMMENT ON COLUMN verification_codes.purpose IS 'email_verification = al registrarse, password_reset = olvidé contraseña';
-
-CREATE INDEX IF NOT EXISTS idx_verification_codes_lookup
-ON public.verification_codes(email, code, purpose, used, expires_at);
-
-CREATE OR REPLACE FUNCTION public.invalidate_previous_codes()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-AS $$
-BEGIN
-  UPDATE public.verification_codes
-  SET used = TRUE
-  WHERE email = NEW.email
-    AND purpose = NEW.purpose
-    AND used = FALSE
-    AND id <> NEW.id;
-
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS trg_invalidate_previous_codes ON public.verification_codes;
-
-CREATE TRIGGER trg_invalidate_previous_codes
-AFTER INSERT ON public.verification_codes
-FOR EACH ROW
-EXECUTE FUNCTION public.invalidate_previous_codes();
-
-CREATE OR REPLACE FUNCTION public.reset_password_by_otp(
-  p_email TEXT,
-  p_code TEXT,
-  p_new_password TEXT
-)
-RETURNS BOOLEAN
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public, auth
-AS $$
-DECLARE
-  v_user_id UUID;
-  v_otp_id UUID;
-BEGIN
-  -- 1. Buscar si existe un código OTP válido y obtener su ID
-  SELECT id INTO v_otp_id 
-  FROM public.verification_codes 
-  WHERE email = p_email 
-    AND code = p_code 
-    AND purpose = 'password_reset' 
-    AND used = FALSE 
-    AND expires_at > NOW()
-  LIMIT 1;
-
-  -- Si no se encuentra un OTP válido, salimos de inmediato
-  IF v_otp_id IS NULL THEN
-    RETURN FALSE;
-  END IF;
-
-  -- 2. Obtener el UUID del usuario correspondiente al correo en auth.users
-  SELECT id INTO v_user_id FROM auth.users WHERE email = p_email;
-  
-  -- 3. Si el usuario existe, proceder con los cambios de forma segura
-  IF v_user_id IS NOT NULL THEN
-    
-    -- A. Actualizar la contraseña usando el esquema correcto de pgcrypto (extensions.)
-    UPDATE auth.users 
-    SET encrypted_password = extensions.crypt(p_new_password, extensions.gen_salt('bf', 10)),
-        updated_at = NOW()
-    WHERE id = v_user_id;
-    
-    -- B. Recién cuando la contraseña se cambió, marcamos el OTP como utilizado
-    UPDATE public.verification_codes 
-    SET used = TRUE 
-    WHERE id = v_otp_id;
-    
-    RETURN TRUE;
-  ELSE
-    -- Si el correo no está registrado en auth.users
-    RETURN FALSE;
-  END IF;
-END;
-$$;
-
-COMMENT ON FUNCTION public.reset_password_by_otp IS 'Valida de manera atómica el OTP de recuperación y actualiza la contraseña en auth.users de forma segura.';
-
--- ============================================================
--- 4. PLANS
--- ============================================================
-
-CREATE TABLE plans (
-  id                   SERIAL        PRIMARY KEY,
-  nombre               TEXT          NOT NULL UNIQUE
-                                     CHECK (nombre IN ('basico', 'premium', 'familiar')),
-  precio_mensual       NUMERIC(8,2)  NOT NULL CHECK (precio_mensual > 0),
-  precio_anual         NUMERIC(8,2)  NOT NULL CHECK (precio_anual > 0),
-  max_pacientes        INT,          -- NULL = ilimitado (plan Familiar)
-  prioridad_solicitud  BOOLEAN       NOT NULL DEFAULT FALSE,  -- prioridad al enviar solicitudes a enfermeros
-  acceso_top_rated     BOOLEAN       NOT NULL DEFAULT FALSE,
-  descripcion          TEXT,
-  activo               BOOLEAN       NOT NULL DEFAULT TRUE,
-  updated_at            TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+CREATE TABLE public.plans (
+  id integer NOT NULL DEFAULT nextval('plans_id_seq'::regclass),
+  nombre text NOT NULL UNIQUE CHECK (nombre = ANY (ARRAY['basico'::text, 'premium'::text, 'familiar'::text])),
+  precio_mensual numeric NOT NULL CHECK (precio_mensual > 0::numeric),
+  precio_anual numeric NOT NULL CHECK (precio_anual > 0::numeric),
+  max_pacientes integer,
+  prioridad_solicitud boolean NOT NULL DEFAULT false,
+  acceso_top_rated boolean NOT NULL DEFAULT false,
+  descripcion text,
+  activo boolean NOT NULL DEFAULT true,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT plans_pkey PRIMARY KEY (id)
 );
-
-INSERT INTO plans (nombre, precio_mensual, precio_anual, max_pacientes, prioridad_solicitud, acceso_top_rated) VALUES
-  ('basico',   24.90, 249.00, 1,    FALSE, FALSE),
-  ('premium',  49.90, 499.00, 4,    TRUE,  TRUE),
-  ('familiar', 89.90, 899.00, NULL, TRUE,  TRUE);
-
-COMMENT ON TABLE plans IS 'Catálogo de planes disponibles para clientes.';
-COMMENT ON COLUMN plans.max_pacientes IS 'NULL significa pacientes ilimitados (plan Familiar).';
-COMMENT ON COLUMN plans.prioridad_solicitud IS 'El cliente con este plan tiene prioridad al enviar solicitudes de servicio a enfermeros.';
-
-DROP TRIGGER IF EXISTS trg_plans_updated_at ON public.plans;
-
-CREATE TRIGGER trg_plans_updated_at
-BEFORE UPDATE ON public.plans
-FOR EACH ROW
-EXECUTE FUNCTION public.set_updated_at();
-
--- ============================================================
--- 5. SUBSCRIPTIONS
--- ============================================================
-
-CREATE TABLE subscriptions (
-  id           UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  client_id    UUID        NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  plan_id      INT         NOT NULL REFERENCES plans(id),
-  ciclo        TEXT        NOT NULL DEFAULT 'mensual'
-                           CHECK (ciclo IN ('mensual', 'anual')),
-  fecha_inicio DATE        NOT NULL DEFAULT CURRENT_DATE,
-  fecha_vence  DATE        NOT NULL,
-  status          TEXT NOT NULL DEFAULT 'active'
-                  CHECK (status IN ('active', 'expired', 'cancelled')),
-  activo       BOOLEAN     NOT NULL DEFAULT TRUE,
-  updated_at            TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  CHECK (fecha_vence > fecha_inicio)
+CREATE TABLE public.subscriptions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  client_id uuid NOT NULL,
+  plan_id integer NOT NULL,
+  ciclo text NOT NULL DEFAULT 'mensual'::text CHECK (ciclo = ANY (ARRAY['mensual'::text, 'anual'::text])),
+  fecha_inicio date NOT NULL DEFAULT CURRENT_DATE,
+  fecha_vence date NOT NULL,
+  status text NOT NULL DEFAULT 'active'::text CHECK (status = ANY (ARRAY['active'::text, 'expired'::text, 'cancelled'::text])),
+  activo boolean NOT NULL DEFAULT true,
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT subscriptions_pkey PRIMARY KEY (id),
+  CONSTRAINT subscriptions_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.profiles(id),
+  CONSTRAINT subscriptions_plan_id_fkey FOREIGN KEY (plan_id) REFERENCES public.plans(id)
 );
-
-COMMENT ON TABLE subscriptions IS 'Suscripción activa del cliente a un plan.';
-
-CREATE INDEX IF NOT EXISTS idx_subscriptions_client_id
-ON public.subscriptions(client_id);
-
-CREATE INDEX IF NOT EXISTS idx_subscriptions_status
-ON public.subscriptions(status);
-
-CREATE UNIQUE INDEX IF NOT EXISTS uq_active_subscription_per_client
-ON public.subscriptions(client_id)
-WHERE status = 'active' AND activo = TRUE;
-
-DROP TRIGGER IF EXISTS trg_subscriptions_updated_at ON public.subscriptions;
-
-CREATE TRIGGER trg_subscriptions_updated_at
-BEFORE UPDATE ON public.subscriptions
-FOR EACH ROW
-EXECUTE FUNCTION public.set_updated_at();
-
--- ============================================================
--- 6. PAYMENT METHODS
--- ============================================================
-
-CREATE TABLE payment_methods (
-  id             UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  client_id      UUID        NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  tipo           TEXT        NOT NULL
-                             CHECK (tipo IN ('tarjeta', 'yape', 'plin')),
-  es_principal   BOOLEAN     NOT NULL DEFAULT FALSE,
-  -- Campos para tarjeta
-  terminacion    VARCHAR(4),   -- Solo últimos 4 dígitos (nunca el número completo)
-  marca          TEXT,         -- 'Visa', 'Mastercard', etc.
-  nombre_tarjeta TEXT,
-  -- Campos para Yape / Plin
-  telefono       VARCHAR(9)  CHECK (telefono ~ '^\d{9}$'),
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  -- Integridad: tarjeta requiere terminacion, wallet requiere telefono
-  CHECK (
-    (tipo = 'tarjeta' AND terminacion IS NOT NULL) OR
-    (tipo IN ('yape', 'plin') AND telefono IS NOT NULL)
-  )
+CREATE TABLE public.payment_methods (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  client_id uuid NOT NULL,
+  tipo text NOT NULL CHECK (tipo = ANY (ARRAY['tarjeta'::text, 'yape'::text, 'plin'::text])),
+  es_principal boolean NOT NULL DEFAULT false,
+  terminacion character varying,
+  marca text,
+  nombre_tarjeta text,
+  telefono character varying CHECK (telefono::text ~ '^\d{9}$'::text),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT payment_methods_pkey PRIMARY KEY (id),
+  CONSTRAINT payment_methods_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.profiles(id)
 );
-
-COMMENT ON TABLE payment_methods IS 'Métodos de pago registrados del cliente.';
-COMMENT ON COLUMN payment_methods.terminacion IS 'Solo últimos 4 dígitos. El token completo vive en el gateway (Culqi/Stripe).';
-
-CREATE INDEX IF NOT EXISTS idx_payment_methods_client_id
-ON public.payment_methods(client_id);
-
-
--- ============================================================
--- 7. NURSE PROFILES
--- ============================================================
-
-CREATE TABLE nurse_profiles (
-  id                    UUID        PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
-  nivel                 TEXT        NOT NULL
-                                    CHECK (nivel IN (
-                                      'Técnico en Enfermería',
-                                      'Licenciado en Enfermería',
-                                      'Enfermero Especializado'
-                                    )),
-  especialidad          TEXT,       -- Solo aplica a Enfermero Especializado
-  bio                   TEXT        CHECK (char_length(bio) BETWEEN 20 AND 500),
-  rating                NUMERIC(3,2) NOT NULL DEFAULT 0 CHECK (rating BETWEEN 0 AND 5),
-  total_reviews         INT          NOT NULL DEFAULT 0 CHECK (total_reviews >= 0),
-  puntualidad_avg       NUMERIC(3,2) NOT NULL DEFAULT 0 CHECK (puntualidad_avg BETWEEN 0 AND 5),
-  trato_avg             NUMERIC(3,2) NOT NULL DEFAULT 0 CHECK (trato_avg BETWEEN 0 AND 5),
-  tecnica_avg           NUMERIC(3,2) NOT NULL DEFAULT 0 CHECK (tecnica_avg BETWEEN 0 AND 5),
-  servicios_completados INT          NOT NULL DEFAULT 0 CHECK (servicios_completados >= 0),
-  anios_experiencia     SMALLINT     CHECK (anios_experiencia BETWEEN 0 AND 70),
-  verificacion_status   TEXT         NOT NULL DEFAULT 'not_submitted'
-                                     CHECK (verificacion_status IN (
-                                       'not_submitted',   -- Sin enviar documentos
-                                       'pending',         -- En revisión por admin
-                                       'approved',        -- Verificado
-                                       'rejected'         -- Documentos rechazados
-                                     )),
-  visibilidad           TEXT         NOT NULL DEFAULT 'borrador'
-                                     CHECK (visibilidad IN (
-                                       'borrador',        -- Perfil incompleto, no visible
-                                       'publicado',       -- Visible en directorio
-                                       'despublicado'    -- Ocultado por admin
-                                     )),
-  is_top_rated          BOOLEAN      NOT NULL DEFAULT FALSE,
-  created_at            TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-  updated_at            TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+CREATE TABLE public.nurse_profiles (
+  id uuid NOT NULL,
+  nivel text NOT NULL CHECK (nivel = ANY (ARRAY['Técnico en Enfermería'::text, 'Licenciado en Enfermería'::text, 'Enfermero Especializado'::text])),
+  especialidad text,
+  bio text CHECK (char_length(bio) >= 20 AND char_length(bio) <= 500),
+  rating numeric NOT NULL DEFAULT 0 CHECK (rating >= 0::numeric AND rating <= 5::numeric),
+  total_reviews integer NOT NULL DEFAULT 0 CHECK (total_reviews >= 0),
+  puntualidad_avg numeric NOT NULL DEFAULT 0 CHECK (puntualidad_avg >= 0::numeric AND puntualidad_avg <= 5::numeric),
+  trato_avg numeric NOT NULL DEFAULT 0 CHECK (trato_avg >= 0::numeric AND trato_avg <= 5::numeric),
+  tecnica_avg numeric NOT NULL DEFAULT 0 CHECK (tecnica_avg >= 0::numeric AND tecnica_avg <= 5::numeric),
+  servicios_completados integer NOT NULL DEFAULT 0 CHECK (servicios_completados >= 0),
+  anios_experiencia smallint CHECK (anios_experiencia >= 0 AND anios_experiencia <= 70),
+  verificacion_status text NOT NULL DEFAULT 'not_submitted'::text CHECK (verificacion_status = ANY (ARRAY['not_submitted'::text, 'pending'::text, 'approved'::text, 'rejected'::text])),
+  visibilidad text NOT NULL DEFAULT 'borrador'::text CHECK (visibilidad = ANY (ARRAY['borrador'::text, 'publicado'::text, 'despublicado'::text])),
+  is_top_rated boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT nurse_profiles_pkey PRIMARY KEY (id),
+  CONSTRAINT nurse_profiles_id_fkey FOREIGN KEY (id) REFERENCES public.profiles(id)
 );
-
-COMMENT ON TABLE nurse_profiles IS 'Perfil público y profesional del enfermero.';
-COMMENT ON COLUMN nurse_profiles.is_top_rated IS 'TRUE cuando rating >= 4.8 y total_reviews >= 20.';
-COMMENT ON COLUMN nurse_profiles.verificacion_status IS 'Calculado automáticamente por trigger según estado de nurse_documents.';
-
-CREATE INDEX IF NOT EXISTS idx_nurse_profiles_visibilidad
-ON public.nurse_profiles(visibilidad);
-
-CREATE INDEX IF NOT EXISTS idx_nurse_profiles_verificacion
-ON public.nurse_profiles(verificacion_status);
-
-CREATE INDEX IF NOT EXISTS idx_nurse_profiles_rating
-ON public.nurse_profiles(rating DESC);
-
-DROP TRIGGER IF EXISTS trg_nurse_profiles_updated_at ON public.nurse_profiles;
-
-CREATE TRIGGER trg_nurse_profiles_updated_at
-BEFORE UPDATE ON public.nurse_profiles
-FOR EACH ROW
-EXECUTE FUNCTION public.set_updated_at();
-
-CREATE OR REPLACE FUNCTION public.validate_nurse_profile_role()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1
-    FROM public.profiles p
-    WHERE p.id = NEW.id
-      AND p.role = 'enfermero'
-  ) THEN
-    RAISE EXCEPTION 'Solo usuarios con role=enfermero pueden tener nurse_profiles';
-  END IF;
-
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS trg_validate_nurse_profile_role ON public.nurse_profiles;
-
-CREATE TRIGGER trg_validate_nurse_profile_role
-BEFORE INSERT OR UPDATE ON public.nurse_profiles
-FOR EACH ROW
-EXECUTE FUNCTION public.validate_nurse_profile_role();
-
--- ============================================================
--- 8. NURSE SERVICE TYPES
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.nurse_service_types (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
-  nurse_id      UUID NOT NULL REFERENCES public.nurse_profiles(id) ON DELETE CASCADE,
-
-  tipo          TEXT NOT NULL
-                CHECK (tipo IN ('Especializado', 'Asistencial', 'Acompañamiento')),
-
-  tarifa_hora   NUMERIC(8,2)
-                CHECK (
-                  tarifa_hora IS NULL
-                  OR tarifa_hora BETWEEN 10 AND 500
-                ),
-
-  activo        BOOLEAN NOT NULL DEFAULT FALSE,
-
-  principal     BOOLEAN NOT NULL DEFAULT FALSE,
-
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-
-  UNIQUE (nurse_id, tipo),
-
-  CHECK (
-    activo = FALSE
-    OR tarifa_hora IS NOT NULL
-  )
+CREATE TABLE public.nurse_service_types (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  nurse_id uuid NOT NULL,
+  tipo text NOT NULL CHECK (tipo = ANY (ARRAY['Especializado'::text, 'Asistencial'::text, 'Acompañamiento'::text])),
+  tarifa_hora numeric CHECK (tarifa_hora IS NULL OR tarifa_hora >= 10::numeric AND tarifa_hora <= 500::numeric),
+  activo boolean NOT NULL DEFAULT false,
+  principal boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT nurse_service_types_pkey PRIMARY KEY (id),
+  CONSTRAINT nurse_service_types_nurse_id_fkey FOREIGN KEY (nurse_id) REFERENCES public.nurse_profiles(id)
 );
-
-COMMENT ON TABLE public.nurse_service_types IS 'Tipos de servicio y tarifas por hora del enfermero.';
-COMMENT ON COLUMN public.nurse_service_types.tipo IS 'Especializado: solo Enfermero Especializado. Asistencial: Especializado y Licenciado. Acompañamiento: todos los niveles.';
-COMMENT ON COLUMN public.nurse_service_types.principal IS 'Indica el servicio principal según el nivel profesional del enfermero.';
-
-CREATE INDEX IF NOT EXISTS idx_nurse_service_types_nurse_id
-ON public.nurse_service_types(nurse_id);
-
-CREATE INDEX IF NOT EXISTS idx_nurse_service_types_active
-ON public.nurse_service_types(activo);
-
-DROP TRIGGER IF EXISTS trg_nurse_service_types_updated_at ON public.nurse_service_types;
-
-CREATE TRIGGER trg_nurse_service_types_updated_at
-BEFORE UPDATE ON public.nurse_service_types
-FOR EACH ROW
-EXECUTE FUNCTION public.set_updated_at();
-
-CREATE UNIQUE INDEX IF NOT EXISTS uq_one_primary_service_per_nurse
-ON public.nurse_service_types(nurse_id)
-WHERE principal = TRUE;
-
-CREATE OR REPLACE FUNCTION public.validate_nurse_service_by_level()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  v_nivel TEXT;
-BEGIN
-  SELECT nivel
-  INTO v_nivel
-  FROM public.nurse_profiles
-  WHERE id = NEW.nurse_id;
-
-  IF v_nivel IS NULL THEN
-    RAISE EXCEPTION 'No existe nurse_profile para este nurse_id';
-  END IF;
-
-  IF v_nivel = 'Técnico en Enfermería'
-     AND NEW.tipo IN ('Especializado', 'Asistencial') THEN
-    RAISE EXCEPTION 'Un Técnico en Enfermería solo puede ofrecer Acompañamiento';
-  END IF;
-
-  IF v_nivel = 'Licenciado en Enfermería'
-     AND NEW.tipo = 'Especializado' THEN
-    RAISE EXCEPTION 'Un Licenciado en Enfermería no puede ofrecer Especializado';
-  END IF;
-
-  RETURN NEW;
-END;
-$$;
-
-DROP TRIGGER IF EXISTS trg_validate_nurse_service_by_level ON public.nurse_service_types;
-
-CREATE TRIGGER trg_validate_nurse_service_by_level
-BEFORE INSERT OR UPDATE ON public.nurse_service_types
-FOR EACH ROW
-EXECUTE FUNCTION public.validate_nurse_service_by_level();
-
--- ============================================================
--- 9. NURSE ZONES
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.nurse_zones (
-  id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  nurse_id UUID   NOT NULL REFERENCES nurse_profiles(id) ON DELETE CASCADE,
-  distrito TEXT   NOT NULL CHECK (char_length(distrito) BETWEEN 3 AND 60),
-  UNIQUE (nurse_id, distrito)
+CREATE TABLE public.nurse_zones (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  nurse_id uuid NOT NULL,
+  distrito text NOT NULL CHECK (char_length(distrito) >= 3 AND char_length(distrito) <= 60),
+  CONSTRAINT nurse_zones_pkey PRIMARY KEY (id),
+  CONSTRAINT nurse_zones_nurse_id_fkey FOREIGN KEY (nurse_id) REFERENCES public.nurse_profiles(id)
 );
-
-COMMENT ON TABLE nurse_zones IS 'Distritos de Lima en los que el enfermero acepta prestar servicios.';
-
-CREATE INDEX IF NOT EXISTS idx_nurse_zones_nurse_id
-ON public.nurse_zones(nurse_id);
-
-CREATE INDEX IF NOT EXISTS idx_nurse_zones_distrito
-ON public.nurse_zones(distrito);
-
--- ============================================================
--- 10. NURSE LANGUAGES
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.nurse_languages (
-  id        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  nurse_id UUID   NOT NULL REFERENCES nurse_profiles(id) ON DELETE CASCADE,
-  idioma   TEXT   NOT NULL CHECK (char_length(idioma) BETWEEN 2 AND 60),
-  UNIQUE (nurse_id, idioma)
+CREATE TABLE public.nurse_languages (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  nurse_id uuid NOT NULL,
+  idioma text NOT NULL CHECK (char_length(idioma) >= 2 AND char_length(idioma) <= 60),
+  CONSTRAINT nurse_languages_pkey PRIMARY KEY (id),
+  CONSTRAINT nurse_languages_nurse_id_fkey FOREIGN KEY (nurse_id) REFERENCES public.nurse_profiles(id)
 );
-
-CREATE INDEX IF NOT EXISTS idx_nurse_languages_nurse_id
-ON public.nurse_languages(nurse_id);
-
--- ============================================================
--- 11. NURSE EDUCATION
--- ============================================================
-
-CREATE TABLE nurse_education (
-  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  nurse_id    UUID     NOT NULL REFERENCES nurse_profiles(id) ON DELETE CASCADE,
-  titulo      TEXT     NOT NULL CHECK (char_length(titulo) BETWEEN 3 AND 100),
-  institucion TEXT     NOT NULL CHECK (char_length(institucion) BETWEEN 3 AND 100),
-  anio        SMALLINT NOT NULL CHECK (anio BETWEEN 1900 AND 2100),
-  -- solo para verificación interna, el cliente nunca ve esto
-  documento_url TEXT, -- URL en Supabase Storage
-  verificado    BOOLEAN NOT NULL DEFAULT FALSE,
-  verificado_at TIMESTAMPTZ,
-
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE TABLE public.nurse_education (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  nurse_id uuid NOT NULL,
+  titulo text NOT NULL CHECK (char_length(titulo) >= 3 AND char_length(titulo) <= 100),
+  institucion text NOT NULL CHECK (char_length(institucion) >= 3 AND char_length(institucion) <= 100),
+  anio smallint NOT NULL CHECK (anio >= 1900 AND anio <= 2100),
+  documento_url text,
+  verificado boolean NOT NULL DEFAULT false,
+  verificado_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT nurse_education_pkey PRIMARY KEY (id),
+  CONSTRAINT nurse_education_nurse_id_fkey FOREIGN KEY (nurse_id) REFERENCES public.nurse_profiles(id)
 );
-
-COMMENT ON TABLE nurse_education IS 'Historial de formación académica del enfermero.';
-CREATE INDEX IF NOT EXISTS idx_nurse_education_nurse_id
-ON public.nurse_education(nurse_id);
-
-DROP TRIGGER IF EXISTS trg_nurse_education_updated_at ON public.nurse_education;
-
-CREATE TRIGGER trg_nurse_education_updated_at
-BEFORE UPDATE ON public.nurse_education
-FOR EACH ROW
-EXECUTE FUNCTION public.set_updated_at();
-
--- ============================================================
--- 12. NURSE CERTIFICATIONS
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.nurse_certifications (
-  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  nurse_id UUID     NOT NULL REFERENCES nurse_profiles(id) ON DELETE CASCADE,
-  nombre   TEXT     NOT NULL CHECK (char_length(nombre) BETWEEN 3 AND 100),
-  emisor   TEXT     NOT NULL CHECK (char_length(emisor) BETWEEN 3 AND 100),
-  anio     SMALLINT NOT NULL CHECK (anio BETWEEN 1960 AND 2100),
-    -- solo para verificación interna, el cliente nunca ve esto
-  documento_url TEXT,  -- URL en Supabase Storage
-  verificado    BOOLEAN NOT NULL DEFAULT FALSE,
-  verificado_at TIMESTAMPTZ,
-
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+CREATE TABLE public.nurse_certifications (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  nurse_id uuid NOT NULL,
+  nombre text NOT NULL CHECK (char_length(nombre) >= 3 AND char_length(nombre) <= 100),
+  emisor text NOT NULL CHECK (char_length(emisor) >= 3 AND char_length(emisor) <= 100),
+  anio smallint NOT NULL CHECK (anio >= 1960 AND anio <= 2100),
+  documento_url text,
+  verificado boolean NOT NULL DEFAULT false,
+  verificado_at timestamp with time zone,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT nurse_certifications_pkey PRIMARY KEY (id),
+  CONSTRAINT nurse_certifications_nurse_id_fkey FOREIGN KEY (nurse_id) REFERENCES public.nurse_profiles(id)
 );
-
-COMMENT ON TABLE public.nurse_certifications IS 'Cursos y certificaciones del enfermero.';
-
-CREATE INDEX IF NOT EXISTS idx_nurse_certifications_nurse_id
-ON public.nurse_certifications(nurse_id);
-
-DROP TRIGGER IF EXISTS trg_nurse_certifications_updated_at ON public.nurse_certifications;
-
-CREATE TRIGGER trg_nurse_certifications_updated_at
-BEFORE UPDATE ON public.nurse_certifications
-FOR EACH ROW
-EXECUTE FUNCTION public.set_updated_at();
-
--- ============================================================
--- 13. NURSE DOCUMENTS
--- ============================================================
-
-CREATE TABLE nurse_documents (
-  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  nurse_id    UUID        NOT NULL REFERENCES nurse_profiles(id) ON DELETE CASCADE,
-  doc_type    TEXT        NOT NULL
-                          CHECK (doc_type IN (
-                            'dni_front',
-                            'dni_back',
-                            'antecedentes_penales',
-                            'antecedentes_policiales',
-                            'titulo_uni',
-                            'sunedu',
-                            'colegiatura',
-                            'especialidad_rne',
-                            'habilidad_cep',
-                            'titulo_tecnico',
-                            'certificado_estudios',
-                            'minedu_sinace'
-                          )),
-  file_url    TEXT,       -- URL en Supabase Storage
-  status      TEXT        NOT NULL DEFAULT 'not_submitted'
-                          CHECK (status IN ('not_submitted', 'pending', 'approved', 'rejected')),
-  admin_notes TEXT,       -- Motivo de rechazo u observación del admin
-  reviewed_by UUID        REFERENCES profiles(id),
-  reviewed_at TIMESTAMPTZ,
-  uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (nurse_id, doc_type),
-  updated_at            TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+CREATE TABLE public.nurse_documents (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  nurse_id uuid NOT NULL,
+  doc_type text NOT NULL CHECK (doc_type = ANY (ARRAY['dni_front'::text, 'dni_back'::text, 'antecedentes_penales'::text, 'antecedentes_policiales'::text, 'titulo_uni'::text, 'sunedu'::text, 'colegiatura'::text, 'especialidad_rne'::text, 'habilidad_cep'::text, 'titulo_tecnico'::text, 'certificado_estudios'::text, 'minedu_sinace'::text])),
+  file_url text,
+  status text NOT NULL DEFAULT 'not_submitted'::text CHECK (status = ANY (ARRAY['not_submitted'::text, 'pending'::text, 'approved'::text, 'rejected'::text])),
+  admin_notes text,
+  reviewed_by uuid,
+  reviewed_at timestamp with time zone,
+  uploaded_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT nurse_documents_pkey PRIMARY KEY (id),
+  CONSTRAINT nurse_documents_nurse_id_fkey FOREIGN KEY (nurse_id) REFERENCES public.nurse_profiles(id),
+  CONSTRAINT nurse_documents_reviewed_by_fkey FOREIGN KEY (reviewed_by) REFERENCES public.profiles(id)
 );
-
-COMMENT ON TABLE nurse_documents IS 'Documentos de verificación profesional del enfermero.';
-COMMENT ON COLUMN nurse_documents.reviewed_by IS 'Admin que aprobó o rechazó el documento.';
-COMMENT ON COLUMN nurse_documents.file_url IS 'Ruta al archivo en Supabase Storage (bucket: nurse-docs).';
-
-CREATE INDEX IF NOT EXISTS idx_nurse_docs_status
-ON public.nurse_documents(status);
-
-DROP TRIGGER IF EXISTS trg_nurse_documents_updated_at ON public.nurse_documents;
-
-CREATE TRIGGER trg_nurse_documents_updated_at
-BEFORE UPDATE ON public.nurse_documents
-FOR EACH ROW
-EXECUTE FUNCTION public.set_updated_at();
--- ============================================================
--- 14. NURSE SCHEDULE SLOTS
--- ============================================================
-
-CREATE TABLE IF NOT EXISTS public.nurse_schedule_slots (
-  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  nurse_id    UUID     NOT NULL REFERENCES nurse_profiles(id) ON DELETE CASCADE,
-  day_of_week SMALLINT NOT NULL CHECK (day_of_week BETWEEN 0 AND 6),
-  start_hour  SMALLINT NOT NULL CHECK (start_hour BETWEEN 0 AND 23),
-  end_hour    SMALLINT NOT NULL CHECK (end_hour BETWEEN 1 AND 24),
-  enabled     BOOLEAN  NOT NULL DEFAULT TRUE,
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (nurse_id, day_of_week),
-  CHECK (end_hour > start_hour)
+CREATE TABLE public.nurse_schedule_slots (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  nurse_id uuid NOT NULL,
+  day_of_week smallint NOT NULL CHECK (day_of_week >= 0 AND day_of_week <= 6),
+  start_hour smallint NOT NULL CHECK (start_hour >= 0 AND start_hour <= 23),
+  end_hour smallint NOT NULL CHECK (end_hour >= 1 AND end_hour <= 24),
+  enabled boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT nurse_schedule_slots_pkey PRIMARY KEY (id),
+  CONSTRAINT nurse_schedule_slots_nurse_id_fkey FOREIGN KEY (nurse_id) REFERENCES public.nurse_profiles(id)
 );
-
-
-CREATE INDEX IF NOT EXISTS idx_nurse_schedule_slots_lookup
-ON public.nurse_schedule_slots(nurse_id, day_of_week, enabled);
-
-DROP TRIGGER IF EXISTS trg_nurse_schedule_slots_updated_at ON public.nurse_schedule_slots;
-
-CREATE TRIGGER trg_nurse_schedule_slots_updated_at
-BEFORE UPDATE ON public.nurse_schedule_slots
-FOR EACH ROW
-EXECUTE FUNCTION public.set_updated_at();
-
--- ============================================================
--- 15. NURSE SCHEDULE EXCEPTIONS
--- ============================================================
-CREATE TABLE nurse_schedule_exceptions (
-  id         UUID     PRIMARY KEY DEFAULT gen_random_uuid(),
-  nurse_id   UUID     NOT NULL REFERENCES nurse_profiles(id) ON DELETE CASCADE,
-  fecha      DATE     NOT NULL,
-  tipo       TEXT     NOT NULL
-                      CHECK (tipo IN (
-                        'block',    -- Día bloqueado (no disponible)
-                        'extra',    -- Horario extra diferente al semanal
-                        'vacation'  -- Vacaciones
-                      )),
-  start_hour SMALLINT CHECK (start_hour BETWEEN 0 AND 23),
-  end_hour   SMALLINT CHECK (end_hour BETWEEN 1 AND 24),
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  UNIQUE (nurse_id, fecha),
-  -- Si el tipo es 'extra', los horarios son obligatorios y deben ser coherentes
-  CHECK (tipo != 'extra' OR (
-    start_hour IS NOT NULL AND end_hour IS NOT NULL AND end_hour > start_hour
-  ))
+CREATE TABLE public.nurse_schedule_exceptions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  nurse_id uuid NOT NULL,
+  fecha date NOT NULL,
+  tipo text NOT NULL CHECK (tipo = ANY (ARRAY['block'::text, 'extra'::text, 'vacation'::text])),
+  start_hour smallint CHECK (start_hour >= 0 AND start_hour <= 23),
+  end_hour smallint CHECK (end_hour >= 1 AND end_hour <= 24),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT nurse_schedule_exceptions_pkey PRIMARY KEY (id),
+  CONSTRAINT nurse_schedule_exceptions_nurse_id_fkey FOREIGN KEY (nurse_id) REFERENCES public.nurse_profiles(id)
 );
-
-COMMENT ON TABLE nurse_schedule_exceptions IS 'Días especiales que sobrescriben el horario semanal del enfermero.';
-
-CREATE INDEX IF NOT EXISTS idx_nurse_schedule_exceptions_lookup
-ON public.nurse_schedule_exceptions(nurse_id, fecha);
-
-DROP TRIGGER IF EXISTS trg_nurse_schedule_exceptions_updated_at ON public.nurse_schedule_exceptions;
-
-CREATE TRIGGER trg_nurse_schedule_exceptions_updated_at
-BEFORE UPDATE ON public.nurse_schedule_exceptions
-FOR EACH ROW
-EXECUTE FUNCTION public.set_updated_at();
-
--- ============================================================
--- 10. PATIENTS
--- ============================================================
-CREATE TABLE IF NOT EXISTS public.patients (
-  id                UUID         PRIMARY KEY DEFAULT gen_random_uuid(), -- 🌟 Cambiado a gen_random_uuid()
-  client_id         UUID         NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-  
-  -- 🌟 Separación para mayor orden y control
-  full_name         text        not null,
-  
-  age               INT          NOT NULL CHECK (age BETWEEN 0 AND 130),
-  photo_url         TEXT,
-  
-  -- 🌟 Restricción CHECK para controlar los lazos familiares permitidos
-  relationship      TEXT         NOT NULL 
-                                 CHECK (relationship IN ('Madre', 'Padre', 'Hijo', 'Hija', 'Cónyuge', 'Abuelo', 'Abuela', 'Hermano', 'Hermana', 'Yo mismo', 'Otro')),
-  
-  -- 🌟 Restricción CHECK para tipos de sangre válidos
-  blood_type        TEXT         CHECK (blood_type IN ('O+', 'A+', 'B+', 'AB+', 'O-', 'A-', 'B-', 'AB-')),
-  
-  emergency_contact TEXT         NOT NULL CHECK (char_length(emergency_contact) BETWEEN 3 AND 100),
-  
-  -- 🌟 Validación con Expresión Regular para celulares peruanos
-  emergency_phone   VARCHAR(9)   NOT NULL CHECK (emergency_phone ~ '^\d{9}$'), 
-  
-  notes             TEXT,
-  address           TEXT         NOT NULL CHECK (char_length(address) > 5),
-  district          TEXT         NOT NULL CHECK (char_length(district) BETWEEN 3 AND 60),
-  address_reference text,        
-  lat               NUMERIC(10,7),
-  lng               NUMERIC(10,7),
-  created_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-  updated_at        TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+CREATE TABLE public.patients (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  client_id uuid NOT NULL,
+  full_name text NOT NULL,
+  age integer NOT NULL CHECK (age >= 0 AND age <= 130),
+  photo_url text,
+  relationship text NOT NULL CHECK (relationship = ANY (ARRAY['Madre'::text, 'Padre'::text, 'Hijo'::text, 'Hija'::text, 'Cónyuge'::text, 'Abuelo'::text, 'Abuela'::text, 'Hermano'::text, 'Hermana'::text, 'Yo mismo'::text, 'Otro'::text])),
+  blood_type text CHECK (blood_type = ANY (ARRAY['O+'::text, 'A+'::text, 'B+'::text, 'AB+'::text, 'O-'::text, 'A-'::text, 'B-'::text, 'AB-'::text])),
+  emergency_contact text CHECK (char_length(emergency_contact) >= 3 AND char_length(emergency_contact) <= 100),
+  emergency_phone character varying CHECK (emergency_phone::text ~ '^\d{9}$'::text),
+  notes text,
+  address text CHECK (char_length(address) > 5),
+  district text CHECK (char_length(district) >= 3 AND char_length(district) <= 60),
+  address_reference text,
+  lat numeric,
+  lng numeric,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  google_maps_url text,
+  CONSTRAINT patients_pkey PRIMARY KEY (id),
+  CONSTRAINT patients_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.profiles(id)
 );
-
-CREATE INDEX IF NOT EXISTS idx_patients_client_id ON public.patients(client_id);
-
-DROP TRIGGER IF EXISTS trg_patients_updated_at ON public.patients;
-CREATE TRIGGER trg_patients_updated_at
-  BEFORE UPDATE ON public.patients
-  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
-
--- ============================================================
--- 11. PATIENT_CONDITIONS
--- ============================================================
-CREATE TABLE IF NOT EXISTS public.patient_conditions (
-  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  patient_id UUID NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
-  condition  TEXT NOT NULL CHECK (char_length(condition) BETWEEN 2 AND 150),
-  UNIQUE (patient_id, condition)
+CREATE TABLE public.patient_conditions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  patient_id uuid NOT NULL,
+  condition text NOT NULL CHECK (char_length(condition) >= 2 AND char_length(condition) <= 150),
+  CONSTRAINT patient_conditions_pkey PRIMARY KEY (id),
+  CONSTRAINT patient_conditions_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(id)
 );
-
-CREATE INDEX IF NOT EXISTS idx_patient_conditions_patient_id ON public.patient_conditions(patient_id);
-
--- ============================================================
--- 12. PATIENT_MEDICATIONS
--- ============================================================
-CREATE TABLE IF NOT EXISTS public.patient_medications (
-  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  patient_id UUID NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
-  medication TEXT NOT NULL CHECK (char_length(medication) BETWEEN 2 AND 150),
-  UNIQUE (patient_id, medication)
+CREATE TABLE public.patient_medications (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  patient_id uuid NOT NULL,
+  medication text NOT NULL CHECK (char_length(medication) >= 2 AND char_length(medication) <= 150),
+  dosage text,
+  CONSTRAINT patient_medications_pkey PRIMARY KEY (id),
+  CONSTRAINT patient_medications_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(id)
 );
-
-CREATE INDEX IF NOT EXISTS idx_patient_medications_patient_id ON public.patient_medications(patient_id);
-
--- ============================================================
--- 13. PATIENT_ALLERGIES
--- ============================================================
-CREATE TABLE IF NOT EXISTS public.patient_allergies (
-  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  patient_id UUID NOT NULL REFERENCES public.patients(id) ON DELETE CASCADE,
-  allergy    TEXT NOT NULL CHECK (char_length(allergy) BETWEEN 2 AND 150),
-  UNIQUE (patient_id, allergy)
+CREATE TABLE public.patient_allergies (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  patient_id uuid NOT NULL,
+  allergy text NOT NULL CHECK (char_length(allergy) >= 2 AND char_length(allergy) <= 150),
+  CONSTRAINT patient_allergies_pkey PRIMARY KEY (id),
+  CONSTRAINT patient_allergies_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(id)
 );
-
-CREATE INDEX IF NOT EXISTS idx_patient_allergies_patient_id ON public.patient_allergies(patient_id);
-
-
-
-
+CREATE TABLE public.services (
+  id integer NOT NULL DEFAULT nextval('services_id_seq'::regclass),
+  client_id uuid,
+  nurse_id uuid,
+  patient_id uuid,
+  status text DEFAULT 'pending'::text CHECK (status = ANY (ARRAY['pending'::text, 'confirmed'::text, 'active'::text, 'completed'::text, 'cancelled'::text])),
+  payment_status text DEFAULT 'pending'::text CHECK (payment_status = ANY (ARRAY['pending'::text, 'in_custody'::text, 'released'::text, 'refunded'::text])),
+  service_type text,
+  total_hours integer DEFAULT 0,
+  total_amount numeric DEFAULT 0,
+  hourly_rate numeric DEFAULT 0,
+  notes text,
+  contract_code text,
+  service_code text,
+  pin_code text,
+  patient_name text,
+  patient_age integer,
+  address text,
+  district text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  cancel_reason text,
+  cancelled_at timestamp with time zone,
+  refund_amount numeric,
+  refund_percentage integer,
+  CONSTRAINT services_pkey PRIMARY KEY (id),
+  CONSTRAINT services_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.profiles(id),
+  CONSTRAINT services_nurse_id_fkey FOREIGN KEY (nurse_id) REFERENCES public.profiles(id),
+  CONSTRAINT services_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(id)
+);
+CREATE TABLE public.service_days (
+  id integer NOT NULL DEFAULT nextval('service_days_id_seq'::regclass),
+  service_id integer,
+  day_date date NOT NULL,
+  start_hour integer NOT NULL,
+  end_hour integer NOT NULL,
+  status text DEFAULT 'scheduled'::text,
+  real_start text,
+  real_end text,
+  report text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT service_days_pkey PRIMARY KEY (id),
+  CONSTRAINT service_days_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id)
+);
+CREATE TABLE public.ratings (
+  id integer NOT NULL DEFAULT nextval('ratings_id_seq'::regclass),
+  service_id integer,
+  nurse_id uuid,
+  client_id uuid,
+  rating numeric DEFAULT 0,
+  punctuality numeric DEFAULT 0,
+  treatment numeric DEFAULT 0,
+  knowledge numeric DEFAULT 0,
+  comment text,
+  created_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT ratings_pkey PRIMARY KEY (id),
+  CONSTRAINT ratings_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.profiles(id),
+  CONSTRAINT ratings_nurse_id_fkey FOREIGN KEY (nurse_id) REFERENCES public.profiles(id),
+  CONSTRAINT ratings_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id)
+);
+CREATE TABLE public.incident_reports (
+  id integer NOT NULL DEFAULT nextval('incident_reports_id_seq'::regclass),
+  reporter_id uuid,
+  reporter_role text DEFAULT 'cliente'::text,
+  service_id integer,
+  service_day_id integer,
+  title text NOT NULL,
+  description text,
+  category text DEFAULT 'otro'::text,
+  severity text DEFAULT 'media'::text,
+  status text DEFAULT 'abierto'::text,
+  response text,
+  evidence_urls ARRAY,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT incident_reports_pkey PRIMARY KEY (id),
+  CONSTRAINT incident_reports_reporter_id_fkey FOREIGN KEY (reporter_id) REFERENCES public.profiles(id),
+  CONSTRAINT incident_reports_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id),
+  CONSTRAINT incident_reports_service_day_id_fkey FOREIGN KEY (service_day_id) REFERENCES public.service_days(id)
+);
+CREATE TABLE public.service_binnacles (
+  id integer NOT NULL DEFAULT nextval('service_binnacles_id_seq'::regclass),
+  service_id integer,
+  service_day_id integer,
+  activities ARRAY,
+  observations text,
+  recommendations text,
+  photos ARRAY,
+  status text DEFAULT 'draft'::text,
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT service_binnacles_pkey PRIMARY KEY (id),
+  CONSTRAINT service_binnacles_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id),
+  CONSTRAINT service_binnacles_service_day_id_fkey FOREIGN KEY (service_day_id) REFERENCES public.service_days(id)
+);
+CREATE TABLE public.contract_signatures (
+  id integer NOT NULL DEFAULT nextval('contract_signatures_id_seq'::regclass),
+  service_id integer,
+  dni text NOT NULL,
+  signed_at timestamp with time zone NOT NULL DEFAULT now(),
+  ip_address text,
+  signature_url text,
+  CONSTRAINT contract_signatures_pkey PRIMARY KEY (id),
+  CONSTRAINT contract_signatures_service_id_fkey FOREIGN KEY (service_id) REFERENCES public.services(id)
+);
+CREATE TABLE public.notifications (
+  id bigint NOT NULL DEFAULT nextval('notifications_id_seq'::regclass),
+  user_id uuid NOT NULL,
+  type text NOT NULL,
+  title text NOT NULL,
+  message text NOT NULL,
+  read boolean NOT NULL DEFAULT false,
+  meta jsonb,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT notifications_pkey PRIMARY KEY (id),
+  CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id)
+);
 --Bucket de foto_perfil
 
 -- 1. Permitir acceso público de lectura para cualquier persona a las fotos de perfil y pacientes

@@ -45,6 +45,7 @@ function mapRowToNurse(row: any): Nurse {
     const clientNombres = r.profiles?.nombres || "";
     const clientApellidos = r.profiles?.apellidos_pa || "";
     const author = `${clientNombres} ${clientApellidos}`.trim() || "Cliente";
+    const authorPhoto = r.profiles?.foto_url || undefined;
 
     // Formato de fecha relativo amigable
     const createdDate = new Date(r.created_at);
@@ -76,8 +77,26 @@ function mapRowToNurse(row: any): Nurse {
       punctuality: Number(r.punctuality || 0),
       treatment: Number(r.treatment || 0),
       technical: Number(r.knowledge || 0),
+      authorPhoto,
     };
   });
+
+  const reviewsCount = reviewList.length;
+  const avgRating = reviewsCount > 0 
+    ? reviewList.reduce((acc, r) => acc + r.rating, 0) / reviewsCount 
+    : Number(row.rating || 0);
+
+  const avgPunctuality = reviewsCount > 0 
+    ? reviewList.reduce((acc, r) => acc + r.punctuality, 0) / reviewsCount 
+    : Number(row.puntualidad_avg || 0);
+
+  const avgTreatment = reviewsCount > 0 
+    ? reviewList.reduce((acc, r) => acc + r.treatment, 0) / reviewsCount 
+    : Number(row.trato_avg || 0);
+
+  const avgTechnical = reviewsCount > 0 
+    ? reviewList.reduce((acc, r) => acc + r.technical, 0) / reviewsCount 
+    : Number(row.tecnica_avg || 0);
 
   return {
     id: row.id,
@@ -89,11 +108,11 @@ function mapRowToNurse(row: any): Nurse {
     about: row.bio || "",
     isTopRated: !!row.is_top_rated,
     serviceType: serviceTypes,
-    rating: Number(row.rating || 0),
-    reviews: Number(row.total_reviews || 0),
-    punctuality: Number(row.puntualidad_avg || 0),
-    treatment: Number(row.trato_avg || 0),
-    technical: Number(row.tecnica_avg || 0),
+    rating: avgRating,
+    reviews: reviewsCount || Number(row.total_reviews || 0),
+    punctuality: avgPunctuality,
+    treatment: avgTreatment,
+    technical: avgTechnical,
     district: p.distrito || districts[0] || "Lima",
     districts,
     experience: Number(row.anios_experiencia || 0),
@@ -143,7 +162,8 @@ export async function fetchPublicNurses(): Promise<Nurse[]> {
           created_at,
           profiles:client_id (
             nombres,
-            apellidos_pa
+            apellidos_pa,
+            foto_url
           )
         )
       ),
@@ -214,7 +234,8 @@ export async function fetchPublicNurseProfile(id: string): Promise<Nurse | null>
           created_at,
           profiles:client_id (
             nombres,
-            apellidos_pa
+            apellidos_pa,
+            foto_url
           )
         )
       ),

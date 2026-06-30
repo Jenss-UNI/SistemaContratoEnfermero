@@ -1,8 +1,8 @@
-import { Search, Loader2, Calendar, X } from "lucide-react";
+import { Search, Loader2, Calendar, X, FileText, Wallet, AlertTriangle } from "lucide-react";
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../../core/contexts/AuthContext";
-import { fetchClientHirings, cancelHiring, fetchHiringDays } from "../../services/hiring.service";
+import { fetchClientHirings, cancelHiring, fetchHiringDays, releasePayment } from "../../services/hiring.service";
 import type {
   Contratacion,
   ContratacionEstado,
@@ -45,10 +45,28 @@ export default function MisContratacionesContent() {
   const [loading, setLoading] = useState(true);
   const [jornadasModal, setJornadasModal] = useState<Contratacion | null>(null);
   const [jornadasLoading, setJornadasLoading] = useState(false);
-  const [jornadasList, setJornadasList] = useState<{ fecha: string; horario: string; estado: string }[]>([]);
+  const [jornadasList, setJornadasList] = useState<{
+    fecha: string;
+    horario: string;
+    estado: string;
+    realStart?: string;
+    realEnd?: string;
+    reporte?: string;
+    binnacle?: {
+      id: number;
+      activities: string[];
+      observations: string;
+      recommendations: string;
+      photos: string[];
+    };
+  }[]>([]);
+  const [expandedReportIndex, setExpandedReportIndex] = useState<number | null>(null);
+  const [liberarConfirmModal, setLiberarConfirmModal] = useState<Contratacion | null>(null);
+  const [liberando, setLiberando] = useState(false);
 
   const handleVerJornadas = async (c: Contratacion) => {
     setJornadasModal(c);
+    setExpandedReportIndex(null);
     setJornadasLoading(true);
     setJornadasList([]);
     try {
@@ -144,6 +162,35 @@ export default function MisContratacionesContent() {
     navigate(`${CLIENT_PANEL_BASE}/mis-contrataciones/contrato/${c.id}`);
   };
 
+  const handleLiberarPago = (c: Contratacion) => {
+    setLiberarConfirmModal(c);
+  };
+
+  const confirmLiberarPago = async () => {
+    if (!liberarConfirmModal) return;
+    setLiberando(true);
+    try {
+      await releasePayment(Number(liberarConfirmModal.id));
+      alert("Pago liberado correctamente.");
+      setLiberarConfirmModal(null);
+      loadData();
+    } catch (err: any) {
+      console.error("Error releasing payment:", err);
+      alert(`Error al liberar pago: ${err.message || err}`);
+    } finally {
+      setLiberando(false);
+    }
+  };
+
+  const formatTime12 = (time24?: string) => {
+    if (!time24) return "—";
+    const [hStr, mStr] = time24.split(":");
+    const hours = parseInt(hStr, 10);
+    const ampm = hours >= 12 ? "pm" : "am";
+    const h12 = hours % 12 || 12;
+    return `${h12}:${mStr} ${ampm}`;
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -224,6 +271,7 @@ export default function MisContratacionesContent() {
               onFirmarContrato={() => handleFirmar(c)}
               onVerJornadas={() => handleVerJornadas(c)}
               onVerContrato={() => handleFirmar(c)}
+              onLiberarPago={() => handleLiberarPago(c)}
             />
           ))}
         </div>
@@ -263,28 +311,201 @@ export default function MisContratacionesContent() {
                 <p className="text-xs text-slate-400 font-medium">Cargando jornadas...</p>
               </div>
             ) : (
-              <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
-                {jornadasList.map((j, i) => (
-                  <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 border border-slate-100">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                      <span className={`w-2 h-2 rounded-full ${j.estado === "completada" ? "bg-emerald-500" : j.estado === "activa" ? "bg-teal-500" : "bg-slate-300"}`}></span>
-                      {j.fecha}
+              <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                {jornadasList.map((j, i) => {
+                  const isExpanded = expandedReportIndex === i;
+                  return (
+                    <div key={i} className="flex flex-col p-4 rounded-2xl bg-slate-50 border border-slate-100 gap-2.5 transition-all">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm font-bold text-slate-700">
+                          <span className={`w-2.5 h-2.5 rounded-full ${
+                            j.estado === "completada" ? "bg-emerald-500" : 
+                            j.estado === "activa" ? "bg-teal-500" : 
+                            j.estado === "cancelada" ? "bg-rose-500" :
+                            "bg-slate-300"
+                          }`}></span>
+                          {j.fecha}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-slate-500 font-semibold">{j.horario}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg uppercase tracking-wide ${
+                            j.estado === "completada" ? "bg-emerald-100 text-emerald-700" :
+                            j.estado === "activa" ? "bg-teal-100 text-teal-700" :
+                            j.estado === "cancelada" ? "bg-rose-100 text-rose-700" :
+                            "bg-slate-200 text-slate-650"
+                          }`}>
+                            {j.estado}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Asistencia real */}
+                      {(j.realStart || j.realEnd) && (
+                        <div className="text-xs text-slate-500 font-medium flex flex-wrap gap-x-3 gap-y-1 bg-white px-3 py-2 rounded-xl border border-slate-100 shadow-sm">
+                          {j.realStart && (
+                            <span>
+                              <strong>Ingreso:</strong> {formatTime12(j.realStart)}
+                            </span>
+                          )}
+                          {j.realEnd && (
+                            <span>
+                              <strong>Salida:</strong> {formatTime12(j.realEnd)}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Botón Ver Bitácora */}
+                      {j.estado === "completada" && (j.binnacle || j.reporte) && (
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedReportIndex(isExpanded ? null : i)}
+                            className="inline-flex items-center gap-1.5 text-[11px] font-bold text-teal-600 hover:text-teal-700 bg-white hover:bg-slate-100/50 px-2.5 py-1.5 rounded-lg border border-slate-200/60 shadow-sm transition cursor-pointer"
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            {isExpanded ? "Ocultar bitácora" : "Ver bitácora"}
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Reporte/Bitácora expandible */}
+                      {isExpanded && (
+                        <div className="mt-1 text-xs bg-white p-4 rounded-xl border border-slate-100/80 shadow-inner relative space-y-3">
+                          {j.binnacle ? (
+                            <>
+                              <span className="absolute -top-1.5 right-4 bg-teal-500 text-white font-bold text-[9px] px-2 py-0.5 rounded-md uppercase tracking-wider scale-90">
+                                Bitácora Clínica
+                              </span>
+                              
+                              {/* Actividades */}
+                              {j.binnacle.activities && j.binnacle.activities.length > 0 && (
+                                <div className="space-y-1 pt-1">
+                                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Actividades Realizadas</p>
+                                  <ul className="list-none space-y-1 pl-0.5">
+                                    {j.binnacle.activities.map((act, index) => (
+                                      <li key={index} className="flex items-start gap-1.5 text-slate-700 font-medium">
+                                        <span className="text-emerald-500 font-bold select-none mt-0.5">✓</span>
+                                        <span>{act}</span>
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+
+                              {/* Observaciones */}
+                              {j.binnacle.observations && (
+                                <div className="space-y-0.5 pt-1.5 border-t border-slate-50">
+                                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Observaciones</p>
+                                  <p className="text-slate-650 leading-relaxed italic">"{j.binnacle.observations}"</p>
+                                </div>
+                              )}
+
+                              {/* Recomendaciones */}
+                              {j.binnacle.recommendations && (
+                                <div className="space-y-0.5 pt-1.5 border-t border-slate-50">
+                                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Recomendaciones</p>
+                                  <p className="text-slate-655 leading-relaxed font-semibold">"{j.binnacle.recommendations}"</p>
+                                </div>
+                              )}
+
+                              {/* Evidencia fotográfica */}
+                              {j.binnacle.photos && j.binnacle.photos.length > 0 && (
+                                <div className="space-y-1.5 pt-2 border-t border-slate-50">
+                                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Evidencia Fotográfica</p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {j.binnacle.photos.map((photoUrl, pIdx) => (
+                                      <a
+                                        key={pIdx}
+                                        href={photoUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="relative w-16 h-16 rounded-xl overflow-hidden border border-slate-200 shadow-sm hover:scale-105 hover:shadow-md transition active:scale-95 block shrink-0"
+                                      >
+                                        <img
+                                          src={photoUrl}
+                                          alt={`Evidencia ${pIdx + 1}`}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      </a>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <span className="absolute -top-1.5 right-4 bg-teal-500 text-white font-bold text-[9px] px-2 py-0.5 rounded-md uppercase tracking-wider scale-90">
+                                Comentarios
+                              </span>
+                              <p className="text-slate-650 leading-relaxed italic pt-1">"{j.reporte}"</p>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-slate-500 font-medium">{j.horario}</span>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg uppercase tracking-wide ${
-                        j.estado === "completada" ? "bg-emerald-100 text-emerald-700" :
-                        j.estado === "activa" ? "bg-teal-100 text-teal-700" :
-                        j.estado === "cancelada" ? "bg-rose-100 text-rose-700" :
-                        "bg-slate-200 text-slate-650"
-                      }`}>
-                        {j.estado}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {liberarConfirmModal && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl p-6 shadow-2xl border border-slate-100 w-full max-w-md relative animate-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setLiberarConfirmModal(null)}
+              className="absolute right-5 top-5 p-2 rounded-xl text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition cursor-pointer"
+              aria-label="Cerrar"
+              disabled={liberando}
+            >
+              <X className="h-5 w-5" />
+            </button>
+            
+            <div className="flex flex-col items-center text-center mt-3 mb-6">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-50 border border-emerald-100 mb-4 animate-pulse">
+                <Wallet className="h-7 w-7 text-emerald-600" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">Liberar Fondos en Custodia</h3>
+              <p className="text-xs text-slate-500 mt-2 max-w-xs leading-relaxed">
+                ¿Estás seguro de liberar el pago de <strong className="text-slate-800">S/ {liberarConfirmModal.montoTotal.toLocaleString("es-PE")}</strong> a favor del enfermero/a <strong className="text-slate-800">{liberarConfirmModal.profesionalNombre}</strong>?
+              </p>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 mb-6 text-xs text-amber-800 leading-relaxed font-medium flex gap-2">
+              <AlertTriangle className="h-4.5 w-4.5 text-amber-600 shrink-0 mt-0.5" />
+              <p>
+                <strong>Atención:</strong> Esta acción transferirá de forma inmediata e irreversible los fondos al profesional de salud. Asegúrate de haber revisado las jornadas y que todo esté correcto.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setLiberarConfirmModal(null)}
+                className="flex-1 border border-slate-200 text-slate-500 font-bold py-3 rounded-xl hover:bg-slate-50 transition cursor-pointer text-xs"
+                disabled={liberando}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={confirmLiberarPago}
+                className="flex-1 bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 rounded-xl cursor-pointer text-xs shadow-sm transition flex items-center justify-center gap-1.5"
+                disabled={liberando}
+              >
+                {liberando ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Liberando...</span>
+                  </>
+                ) : (
+                  <span>Sí, Liberar Pago</span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
