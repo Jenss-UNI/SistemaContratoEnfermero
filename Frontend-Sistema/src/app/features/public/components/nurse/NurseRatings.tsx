@@ -80,7 +80,7 @@ export default function NurseDetailedRatings({
               </div>
 
               <span className="font-bold text-slate-900">
-                {rating.value}
+                {rating.value.toFixed(1)}
               </span>
 
             </div>

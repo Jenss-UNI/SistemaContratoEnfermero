@@ -1,5 +1,6 @@
 import { Search, Star, MapPin, Clock, ShieldCheck, ChevronDown, Stethoscope } from 'lucide-react';
 import { useState } from 'react';
+import heroBg from "../../../../assets/inicio/hero-image.jpg";
 
 export default function Hero() {
   const [distrito, setDistrito] = useState('');
@@ -7,7 +8,8 @@ export default function Hero() {
 
   return (
     <section
-      className="relative min-h-screen pt-24 flex items-center overflow-hidden bg-[url('https://readdy.ai/api/search-image?query=warm%20and%20caring%20nurse%20helping%20elderly%20patient%20at%20home%20in%20Peru%2C%20cozy%20living%20room%20setting%2C%20soft%20natural%20light%20coming%20through%20window%2C%20professional%20healthcare%20worker%20in%20white%20uniform%2C%20emotional%20and%20trustworthy%20atmosphere%2C%20high%20quality%20photography%2C%20warm%20tones&width=1440&height=900&seq=hero-bg&orientation=landscape')] bg-cover bg-center bg-no-repeat"
+      className="relative min-h-screen pt-24 flex items-center overflow-hidden bg-cover bg-center bg-no-repeat"
+      style={{ backgroundImage: `url(${heroBg})` }}
     >
       <div className="absolute inset-0 bg-black/60 z-0"></div>
 

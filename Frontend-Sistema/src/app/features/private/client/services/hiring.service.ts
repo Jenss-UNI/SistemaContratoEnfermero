@@ -462,15 +462,24 @@ export async function fetchContractDetail(serviceId: number): Promise<ContratoDe
  * creates the contract_signatures DB row and updates the service status.
  * Solo funciona si el servicio está en estado 'confirmed' (enfermero aceptó).
  */
+function base64ToBlob(base64DataUrl: string, mimeType: string): Blob {
+  const base64 = base64DataUrl.split(",")[1]!;
+  const byteChars = atob(base64);
+  const byteNums = new Array<number>(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) {
+    byteNums[i] = byteChars.charCodeAt(i);
+  }
+  const byteArray = new Uint8Array(byteNums);
+  return new Blob([byteArray], { type: mimeType });
+}
+
 export async function signContract(
   serviceId: number,
   clientDni: string,
   signatureBase64: string,
   clientIp: string
 ): Promise<void> {
-  // Convert base64 data URL to blob
-  const response = await fetch(signatureBase64);
-  const blob = await response.blob();
+  const blob = base64ToBlob(signatureBase64, "image/png");
   const fileName = `sig_${serviceId}_${Date.now()}.png`;
   const filePath = `firmas/${serviceId}/${fileName}`;
 
