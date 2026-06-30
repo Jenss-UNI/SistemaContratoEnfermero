@@ -5,6 +5,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../core/contexts/AuthContext";
 import { supabase } from "../../../../core/services/supabase";
+import { useToast } from "../../../../shared/components/Toast";
 import {
   fetchDashboardMetrics,
   respondToServiceRequest,
@@ -14,6 +15,7 @@ import type { DashboardMetrics } from "../services/enfermeroProfile.service";
 export default function ResumenPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const toast = useToast();
 
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [fullName, setFullName] = useState("");
@@ -60,7 +62,7 @@ export default function ResumenPage() {
       await loadData();
     } catch (err: any) {
       console.error("[Dashboard] Error al procesar solicitud:", err);
-      alert("Error al procesar la solicitud: " + (err.message || "Inténtalo de nuevo"));
+      toast.error("Error al procesar la solicitud: " + (err.message || "Inténtalo de nuevo"));
     } finally {
       setActionId(null);
     }

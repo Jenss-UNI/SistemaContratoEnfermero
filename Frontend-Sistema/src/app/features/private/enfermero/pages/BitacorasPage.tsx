@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "../../../../core/contexts/AuthContext";
+import { useToast } from "../../../../shared/components/Toast";
 import {
   fetchNursePatientsAndServices,
   fetchServiceDaysForBinnacle,
@@ -49,6 +50,7 @@ interface PatientGroup {
 
 export default function BitacorasPage() {
   const { user } = useAuth();
+  const toast = useToast();
   
   // Navigation states
   const [view, setView] = useState<"lista" | "patients" | "services" | "days" | "form">("lista");
@@ -279,7 +281,7 @@ export default function BitacorasPage() {
     if (!selectedServiceObj || !selectedDayObj || !user?.id) return;
     const filterActivities = activities.map((a) => a.text.trim()).filter(Boolean);
     if (filterActivities.length === 0) {
-      alert("Por favor ingresa al menos una actividad realizada.");
+      toast.error("Por favor ingresa al menos una actividad realizada.");
       return;
     }
 
@@ -327,7 +329,7 @@ export default function BitacorasPage() {
       }, 2000);
     } catch (err: any) {
       console.error("Error saving clinical binnacle:", err);
-      alert(`Error al guardar la bitácora: ${err.message || err}`);
+      toast.error(`Error al guardar la bitácora: ${err.message || err}`);
     } finally {
       setIsSaving(false);
     }

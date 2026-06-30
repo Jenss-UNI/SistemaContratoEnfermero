@@ -20,7 +20,6 @@ import {
   Clock,
   Loader2,
   Filter,
-  Camera,
   AlertTriangle,
 } from "lucide-react";
 

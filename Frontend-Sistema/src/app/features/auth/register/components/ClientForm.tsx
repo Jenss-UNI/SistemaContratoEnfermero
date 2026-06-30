@@ -9,6 +9,7 @@ import type { PaymentMethodData } from "./steps/StepPayment";
 import StepSuccess from "./steps/StepSuccess";
 import { supabase } from "../../../../core/services/supabase";
 import type { SelectedPlanInfo } from "./steps/stepPlan";
+import { useToast } from "../../../../shared/components/Toast";
 
 const SOLO_LETRAS   = /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'-]+$/;
 const EMAIL_RE      = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -81,6 +82,7 @@ export type FormData = {
 };
 
 export default function ClienteForm() {
+  const toast = useToast();
   const [step, setStep] = useState(1);
 
   const [formData, setFormData] = useState<FormData>({
@@ -198,7 +200,7 @@ export default function ClienteForm() {
       setStep(6);
     } catch (err: any) {
       console.error(err);
-      alert("Error al registrarse: " + (err.message || "Inténtalo de nuevo"));
+      toast.error("Error al registrarse: " + (err.message || "Inténtalo de nuevo"));
     } finally {
       setIsLoading(false);
     }

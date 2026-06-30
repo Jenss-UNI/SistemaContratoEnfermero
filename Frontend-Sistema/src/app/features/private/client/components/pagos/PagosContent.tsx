@@ -1,4 +1,4 @@
-import { DollarSign, Plus, Shield, Loader2, X, AlertTriangle } from "lucide-react";
+import { DollarSign, Plus, Shield, Loader2, AlertTriangle } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../../../../../core/contexts/AuthContext";
 import { supabase } from "../../../../../core/services/supabase";

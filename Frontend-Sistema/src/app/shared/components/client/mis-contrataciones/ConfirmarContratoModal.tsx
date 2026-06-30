@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { FileSignature, X, Loader2, Eraser } from "lucide-react";
 import { signContract } from "../../../../features/private/client/services/hiring.service";
+import { useToast } from "../../../components/Toast";
 
 type ConfirmarContratoModalProps = {
   serviceId: string;
@@ -18,6 +19,7 @@ export default function ConfirmarContratoModal({
   onClose,
   onSuccess,
 }: ConfirmarContratoModalProps) {
+  const toast = useToast();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [hasSignature, setHasSignature] = useState(false);
@@ -117,7 +119,7 @@ export default function ConfirmarContratoModal({
       onSuccess();
     } catch (err: any) {
       console.error("Error signing contract:", err);
-      alert(`Error al guardar la firma virtual: ${err.message}`);
+      toast.error(`Error al guardar la firma virtual: ${err.message}`);
     } finally {
       setIsSaving(false);
     }

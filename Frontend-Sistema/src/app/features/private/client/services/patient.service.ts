@@ -125,6 +125,7 @@ export async function insertPatient(
 // Actualizar familiar existente y sus subtablas
 // ---------------------------------------------------------------------------
 export async function updatePatient(
+  clientId: string,
   patientId: string,
   patient: Omit<Patient, "id" | "clientId">
 ): Promise<void> {
@@ -145,7 +146,8 @@ export async function updatePatient(
       google_maps_url: patient.googleMapsUrl || null,
       photo_url: patient.fotoUrl || null,
     })
-    .eq("id", patientId);
+    .eq("id", patientId)
+    .eq("client_id", clientId);
 
   if (patientError) throw patientError;
 
@@ -194,11 +196,12 @@ export async function updatePatient(
 // ---------------------------------------------------------------------------
 // Eliminar un familiar (ON DELETE CASCADE eliminará automáticamente las subtablas)
 // ---------------------------------------------------------------------------
-export async function deletePatient(patientId: string): Promise<void> {
+export async function deletePatient(clientId: string, patientId: string): Promise<void> {
   const { error } = await supabase
     .from("patients")
     .delete()
-    .eq("id", patientId);
+    .eq("id", patientId)
+    .eq("client_id", clientId);
 
   if (error) throw error;
 }

@@ -1,11 +1,10 @@
 import { KeyRound, Lock, Clock, CheckCircle } from "lucide-react";
 
 interface Props {
-  pinCode?: string;
+  pinCode: string;
   activationTime?: Date;
   startTime?: Date;
-  endTime?: Date;
-  nurseName?: string;
+  nurseName: string;
   isActive?: boolean;
 }
 
@@ -13,7 +12,6 @@ export default function PinCodeCard({
   pinCode,
   activationTime,
   startTime,
-  endTime,
   nurseName,
   isActive = false
 }: Props) {

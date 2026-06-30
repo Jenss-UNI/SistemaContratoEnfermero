@@ -21,6 +21,7 @@ export interface EnfermeroProfile {
     rating: number;
     verificacion_status: string;
     visibilidad: string;
+    anios_experiencia: number | null;
   } | null;
   service_types: {
     id: string;
@@ -104,7 +105,7 @@ export async function fetchEnfermeroProfile(userId: string): Promise<EnfermeroPr
   // 2. Obtener nurse_profile
   const { data: nurseProfile, error: nurseError } = await supabase
     .from("nurse_profiles")
-    .select("nivel, especialidad, bio, rating, verificacion_status, visibilidad")
+    .select("nivel, especialidad, bio, rating, verificacion_status, visibilidad, anios_experiencia")
     .eq("id", userId)
     .maybeSingle();
 
@@ -173,6 +174,7 @@ export async function updateEnfermeroProfile(
     district: string;
     specialty: string;
     bio: string;
+    experience: number | null;
   }
 ): Promise<void> {
   // 1. Actualizar profiles
@@ -194,6 +196,7 @@ export async function updateEnfermeroProfile(
     .update({
       especialidad: data.specialty.trim() || null,
       bio: data.bio.trim() || null,
+      anios_experiencia: data.experience,
       updated_at: new Date().toISOString(),
     })
     .eq("id", userId);
@@ -1107,7 +1110,7 @@ export async function uploadNurseDocument(
 ): Promise<string> {
   const fileExt = file.name.split(".").pop() || "pdf";
   const fileName = `${docType}_${Date.now()}_${Math.floor(Math.random() * 1000)}.${fileExt}`;
-  const filePath = `documents/${nurseId}/${fileName}`;
+  const filePath = `verificacion/${nurseId}/${fileName}`;
 
   // 1. Upload to storage
   const { error: uploadError } = await supabase.storage

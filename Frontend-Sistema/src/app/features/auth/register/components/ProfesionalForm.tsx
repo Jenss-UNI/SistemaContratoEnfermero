@@ -6,6 +6,7 @@ import StepEmail from "./steps/StepEmail";
 import StepProDatos from "./steps/StepProProfesional";
 import StepDni from "./steps/StepDni";
 import { supabase } from "../../../../core/services/supabase";
+import { useToast } from "../../../../shared/components/Toast";
 
 const SOLO_LETRAS = /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'-]+$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -54,6 +55,7 @@ function StepProSuccess({ formData }: { formData: any }) {
   );
 }
 export default function ProfesionalForm() {
+  const toast = useToast();
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({ nombres: "", apellidos_pa: "", apellidos_ma: "", correo: "", telefono: "", dni: "", distrito: "Selecciona tu distrito", nivel: "Selecciona tu tipo", password: "", confirmPassword: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -109,7 +111,7 @@ export default function ProfesionalForm() {
       setStep(4);
     } catch (err: any) {
       console.error(err);
-      alert("Error al registrarse: " + (err.message || "Inténtalo de nuevo"));
+      toast.error("Error al registrarse: " + (err.message || "Inténtalo de nuevo"));
     } finally {
       setIsRegistering(false);
     }

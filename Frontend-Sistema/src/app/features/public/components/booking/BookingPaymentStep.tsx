@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 const hiringCreationInProgress = new Set<string>();
 import { useAuth } from "../../../../core/contexts/AuthContext";
 import { supabase } from "../../../../core/services/supabase";
+import { useToast } from "../../../../shared/components/Toast";
 import {
   ShieldCheck,
   Lock,
@@ -53,6 +54,7 @@ export default function BookingPaymentStep({
   onNext
 }: Props) {
   const { user } = useAuth();
+  const toast = useToast();
   const [showNewCard, setShowNewCard] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
@@ -152,7 +154,7 @@ export default function BookingPaymentStep({
       setCardCVV("");
     } catch (err: any) {
       console.error("Error saving card:", err);
-      alert(`Error al guardar la tarjeta: ${err.message}`);
+      toast.error(`Error al guardar la tarjeta: ${err.message}`);
     }
   };
 
@@ -764,7 +766,7 @@ export default function BookingPaymentStep({
               onNext();
             } catch (err: any) {
               console.error("Error creating hiring record:", err);
-              alert(`Error al procesar la contratación: ${err.message || err}`);
+              toast.error(`Error al procesar la contratación: ${err.message || err}`);
               setIsProcessing(false);
               hiringCreationInProgress.delete(lockKey);
             }

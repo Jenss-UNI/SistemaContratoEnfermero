@@ -95,6 +95,7 @@ export default function MiPerfilPage() {
   const [form, setForm] = useState({
     name: "",
     specialty: "",
+    experiencia: "",
     district: "",
     bio: "",
   });
@@ -154,6 +155,7 @@ export default function MiPerfilPage() {
       setForm({
         name: `${profileData.nombres || ""} ${profileData.apellidos_pa || ""} ${profileData.apellidos_ma || ""}`.trim(),
         specialty: profileData.nurse_profile?.especialidad || "",
+        experiencia: profileData.nurse_profile?.anios_experiencia?.toString() || "",
         district: profileData.distrito || "",
         bio: profileData.nurse_profile?.bio || "",
       });
@@ -238,6 +240,11 @@ export default function MiPerfilPage() {
         errorMsg = "El distrito principal debe tener entre 3 y 50 caracteres.";
       } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/.test(cleanedValue)) {
         errorMsg = "El distrito solo puede contener letras y espacios.";
+      }
+    } else if (name === "experiencia") {
+      const num = Number(cleanedValue);
+      if (cleanedValue && (isNaN(num) || num < 0 || num > 70)) {
+        errorMsg = "Debe ser un número entre 0 y 70.";
       }
     } else if (name === "bio") {
       if (cleanedValue.length < 20) {
@@ -351,6 +358,7 @@ export default function MiPerfilPage() {
     const cleanedForm = {
       name: form.name.replace(/\s+/g, " ").trim(),
       specialty: form.specialty.replace(/\s+/g, " ").trim(),
+      experiencia: form.experiencia.trim(),
       district: form.district.replace(/\s+/g, " ").trim(),
       bio: form.bio.replace(/\s+/g, " ").trim(),
     };
@@ -422,6 +430,7 @@ export default function MiPerfilPage() {
         district: cleanedForm.district,
         specialty: cleanedForm.specialty,
         bio: cleanedForm.bio,
+        experience: cleanedForm.experiencia ? Number(cleanedForm.experiencia) : null,
       });
 
       // 2. Guardar tipos de servicio y sus tarifas
@@ -653,6 +662,33 @@ export default function MiPerfilPage() {
                 <p className="text-xs text-rose-500 mt-1 font-semibold flex items-center gap-1">
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                   {errors.specialty}
+                </p>
+              )}
+            </div>
+
+            {/* Años de experiencia */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-400 mb-1.5">
+                Años de experiencia
+              </label>
+              <input
+                type="number"
+                name="experiencia"
+                value={form.experiencia}
+                onChange={handleInputChange}
+                min={0}
+                max={70}
+                placeholder="Ej. 10"
+                className={`w-full border rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none transition ${
+                  errors.experiencia
+                    ? "border-rose-400 focus:border-rose-400 focus:ring-1 focus:ring-rose-400"
+                    : "border-slate-200 focus:border-teal-400 focus:ring-1 focus:ring-teal-400"
+                }`}
+              />
+              {errors.experiencia && (
+                <p className="text-xs text-rose-500 mt-1 font-semibold flex items-center gap-1">
+                  <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                  {errors.experiencia}
                 </p>
               )}
             </div>
