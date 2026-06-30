@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Loader2 } from "lucide-react";
+import { useToast } from "../../../components/Toast";
 
 type PlanCardProps = {
   planNombre?: string;
@@ -17,6 +18,7 @@ export default function PlanCard({
   status,
   onCancelSubscription,
 }: PlanCardProps) {
+  const toast = useToast();
   const [cancelling, setCancelling] = useState(false);
 
   const isExpired = status === "expired" || (planVence ? new Date(planVence) < new Date() : false);
@@ -56,7 +58,7 @@ export default function PlanCard({
     try {
       await onCancelSubscription();
     } catch (err: any) {
-      alert("Error al cancelar la suscripción: " + (err.message || err));
+      toast.error("Error al cancelar la suscripción: " + (err.message || err));
     } finally {
       setCancelling(false);
     }

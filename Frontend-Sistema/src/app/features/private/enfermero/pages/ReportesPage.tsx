@@ -104,6 +104,13 @@ export default function IncidentReports() {
     setLoading(true);
     try {
       // 1. Fetch incident reports
+      const { data: myServiceIds } = await supabase
+        .from("services")
+        .select("id")
+        .eq("nurse_id", user.id);
+
+      const myServiceIdList = myServiceIds?.map(s => s.id) || [];
+
       const { data: reportsData, error: reportsError } = await supabase
         .from("incident_reports")
         .select(`
@@ -124,14 +131,12 @@ export default function IncidentReports() {
             nurse_id
           )
         `)
+        .or(`reporter_id.eq.${user.id}${myServiceIdList.length > 0 ? `,service_id.in.(${myServiceIdList.join(",")})` : ""}`)
         .order("created_at", { ascending: false });
 
       if (reportsError) throw reportsError;
 
-      // Filter reports relevant to the nurse
-      const relevantReports = (reportsData || [])
-        .filter((r: any) => r.reporter_id === user.id || r.services?.nurse_id === user.id)
-        .map((r: any) => ({
+      const relevantReports = (reportsData || []).map((r: any) => ({
           id: r.id,
           service_id: r.service_id,
           title: r.title,

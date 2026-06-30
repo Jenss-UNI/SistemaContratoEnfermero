@@ -30,8 +30,8 @@ export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Rol no permitido → redirigir al inicio
-  if (allowedRoles && role && !allowedRoles.includes(role)) {
+  // Rol no permitido o ausente → redirigir al inicio
+  if (allowedRoles && (!role || !allowedRoles.includes(role))) {
     return <Navigate to="/" replace />;
   }
 

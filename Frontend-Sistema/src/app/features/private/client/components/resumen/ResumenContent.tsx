@@ -115,7 +115,7 @@ export default function ResumenContent({ onPinRegenerado: _onPinRegenerado }: Re
       }
     }
 
-    if (!nextScheduledDay || !nextContract) return { isActive: false };
+    if (!nextScheduledDay || !nextContract) return { isActive: false, pinCode: "", nurseName: "" };
 
     const [year, month, day] = nextScheduledDay.day_date.split("-").map(Number);
     const startTime = new Date(year, month - 1, day, nextScheduledDay.start_hour, 0, 0, 0);

@@ -251,9 +251,29 @@ export default function VerificacionPage() {
   
   const allUploaded = requiredDocs.length > 0 && uploadedCount === requiredDocs.length;
 
+  const ALLOWED_MIME_TYPES = [
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "application/pdf",
+  ];
+  const MAX_FILE_SIZE = 10 * 1024 * 1024;
+
   const handleFileChange = async (docId: string, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user?.id) return;
+
+    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+      showToast("Formato no v\u00e1lido. Solo se aceptan JPG, PNG, WebP y PDF.", "error");
+      e.target.value = "";
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      showToast("El archivo excede el l\u00edmite de 10 MB.", "error");
+      e.target.value = "";
+      return;
+    }
 
     setLoadingDocId(docId);
     try {

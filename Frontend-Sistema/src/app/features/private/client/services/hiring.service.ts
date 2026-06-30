@@ -571,7 +571,7 @@ export async function fetchNurseAvailabilityData(nurseId: string) {
 /**
  * Cancels a pending or confirmed service request.
  */
-export async function cancelHiring(serviceId: number, reason: string = "Cancelado por el cliente"): Promise<void> {
+export async function cancelHiring(clientId: string, serviceId: number, reason: string = "Cancelado por el cliente"): Promise<void> {
   const { error } = await supabase
     .from("services")
     .update({
@@ -580,7 +580,8 @@ export async function cancelHiring(serviceId: number, reason: string = "Cancelad
       cancelled_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
-    .eq("id", serviceId);
+    .eq("id", serviceId)
+    .eq("client_id", clientId);
 
   if (error) throw error;
 }
@@ -653,14 +654,15 @@ export async function fetchHiringDays(
 /**
  * Libera el pago para una contratación en Supabase.
  */
-export async function releasePayment(serviceId: number): Promise<void> {
+export async function releasePayment(clientId: string, serviceId: number): Promise<void> {
   const { error } = await supabase
     .from("services")
     .update({
       payment_status: "released",
       updated_at: new Date().toISOString(),
     })
-    .eq("id", serviceId);
+    .eq("id", serviceId)
+    .eq("client_id", clientId);
 
   if (error) throw error;
 }

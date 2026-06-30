@@ -145,7 +145,7 @@ export function usePatients(): UsePatientsReturn {
             const publicUrl = publicUrlData.publicUrl;
 
             // Actualizar paciente en la BD con la URL pública de la foto
-            await updatePatient(newPatient.id, {
+            await updatePatient(user.id, newPatient.id, {
               ...patient,
               fotoUrl: publicUrl,
             });
@@ -198,7 +198,7 @@ export function usePatients(): UsePatientsReturn {
           finalFotoUrl = publicUrlData.publicUrl;
         }
 
-        await updatePatient(patientId, {
+        await updatePatient(user.id, patientId, {
           ...patient,
           fotoUrl: finalFotoUrl,
         });
@@ -221,9 +221,10 @@ export function usePatients(): UsePatientsReturn {
   // ── Eliminar familiar ──────────────────────────────────────────────────────
   const remove = useCallback(
     async (patientId: string): Promise<boolean> => {
+      if (!user?.id) return false;
       setError(null);
       try {
-        await deletePatient(patientId);
+        await deletePatient(user.id, patientId);
         await load();
         return true;
       } catch (err: unknown) {
@@ -232,7 +233,7 @@ export function usePatients(): UsePatientsReturn {
         return false;
       }
     },
-    [load]
+    [user?.id, load]
   );
 
   return {

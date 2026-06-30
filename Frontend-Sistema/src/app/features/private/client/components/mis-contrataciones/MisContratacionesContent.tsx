@@ -2,6 +2,7 @@ import { Search, Loader2, Calendar, X, FileText, Wallet, AlertTriangle } from "l
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../../core/contexts/AuthContext";
+import { useToast } from "../../../../../shared/components/Toast";
 import { fetchClientHirings, cancelHiring, fetchHiringDays, releasePayment } from "../../services/hiring.service";
 import type {
   Contratacion,
@@ -38,6 +39,7 @@ const FILTROS: { id: ContratacionFiltro; label: string }[] = [
 export default function MisContratacionesContent() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const toast = useToast();
   const [contrataciones, setContrataciones] = useState<Contratacion[]>([]);
   const [filtro, setFiltro] = useState<ContratacionFiltro>("todos");
   const [busqueda, setBusqueda] = useState("");
@@ -148,13 +150,14 @@ export default function MisContratacionesContent() {
 
   const handleCancelar = async (c: Contratacion) => {
     if (!window.confirm(`¿Seguro que deseas cancelar la solicitud ${c.codigo}?`)) return;
+    if (!user?.id) return;
     try {
-      await cancelHiring(Number(c.id));
-      alert("Contratación cancelada correctamente.");
+      await cancelHiring(user.id, Number(c.id));
+      toast.success("Contratación cancelada correctamente.");
       loadData();
     } catch (err: any) {
       console.error(err);
-      alert(`Error al cancelar: ${err.message}`);
+      toast.error(`Error al cancelar: ${err.message}`);
     }
   };
 
@@ -167,16 +170,16 @@ export default function MisContratacionesContent() {
   };
 
   const confirmLiberarPago = async () => {
-    if (!liberarConfirmModal) return;
+    if (!liberarConfirmModal || !user?.id) return;
     setLiberando(true);
     try {
-      await releasePayment(Number(liberarConfirmModal.id));
-      alert("Pago liberado correctamente.");
+      await releasePayment(user.id, Number(liberarConfirmModal.id));
+      toast.success("Pago liberado correctamente.");
       setLiberarConfirmModal(null);
       loadData();
     } catch (err: any) {
       console.error("Error releasing payment:", err);
-      alert(`Error al liberar pago: ${err.message || err}`);
+      toast.error(`Error al liberar pago: ${err.message || err}`);
     } finally {
       setLiberando(false);
     }
