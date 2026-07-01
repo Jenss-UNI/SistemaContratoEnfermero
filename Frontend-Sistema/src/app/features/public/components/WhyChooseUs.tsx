@@ -1,4 +1,5 @@
 import { ShieldCheck, Lock, FileText, Star, IdCard } from 'lucide-react';
+import whyChooseUsImg from "../../../../assets/inicio/image-WhyChooseUs.jpg";
 
 const topCards = [
   {
@@ -58,7 +59,7 @@ export default function WhyChooseUs() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
             <div className="relative rounded-[24px] overflow-hidden h-[400px] lg:h-auto min-h-[400px] group">
               <img
-                src="https://readdy.ai/api/search-image?query=professional%20nurse%20checking%20vital%20signs%20of%20elderly%20patient%20at%20home%2C%20warm%20caring%20atmosphere%2C%20medical%20equipment%2C%20soft%20natural%20lighting%2C%20high%20quality%20photography%2C%20warm%20tones%2C%20professional%20healthcare&width=600&height=700&seq=feat-main&orientation=portrait"
+                src={whyChooseUsImg}
                 alt="Enfermera atendiendo paciente"
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />

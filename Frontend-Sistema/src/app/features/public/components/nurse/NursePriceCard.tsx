@@ -299,7 +299,7 @@ export default function NursePriceCard({
           </span>
 
           <span className="font-semibold text-yellow-500">
-            ⭐ {nurse.rating}
+            ⭐ {(nurse.rating || 0).toFixed(1)}
           </span>
 
         </div>
