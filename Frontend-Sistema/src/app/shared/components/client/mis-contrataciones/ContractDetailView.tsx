@@ -18,6 +18,7 @@ import {
   Timer,
   Loader2
 } from "lucide-react";
+import { generateContractPdf } from "./generateContractPdf";
 import { useEffect, useState } from "react";
 import type { ContratoDetalle } from "../../../../core/models/hiring.model";
 import { fetchContractDetail } from "../../../../features/private/client/services/hiring.service";
@@ -114,7 +115,7 @@ export default function ContractDetailView({
     "bg-amber-500";
 
   const handleExportPdf = () => {
-    window.print();
+    generateContractPdf(contrato);
   };
 
 
