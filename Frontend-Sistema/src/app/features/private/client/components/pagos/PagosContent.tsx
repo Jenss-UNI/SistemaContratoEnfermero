@@ -23,13 +23,14 @@ function createId(): string {
 
 export default function PagosContent() {
   const { user } = useAuth();
-  
+
   const [methods, setMethods] = useState<PaymentMethod[]>(() => {
     const saved = localStorage.getItem("cuidame_payment_methods");
     return saved ? JSON.parse(saved) : MOCK_PAYMENT_METHODS;
   });
-  
-  const [history, setHistory] = useState<PaymentHistoryItem[]>([]);
+
+  const [contractHistory, setContractHistory] = useState<PaymentHistoryItem[]>([]);
+  const [planHistory, setPlanHistory] = useState<PaymentHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [methodToDelete, setMethodToDelete] = useState<string | null>(null);
@@ -58,13 +59,28 @@ export default function PagosContent() {
         `)
         .eq("client_id", user.id);
 
+      const { data: subscriptions, error: subscriptionsError } = await supabase
+        .from("subscriptions")
+        .select(`
+    id,
+    created_at,
+    status,
+    ciclo,
+    plans:plan_id (
+      nombre,
+      precio_mensual
+    )
+  `)
+        .eq("client_id", user.id);
+
       if (error) throw error;
+      if (subscriptionsError) throw subscriptionsError;
 
       const mapped: PaymentHistoryItem[] = (data || []).map((s: any) => {
-        const nurseName = s.profiles 
-          ? `${s.profiles.nombres} ${s.profiles.apellidos_pa || ""}`.trim() 
+        const nurseName = s.profiles
+          ? `${s.profiles.nombres} ${s.profiles.apellidos_pa || ""}`.trim()
           : "Enfermero por asignar";
-        
+
         let estado: "pagado" | "custodia" | "pendiente" = "pendiente";
         if (s.payment_status === "released") {
           estado = "pagado";
@@ -83,7 +99,23 @@ export default function PagosContent() {
         };
       });
 
-      setHistory(mapped);
+      const subscriptionHistory: PaymentHistoryItem[] = (subscriptions || []).map((sub: any) => ({
+        id: `plan-${sub.id}`,
+        fecha: new Date(sub.created_at).toLocaleDateString("es-PE", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        }),
+        enfermero: "Plan de Suscripción",
+        tipo: sub.plans?.nombre ?? "Plan",
+        monto: Number(sub.plans?.precio_mensual ?? 0),
+        estado: sub.status === "active" ? "pagado" : "pendiente",
+        factura: `PLAN-${sub.id}`,
+      }));
+
+      setContractHistory(mapped);
+
+setPlanHistory(subscriptionHistory);
     } catch (err) {
       console.error("Error loading payment history:", err);
     } finally {
@@ -108,7 +140,7 @@ export default function PagosContent() {
     if (!methodToDelete) return;
     const target = methods.find((m) => m.id === methodToDelete);
     if (!target) return;
-    
+
     const next = methods.filter((m) => m.id !== methodToDelete);
     if (target.esPrincipal && next.length > 0) {
       next[0] = { ...next[0], esPrincipal: true };
@@ -141,19 +173,21 @@ export default function PagosContent() {
       };
     }
 
-    const updated = isFirst 
+    const updated = isFirst
       ? [...methods.map((m) => ({ ...m, esPrincipal: false })), nuevo]
       : [...methods, nuevo];
-      
+
     saveMethods(updated);
     setShowAddModal(false);
   };
 
-  const totalPaid = history
+  const totalPaid =
+  [...contractHistory, ...planHistory]
     .filter((h) => h.estado === "pagado")
     .reduce((acc, h) => acc + h.monto, 0);
 
-  const totalInCustody = history
+  const totalInCustody =
+  [...contractHistory, ...planHistory]
     .filter((h) => h.estado === "custodia")
     .reduce((acc, h) => acc + h.monto, 0);
 
@@ -220,7 +254,7 @@ export default function PagosContent() {
               </p>
             </div>
           </div>
-          
+
           {/* Card En Custodia */}
           <div className="flex items-center gap-3 rounded-2xl border border-slate-105 bg-white px-5 py-4 shadow-sm">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-50 border border-teal-100">
@@ -235,15 +269,39 @@ export default function PagosContent() {
           </div>
         </div>
 
-        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl pt-4">Historial de Pagos</h2>
-        
-        {history.length === 0 ? (
-          <div className="p-12 border border-dashed border-slate-200 rounded-3xl text-center text-xs text-slate-400">
-            Aún no posees transacciones en tu historial.
-          </div>
-        ) : (
-          <PaymentHistoryTable items={history} />
-        )}
+        <h2 className="text-xl font-bold text-slate-900 sm:text-2xl pt-4">
+  Historial de Pagos
+</h2>
+
+{/* Pagos por contrataciones */}
+<div className="space-y-3">
+  <h3 className="text-lg font-semibold text-slate-800">
+    Pagos por Contrataciones
+  </h3>
+
+  {contractHistory.length === 0 ? (
+    <div className="p-8 border border-dashed rounded-2xl text-center text-slate-400">
+      No tienes pagos por contrataciones.
+    </div>
+  ) : (
+    <PaymentHistoryTable items={contractHistory} />
+  )}
+</div>
+
+{/* Pagos por planes */}
+<div className="space-y-3 pt-8">
+  <h3 className="text-lg font-semibold text-slate-800">
+    Pagos por Planes
+  </h3>
+
+  {planHistory.length === 0 ? (
+    <div className="p-8 border border-dashed rounded-2xl text-center text-slate-400">
+      No tienes pagos de planes.
+    </div>
+  ) : (
+    <PaymentHistoryTable items={planHistory} />
+  )}
+</div>
       </section>
 
       {showAddModal && (
