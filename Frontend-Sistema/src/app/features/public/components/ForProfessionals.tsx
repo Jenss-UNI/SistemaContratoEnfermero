@@ -32,19 +32,15 @@ export default function ForProfessionals() {
     <section className="py-16 md:py-24 bg-white font-sans">
       <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-8 w-full">
 
-       
         <div className="relative rounded-[2rem] overflow-hidden mb-12 md:mb-16 shadow-lg group">
           
-      
           <div
             className="absolute inset-0 bg-cover bg-center bg-no-repeat transition-transform duration-700 group-hover:scale-105"
             style={{ backgroundImage: `url(${forProfImg})` }}
           ></div>
 
-      
           <div className="absolute inset-0 bg-gradient-to-r from-[#0d4745] via-[#0d4745]/90 to-transparent md:via-[#0d4745]/80 md:to-transparent"></div>
 
-       
           <div className="relative z-10 px-6 py-14 sm:px-12 md:px-16 md:py-20 max-w-full md:max-w-2xl lg:max-w-3xl">
             <p className="text-[#5eead4] uppercase tracking-[0.2em] text-[10px] md:text-xs font-bold mb-4">
               PARA PROFESIONALES
@@ -59,10 +55,8 @@ export default function ForProfessionals() {
               Gestiona tu agenda, cobra de forma segura y construye tu reputación profesional.
             </p>
 
-     
             <div className="flex flex-col sm:flex-row gap-4 md:gap-5">
               
-      
               <button 
                 type="button" 
                 onClick={() => navigate('/register')}
@@ -72,9 +66,9 @@ export default function ForProfessionals() {
                 <ArrowRight className="w-4 h-4" strokeWidth={2.5} />
               </button>
 
-        
               <button 
                 type="button" 
+                onClick={() => navigate('/directorio')}
                 className="bg-transparent text-white border-2 border-white/80 hover:bg-white hover:text-[#0d4745] hover:border-white font-bold py-3.5 px-7 rounded-full transition-all duration-300 inline-flex items-center justify-center gap-2 text-[14px] md:text-[15px]"
               >
                 Ver el Directorio
@@ -83,7 +77,6 @@ export default function ForProfessionals() {
           </div>
         </div>
 
-    
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {benefits.map((benefit, index) => {
             const Icon = benefit.icon;

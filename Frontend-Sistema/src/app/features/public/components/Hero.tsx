@@ -1,10 +1,63 @@
 import { Search, Star, MapPin, Clock, ShieldCheck, ChevronDown, Stethoscope } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import heroBg from "../../../../assets/inicio/hero-image.jpg";
 
+const DISTRITOS = [
+  "Miraflores",
+  "San Isidro",
+  "Santiago de Surco",
+  "San Borja",
+  "La Molina",
+  "Magdalena del Mar",
+  "Jesús María",
+  "Lince",
+  "Pueblo Libre",
+  "San Miguel"
+];
+
+const TIPOS_CUIDADO = [
+  { id: 'acompanamiento', label: 'Acompañamiento' },
+  { id: 'asistencial', label: 'Asistencial' },
+  { id: 'especializado', label: 'Especializado' }
+];
+
 export default function Hero() {
+  const navigate = useNavigate();
+  
   const [distrito, setDistrito] = useState('');
-  const [tiposCuidado, setTiposCuidado] = useState('');
+  const [tipoCuidado, setTipoCuidado] = useState('');
+  
+  const [isDistritoOpen, setIsDistritoOpen] = useState(false);
+  const [isCuidadoOpen, setIsCuidadoOpen] = useState(false);
+
+  const distritoRef = useRef<HTMLDivElement>(null);
+  const cuidadoRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (distritoRef.current && !distritoRef.current.contains(event.target as Node)) {
+        setIsDistritoOpen(false);
+      }
+      if (cuidadoRef.current && !cuidadoRef.current.contains(event.target as Node)) {
+        setIsCuidadoOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const params = new URLSearchParams();
+    if (distrito && distrito !== "Todos los distritos") {
+      params.append('distrito', distrito);
+    }
+    if (tipoCuidado) {
+      params.append('cuidado', tipoCuidado);
+    }
+    navigate(`/directorio?${params.toString()}`);
+  };
 
   return (
     <section
@@ -42,38 +95,95 @@ export default function Hero() {
                 Busca tu enfermero ideal
               </h3>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
-                <div className="relative">
-                  <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#14b8a6]" />
-                  <input
-                    type="text"
-                    value={distrito}
-                    onChange={(e) => setDistrito(e.target.value)}
-                    placeholder="Distrito"
-                    className="w-full pl-12 pr-4 py-4 bg-white/5 text-white rounded-2xl text-[15px] lg:text-base border border-white/20 focus:outline-none focus:border-[#14b8a6] placeholder-gray-300 transition-all"
-                  />
+              <form onSubmit={handleSearch}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+               
+                  <div className="relative" ref={distritoRef}>
+                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#14b8a6] pointer-events-none z-10" />
+                    
+                    <div 
+                      onClick={() => {
+                        setIsDistritoOpen(!isDistritoOpen);
+                        setIsCuidadoOpen(false);
+                      }}
+                      className={`w-full pl-12 pr-10 py-4 bg-[#2a2a2a]/60 backdrop-blur-sm text-white rounded-2xl text-[15px] lg:text-base border ${isDistritoOpen ? 'border-[#14b8a6]' : 'border-white/20 hover:border-white/40'} cursor-pointer flex items-center justify-between transition-all`}
+                    >
+                      <span className={distrito ? 'text-white' : 'text-gray-400'}>
+                        {distrito || 'Selecciona Distrito'}
+                      </span>
+                      <ChevronDown className={`w-5 h-5 text-white/60 transition-transform duration-300 ${isDistritoOpen ? 'rotate-180 text-[#14b8a6]' : ''}`} />
+                    </div>
+
+                    {isDistritoOpen && (
+                      <div className="absolute top-[calc(100%+8px)] left-0 w-full z-50 bg-[#222222] border border-white/10 rounded-xl shadow-2xl max-h-60 overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/20 [&::-webkit-scrollbar-thumb]:rounded-full">
+                        {DISTRITOS.map((d) => (
+                          <div
+                            key={d}
+                            onClick={() => {
+                              setDistrito(d);
+                              setIsDistritoOpen(false);
+                            }}
+                            className={`pl-12 pr-4 py-3.5 cursor-pointer transition-colors text-[15px] border-l-2 ${
+                              distrito === d 
+                                ? 'bg-[#14b8a6]/10 text-[#14b8a6] font-medium border-[#14b8a6]' 
+                                : 'text-gray-300 border-transparent hover:bg-white/5 hover:text-white'
+                            }`}
+                          >
+                            {d}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+             
+                  <div className="relative" ref={cuidadoRef}>
+                    <Stethoscope className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#14b8a6] pointer-events-none z-10" />
+                    
+                    <div 
+                      onClick={() => {
+                        setIsCuidadoOpen(!isCuidadoOpen);
+                        setIsDistritoOpen(false);
+                      }}
+                      className={`w-full pl-12 pr-10 py-4 bg-[#2a2a2a]/60 backdrop-blur-sm text-white rounded-2xl text-[15px] lg:text-base border ${isCuidadoOpen ? 'border-[#14b8a6]' : 'border-white/20 hover:border-white/40'} cursor-pointer flex items-center justify-between transition-all`}
+                    >
+                      <span className={tipoCuidado ? 'text-white' : 'text-gray-400'}>
+                        {TIPOS_CUIDADO.find(t => t.id === tipoCuidado)?.label || 'Tipo de cuidado'}
+                      </span>
+                      <ChevronDown className={`w-5 h-5 text-white/60 transition-transform duration-300 ${isCuidadoOpen ? 'rotate-180 text-[#14b8a6]' : ''}`} />
+                    </div>
+
+                    {isCuidadoOpen && (
+                      <div className="absolute top-[calc(100%+8px)] left-0 w-full z-50 bg-[#222222] border border-white/10 rounded-xl shadow-2xl overflow-hidden">
+                        {TIPOS_CUIDADO.map((tipo) => (
+                          <div
+                            key={tipo.id}
+                            onClick={() => {
+                              setTipoCuidado(tipo.id);
+                              setIsCuidadoOpen(false);
+                            }}
+                            className={`pl-12 pr-4 py-3.5 cursor-pointer transition-colors text-[15px] border-l-2 ${
+                              tipoCuidado === tipo.id 
+                                ? 'bg-[#14b8a6]/10 text-[#14b8a6] font-medium border-[#14b8a6]' 
+                                : 'text-gray-300 border-transparent hover:bg-white/5 hover:text-white'
+                            }`}
+                          >
+                            {tipo.label}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                <div className="relative">
-                  <Stethoscope className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#14b8a6]" />
-                  <select
-                    value={tiposCuidado}
-                    onChange={(e) => setTiposCuidado(e.target.value)}
-                    className="w-full pl-12 pr-10 py-4 bg-white/5 text-white rounded-2xl text-[15px] lg:text-base border border-white/20 focus:outline-none focus:border-[#14b8a6] appearance-none cursor-pointer"
-                  >
-                    <option value="" className="text-slate-900">Tipo de enfermero</option>
-                    <option value="acompanamiento" className="text-slate-900">Acompañamiento</option>
-                    <option value="asistencial" className="text-slate-900">Asistencial</option>
-                    <option value="especializado" className="text-slate-900">Especializado</option>
-                  </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/60 pointer-events-none" />
-                </div>
-              </div>
-
-              <button type="button" className="w-full bg-[#14b8a6] hover:bg-[#0d9488] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-colors text-[16px] lg:text-[18px] shadow-lg">
-                <Search className="w-5 h-5" />
-                Buscar Enfermero Ahora
-              </button>
+                <button 
+                  type="submit" 
+                  className="w-full bg-[#14b8a6] hover:bg-[#0d9488] text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 transition-colors text-[16px] lg:text-[18px] shadow-lg mt-2"
+                >
+                  <Search className="w-5 h-5" />
+                  Buscar Enfermero Ahora
+                </button>
+              </form>
             </div>
 
             <div className="flex flex-wrap items-center gap-8 md:gap-12 mb-8">

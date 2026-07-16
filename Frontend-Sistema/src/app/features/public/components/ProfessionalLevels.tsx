@@ -1,14 +1,20 @@
 import { CheckCircle2, Building2, HeartPulse, BriefcaseMedical } from 'lucide-react';
 
+// Diccionario de estilos para mantener los colores de cada servicio consistentes
+const serviceStyles: Record<string, string> = {
+  'Especializado': 'bg-blue-500 text-white',
+  'Asistencial': 'bg-[#10b981] text-white',
+  'Acompañamiento': 'bg-amber-500 text-white',
+};
+
 const levels = [
   {
     icon: Building2,
-    title: 'Enfermero Especializado',
-    tag: 'Especializado',
+    title: 'Enfermero Especializado',  
+    services: ['Especializado', 'Asistencial', 'Acompañamiento'],
     cardBorder: 'border-blue-200',
     iconBg: 'bg-blue-50',
     iconColor: 'text-blue-500',
-    tagClass: 'bg-blue-500 text-white',
     badgeClass: 'bg-blue-50 text-blue-600',
     description: 'Profesionales con especialización postgrado. Capacitados para cuidados intensivos, post-operatorios, manejo de equipos médicos avanzados y pacientes críticos.',
     badges: ['Cuidados complejos', 'UCI / post operatorios', 'Oncología', 'Rehabilitación'],
@@ -17,11 +23,10 @@ const levels = [
   {
     icon: HeartPulse,
     title: 'Licenciado en Enfermería',
-    tag: 'Asistencial',
+    services: ['Asistencial', 'Acompañamiento'],
     cardBorder: 'border-[#a7f3d0]', 
     iconBg: 'bg-[#ecfdf5]', 
     iconColor: 'text-[#10b981]', 
-    tagClass: 'bg-[#10b981] text-white',
     badgeClass: 'bg-[#ecfdf5] text-[#059669]', 
     description: 'Licenciados en enfermería con formación general. Ideales para atención domiciliaria continua, administración de medicamentos, curaciones y seguimiento de pacientes.',
     badges: ['Atención general', 'Medicación y curaciones', 'Signos vitales', 'Acompañamiento'],
@@ -30,11 +35,10 @@ const levels = [
   {
     icon: BriefcaseMedical,
     title: 'Técnico en Enfermería',
-    tag: 'Acompañamiento',
+    services: ['Acompañamiento'],
     cardBorder: 'border-amber-200',
     iconBg: 'bg-amber-50',
     iconColor: 'text-amber-500',
-    tagClass: 'bg-amber-500 text-white',
     badgeClass: 'bg-amber-50 text-amber-600',
     description: 'Técnicos titulados especializados en cuidados básicos de enfermería. Perfectos para higiene personal, asistencia en alimentación, movilización y compañía al adulto mayor.',
     badges: ['Higiene y asistencia física', 'Alimentación', 'Movilización', 'Compañía'],
@@ -44,11 +48,9 @@ const levels = [
 
 export default function ProfessionalLevels() {
   return (
-
     <section className="py-16 md:py-24 lg:py-32 bg-slate-50 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
         
-
         <div className="text-center mb-12 md:mb-16 lg:mb-20">
           <h3 className="text-[#14b8a6] font-bold tracking-[0.15em] uppercase mb-3 md:mb-4 text-xs md:text-[13px]">
             NUESTRO EQUIPO
@@ -61,14 +63,12 @@ export default function ProfessionalLevels() {
           </p>
         </div>
 
-      
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8 lg:gap-10">
           {levels.map((level, index) => {
             const Icon = level.icon;
             return (
               <div 
                 key={index} 
-               
                 className={`bg-white rounded-2xl border-2 ${level.cardBorder} p-6 md:p-8 flex flex-col h-full hover:shadow-[0_15px_40px_rgb(0,0,0,0.08)] transition-all duration-300 hover:scale-105 cursor-pointer`}
               >
                 <div className="flex items-start gap-4 mb-6 md:mb-8">
@@ -79,9 +79,19 @@ export default function ProfessionalLevels() {
                     <h3 className="text-[17px] md:text-[19px] font-bold text-[#0f172a] mb-2 leading-tight">
                       {level.title}
                     </h3>
-                    <span className={`inline-block px-3 py-1 rounded-full text-[10px] md:text-[11px] font-bold tracking-wide ${level.tagClass}`}>
-                      {level.tag}
-                    </span>
+                    
+                 
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {level.services.map((service, sIndex) => (
+                        <span 
+                          key={sIndex}
+                          className={`inline-block px-3 py-1 rounded-full text-[10px] md:text-[11px] font-bold tracking-wide ${serviceStyles[service]}`}
+                        >
+                          {service}
+                        </span>
+                      ))}
+                    </div>
+                    
                   </div>
                 </div>
 
