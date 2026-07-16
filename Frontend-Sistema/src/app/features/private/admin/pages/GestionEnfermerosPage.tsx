@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
-import { Search, Eye, Ban, Check, X, Loader2, ChevronLeft, ChevronRight, Filter } from "lucide-react";
+import { Search, Eye, Ban, Check, X, Loader2, ChevronLeft, ChevronRight, Filter, FileText, FileSpreadsheet } from "lucide-react";
 import { useEnfermeros, usePublicarEnfermero, useDespublicarEnfermero, useSuspenderEnfermero, useActivarEnfermero } from "../hooks/useNursesData";
+import * as XLSX from 'xlsx';
 
-type ModalType = null | "profile" | "suspend" | "success";
+type ModalType = null | "profile" | "suspend" | "success" | "report";
 
 const FILTERS = ["Todos", "Publicados", "En revisión", "Rechazados", "Sin enviar"];
 const ITEMS_PER_PAGE = 5;
@@ -50,6 +51,76 @@ export default function EnfermerosPage() {
   const despublicarMutation = useDespublicarEnfermero();
   const suspenderMutation = useSuspenderEnfermero();
   const activarMutation = useActivarEnfermero();
+
+  const reportData = (enfermeros ?? []).map(n => ({
+    id: n.id?.slice(0, 8) || '—',
+    nombre: n.full_name || '—',
+    nivel: n.nivel || '—',
+    distrito: n.distrito || '—',
+    estado: getStatusLabel(n.verificacion_status),
+    registro: formatDate(n.created_at),
+  }));
+
+  const now = new Date();
+  const reportDate = now.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const reportTime = now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+
+  const handleDownloadExcel = () => {
+    const headers = ['ID', 'Enfermero', 'Nivel', 'Distrito', 'Estado', 'Registro'];
+    const rows = reportData.map(r => [r.id, r.nombre, r.nivel, r.distrito, r.estado, r.registro]);
+
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Enfermeros');
+
+    XLSX.writeFile(workbook, `reporte_enfermeros_${reportDate.replace(/\//g, '-')}.xlsx`);
+  };
+
+  const handleDownloadPDF = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const rowsHtml = reportData.map(r => `
+      <tr>
+        <td>${r.id}</td>
+        <td>${r.nombre}</td>
+        <td>${r.nivel}</td>
+        <td>${r.distrito}</td>
+        <td>${r.estado}</td>
+        <td>${r.registro}</td>
+      </tr>
+    `).join('');
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Reporte de Enfermeros</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; color: #1a1a1a; }
+          h1 { font-size: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+          .info { font-size: 12px; color: #666; margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th { background: #1a1a1a; color: #fff; padding: 10px; text-align: left; font-size: 11px; text-transform: uppercase; }
+          td { padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; }
+          tr:nth-child(even) { background: #f8fafc; }
+          .footer { margin-top: 20px; font-size: 12px; color: #666; }
+        </style>
+      </head>
+      <body>
+        <h1>Reporte de Enfermeros</h1>
+        <p class="info">Emisión: ${reportDate} ${reportTime} | Filtro: ${statusFilter} | Resultados: ${reportData.length}</p>
+        <table>
+          <thead><tr><th>ID</th><th>Enfermero</th><th>Nivel</th><th>Distrito</th><th>Estado</th><th>Registro</th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        <p class="footer">Total: ${reportData.length} enfermeros</p>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -181,6 +252,14 @@ export default function EnfermerosPage() {
                 </div>
               )}
             </div>
+
+            <button
+              onClick={() => setActiveModal("report")}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-bold text-slate-600 transition hover:bg-slate-50 cursor-pointer"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Exportar
+            </button>
           </div>
         </div>
 
@@ -242,7 +321,7 @@ export default function EnfermerosPage() {
                             <div className="flex items-center gap-1.5">
                               <button
                                 onClick={() => handleOpenProfile(nurse)}
-                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] font-bold text-slate-600 transition hover:bg-slate-50"
+                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-[11px] font-bold text-slate-600 transition hover:bg-slate-50 cursor-pointer"
                               >
                                 <Eye className="h-3.5 w-3.5" />
                                 Ver perfil
@@ -253,7 +332,7 @@ export default function EnfermerosPage() {
                                   <button
                                     onClick={() => handleDespublicar(nurse)}
                                     disabled={despublicarMutation.isPending}
-                                    className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-3 py-1.5 text-[11px] font-bold text-rose-500 transition hover:bg-rose-50 disabled:opacity-50"
+                                    className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-3 py-1.5 text-[11px] font-bold text-rose-500 transition hover:bg-rose-50 disabled:opacity-50 cursor-pointer"
                                   >
                                     {despublicarMutation.isPending ? (
                                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -265,7 +344,7 @@ export default function EnfermerosPage() {
                                   <button
                                     onClick={() => handlePublicar(nurse)}
                                     disabled={publicarMutation.isPending}
-                                    className="inline-flex items-center gap-1 rounded-lg border border-[#a5edd9] px-3 py-1.5 text-[11px] font-bold text-[#0db39e] transition hover:bg-[#f0fdfa] disabled:opacity-50"
+                                    className="inline-flex items-center gap-1 rounded-lg border border-[#a5edd9] px-3 py-1.5 text-[11px] font-bold text-[#0db39e] transition hover:bg-[#f0fdfa] disabled:opacity-50 cursor-pointer"
                                   >
                                     {publicarMutation.isPending ? (
                                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -280,7 +359,7 @@ export default function EnfermerosPage() {
                                 <button
                                   onClick={() => handleActivate(nurse)}
                                   disabled={activarMutation.isPending}
-                                  className="inline-flex items-center gap-1 rounded-lg border border-[#a5edd9] px-3 py-1.5 text-[11px] font-bold text-[#0db39e] transition hover:bg-[#f0fdfa] disabled:opacity-50"
+                                  className="inline-flex items-center gap-1 rounded-lg border border-[#a5edd9] px-3 py-1.5 text-[11px] font-bold text-[#0db39e] transition hover:bg-[#f0fdfa] disabled:opacity-50 cursor-pointer"
                                 >
                                   {activarMutation.isPending ? (
                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -292,7 +371,7 @@ export default function EnfermerosPage() {
                               ) : (
                                 <button
                                   onClick={() => handleOpenSuspend(nurse)}
-                                  className="inline-flex items-center gap-1 rounded-lg border border-[#fbcfe8] px-3 py-1.5 text-[11px] font-bold text-[#f43f5e] transition hover:bg-[#fff5f6]"
+                                  className="inline-flex items-center gap-1 rounded-lg border border-[#fbcfe8] px-3 py-1.5 text-[11px] font-bold text-[#f43f5e] transition hover:bg-[#fff5f6] cursor-pointer"
                                 >
                                   <Ban className="h-3.5 w-3.5" strokeWidth={2.5} />
                                   Suspender
@@ -345,6 +424,88 @@ export default function EnfermerosPage() {
         )}
       </div>
 
+      {/* MODAL: Reporte */}
+      {activeModal === "report" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setActiveModal(null)} />
+          <div className="relative bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-xl flex flex-col">
+
+            <div className="border-b-2 border-slate-900 px-8 py-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Reporte de Enfermeros</h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  Emisión: {reportDate} {reportTime} | Filtro: {statusFilter} | Resultados: {reportData.length}
+                </p>
+              </div>
+              <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto px-8 py-4">
+              <table className="w-full text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-900 text-white">
+                    <th className="px-4 py-3 text-left font-bold uppercase">ID</th>
+                    <th className="px-4 py-3 text-left font-bold uppercase">Enfermero</th>
+                    <th className="px-4 py-3 text-left font-bold uppercase">Nivel</th>
+                    <th className="px-4 py-3 text-left font-bold uppercase">Distrito</th>
+                    <th className="px-4 py-3 text-left font-bold uppercase">Estado</th>
+                    <th className="px-4 py-3 text-left font-bold uppercase">Registro</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {reportData.length > 0 ? (
+                    reportData.map((row, i) => (
+                      <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+                        <td className="px-4 py-3 font-mono text-slate-600">{row.id}</td>
+                        <td className="px-4 py-3 font-medium text-slate-900">{row.nombre}</td>
+                        <td className="px-4 py-3 text-slate-600">{row.nivel}</td>
+                        <td className="px-4 py-3 text-slate-600">{row.distrito}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${statusStyle[row.estado] || 'bg-slate-100 text-slate-500'}`}>
+                            {row.estado}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-500">{row.registro}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+                        Sin datos para los filtros seleccionados
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="border-t border-slate-200 px-8 py-4 flex items-center justify-between bg-slate-50">
+              <p className="text-xs text-slate-500">
+                Total: {reportData.length} enfermeros
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleDownloadPDF}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  <FileText className="h-4 w-4" />
+                  PDF
+                </button>
+                <button
+                  onClick={handleDownloadExcel}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#0f766e] px-4 py-2 text-xs font-bold text-white hover:bg-[#0d5f58] transition cursor-pointer"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Excel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL: Ver Perfil */}
       {activeModal === "profile" && selectedNurse && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -371,7 +532,7 @@ export default function EnfermerosPage() {
                     )}
                   </div>
                 </div>
-                <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-slate-600">
+                <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                   <X className="h-5 w-5" />
                 </button>
               </div>
@@ -395,13 +556,13 @@ export default function EnfermerosPage() {
               )}
 
               <div className="flex gap-3">
-                <button onClick={() => setActiveModal(null)} className="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">
+                <button onClick={() => setActiveModal(null)} className="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 cursor-pointer">
                   Cerrar
                 </button>
                 {selectedNurse.account_status !== 'suspendido' && (
                   <button
                     onClick={() => { setActiveModal(null); setTimeout(() => handleOpenSuspend(selectedNurse), 100); }}
-                    className="flex-1 rounded-xl bg-rose-600 py-3 text-sm font-bold text-white hover:bg-rose-700"
+                    className="flex-1 rounded-xl bg-rose-600 py-3 text-sm font-bold text-white hover:bg-rose-700 cursor-pointer"
                   >
                     Suspender Cuenta
                   </button>
@@ -423,7 +584,7 @@ export default function EnfermerosPage() {
                   <h2 className="text-xl font-bold text-slate-900">Suspender cuenta</h2>
                   <p className="mt-1 text-sm font-medium text-slate-500">{selectedNurse.full_name}</p>
                 </div>
-                <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-slate-600">
+                <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                   <X className="h-5 w-5" />
                 </button>
               </div>
@@ -442,7 +603,7 @@ export default function EnfermerosPage() {
               </div>
 
               <div className="flex gap-3">
-                <button onClick={() => setActiveModal(null)} className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">
+                <button onClick={() => setActiveModal(null)} className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50 cursor-pointer">
                   Cancelar
                 </button>
                 <button
@@ -468,7 +629,7 @@ export default function EnfermerosPage() {
                 <Check className="h-6 w-6" strokeWidth={3} />
               </div>
               <p className="mb-6 text-sm font-bold text-slate-900">{successMessage}</p>
-              <button onClick={() => setActiveModal(null)} className="w-full rounded-xl bg-slate-900 py-2.5 text-sm font-bold text-white hover:bg-slate-800">
+              <button onClick={() => setActiveModal(null)} className="w-full rounded-xl bg-slate-900 py-2.5 text-sm font-bold text-white hover:bg-slate-800 cursor-pointer">
                 Cerrar
               </button>
             </div>
