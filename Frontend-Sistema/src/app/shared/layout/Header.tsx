@@ -35,7 +35,7 @@ function Header({ transparentOnTop = false }: HeaderProps) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Click fuera del dropdown -> cierra
+
   useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
       if (dropRef.current && !dropRef.current.contains(e.target as Node)) {
@@ -99,10 +99,10 @@ function Header({ transparentOnTop = false }: HeaderProps) {
           </Link>
         </nav>
 
-        {/* Lado derecho - condicional */}
+     
         <div className="hidden md:flex items-center gap-5">
           {user ? (
-            /* ── AUTENTICADO: Avatar + Dropdown ── */
+           
             <div className="relative" ref={dropRef}>
               <button
                 onClick={() => setDropOpen((v) => !v)}
@@ -153,7 +153,7 @@ function Header({ transparentOnTop = false }: HeaderProps) {
               )}
             </div>
           ) : (
-            /* ── NO AUTENTICADO: Iniciar Sesión / Registrarse ── */
+    
             <div className="flex items-center gap-3 border-l border-white/20 pl-4 ml-1">
               <Link 
                 to="/login" 
@@ -179,7 +179,6 @@ function Header({ transparentOnTop = false }: HeaderProps) {
           )}
         </div>
 
-        {/* Burger mobile */}
         <button 
           type="button" 
           className={`md:hidden p-2 rounded-lg transition ${isSolid ? "text-slate-800 hover:bg-slate-100" : "text-white hover:bg-white/20"}`} 
@@ -189,7 +188,7 @@ function Header({ transparentOnTop = false }: HeaderProps) {
         </button>
       </div>
 
-      {/* Menú mobile */}
+    
       {mobileOpen && (
         <div className="md:hidden absolute top-full left-0 w-full bg-white shadow-xl border-t border-slate-100 px-6 py-5 space-y-4">
           <Link to="/" className={mobileLink} onClick={() => setMobileOpen(false)}>Inicio</Link>
@@ -199,7 +198,7 @@ function Header({ transparentOnTop = false }: HeaderProps) {
           <div className="h-px bg-slate-100 w-full my-2"></div>
           
           {user ? (
-            /* Autenticado — mobile */
+        
             <>
               <div className="flex items-center gap-3 pt-2 pb-1">
                 {fotoUrl ? (
@@ -232,7 +231,6 @@ function Header({ transparentOnTop = false }: HeaderProps) {
               </button>
             </>
           ) : (
-            /* No autenticado — mobile */
             <>
               <Link to="/login" className="block text-[#14b8a6] font-medium text-[14px]" onClick={() => setMobileOpen(false)}>
                 Iniciar Sesión

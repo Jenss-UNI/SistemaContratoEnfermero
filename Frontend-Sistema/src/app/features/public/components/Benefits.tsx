@@ -42,7 +42,6 @@ export default function Benefits() {
     <section className="py-24 md:py-32 bg-[#0a0a0a] text-white font-sans">
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 w-full">
         
-  
         <div className="text-center mb-20 flex flex-col items-center">
           <h3 className="text-gray-400 font-semibold tracking-[0.2em] uppercase mb-6 text-xs md:text-sm">
             PROCESO SIMPLE Y SEGURO
@@ -53,18 +52,16 @@ export default function Benefits() {
             <span className="text-[#14b8a6] font-light">verificados en 5 pasos</span>
           </h2>
 
-    
           <div className="flex flex-col sm:flex-row gap-5 justify-center w-full sm:w-auto">
             
-       
             <button 
               type="button" 
+              onClick={() => navigate('/directorio')}
               className="bg-white text-black border-2 border-white hover:bg-[#14b8a6] hover:text-white hover:border-[#14b8a6] font-bold px-10 py-4 rounded-full text-[15px] transition-all duration-300 w-full sm:w-auto"
             >
               Buscar Enfermero
             </button>
             
-           
             <button 
               type="button" 
               onClick={() => navigate('/register')} 
@@ -76,7 +73,6 @@ export default function Benefits() {
           </div>
         </div>
 
-     
         <div className="relative mt-24">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 lg:gap-8 relative z-10">
             {steps.map((step, index) => {
@@ -84,15 +80,12 @@ export default function Benefits() {
               return (
                 <div key={index} className="relative flex items-start">
                   
-                
                   <div className="bg-[#18181b] rounded-2xl p-8 flex flex-col h-full w-full relative overflow-hidden transition-transform duration-300 hover:-translate-y-2">
                     
-                  
                     <span className="absolute top-4 right-5 text-6xl md:text-[70px] font-black text-slate-800 tracking-tighter select-none">
                       {step.number}
                     </span>
 
-                    
                     <div className="mb-10 relative z-10 mt-2">
                       <Icon className="w-7 h-7 text-white" strokeWidth={2} />
                     </div>
@@ -101,13 +94,11 @@ export default function Benefits() {
                       {step.title}
                     </h3>
 
-                   
                     <p className="text-[14px] text-gray-400 leading-relaxed relative z-10 flex-grow font-light pr-2">
                       {step.description}
                     </p>
                   </div>
 
-             
                   {index < steps.length - 1 && (
                     <div className="absolute top-1/2 -right-4 xl:-right-5 -translate-y-1/2 z-20 hidden xl:block">
                       <ChevronRight className="w-5 h-5 text-gray-600" strokeWidth={2} />
