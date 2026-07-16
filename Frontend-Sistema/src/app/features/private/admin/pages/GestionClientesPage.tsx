@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { Search, Eye, Ban, Check, X, Loader2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Eye, Ban, Check, X, Loader2, ChevronLeft, ChevronRight, FileText, FileSpreadsheet } from "lucide-react";
 import { useClientes, useSuspenderCliente, useActivarCliente } from "../hooks/useClientsData";
+import * as XLSX from 'xlsx';
 
-type ModalType = null | "profile" | "suspend" | "success";
+type ModalType = null | "profile" | "suspend" | "success" | "report";
 
 const ITEMS_PER_PAGE = 5;
 
@@ -27,7 +28,76 @@ export default function GestionClientesPage() {
   const suspenderMutation = useSuspenderCliente();
   const activarMutation = useActivarCliente();
 
-  // Paginación
+  const reportData = (clientes ?? []).map(c => ({
+    id: c.id?.slice(0, 8) || '—',
+    nombre: c.full_name || '—',
+    distrito: c.distrito || '—',
+    telefono: c.telefono || '—',
+    estado: c.account_status === 'suspendido' ? 'Suspendido' : 'Activo',
+    registro: formatDate(c.created_at),
+  }));
+
+  const now = new Date();
+  const reportDate = now.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const reportTime = now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+
+  const handleDownloadExcel = () => {
+    const headers = ['ID', 'Cliente', 'Distrito', 'Teléfono', 'Estado', 'Registro'];
+    const rows = reportData.map(r => [r.id, r.nombre, r.distrito, r.telefono, r.estado, r.registro]);
+
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Clientes');
+
+    XLSX.writeFile(workbook, `reporte_clientes_${reportDate.replace(/\//g, '-')}.xlsx`);
+  };
+
+  const handleDownloadPDF = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const rowsHtml = reportData.map(r => `
+      <tr>
+        <td>${r.id}</td>
+        <td>${r.nombre}</td>
+        <td>${r.distrito}</td>
+        <td>${r.telefono}</td>
+        <td>${r.estado}</td>
+        <td>${r.registro}</td>
+      </tr>
+    `).join('');
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Reporte de Clientes</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; color: #1a1a1a; }
+          h1 { font-size: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+          .info { font-size: 12px; color: #666; margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th { background: #1a1a1a; color: #fff; padding: 10px; text-align: left; font-size: 11px; text-transform: uppercase; }
+          td { padding: 10px; border-bottom: 1px solid #e2e8f0; font-size: 12px; }
+          tr:nth-child(even) { background: #f8fafc; }
+          .footer { margin-top: 20px; font-size: 12px; color: #666; }
+        </style>
+      </head>
+      <body>
+        <h1>Reporte de Clientes</h1>
+        <p class="info">Emisión: ${reportDate} ${reportTime} | Búsqueda: ${search || 'Todos'} | Resultados: ${reportData.length}</p>
+        <table>
+          <thead><tr><th>ID</th><th>Cliente</th><th>Distrito</th><th>Teléfono</th><th>Estado</th><th>Registro</th></tr></thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+        <p class="footer">Total: ${reportData.length} clientes</p>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  };
+
   const totalPages = Math.ceil((clientes?.length ?? 0) / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const paginatedClientes = (clientes ?? []).slice(startIndex, startIndex + ITEMS_PER_PAGE);
@@ -36,7 +106,7 @@ export default function GestionClientesPage() {
     const value = e.target.value;
     if (/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]*$/.test(value)) {
       setSearch(value);
-      setCurrentPage(1); // Reset a página 1 al buscar
+      setCurrentPage(1);
     }
   };
 
@@ -85,15 +155,25 @@ export default function GestionClientesPage() {
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-base font-bold text-slate-900">Clientes Registrados</h2>
 
-          <div className="relative flex items-center">
-            <Search className="absolute left-3 h-3.5 w-3.5 text-slate-400" strokeWidth={2.5} />
-            <input
-              type="text"
-              placeholder="Buscar cliente..."
-              value={search}
-              onChange={handleSearchChange}
-              className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-[12px] text-slate-900 outline-none transition focus:border-teal-400 sm:w-56"
-            />
+          <div className="flex items-center gap-3">
+            <div className="relative flex items-center">
+              <Search className="absolute left-3 h-3.5 w-3.5 text-slate-400" strokeWidth={2.5} />
+              <input
+                type="text"
+                placeholder="Buscar cliente..."
+                value={search}
+                onChange={handleSearchChange}
+                className="w-full rounded-lg border border-slate-200 py-2 pl-9 pr-3 text-[12px] text-slate-900 outline-none transition focus:border-teal-400 sm:w-56"
+              />
+            </div>
+
+            <button
+              onClick={() => setActiveModal("report")}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-bold text-slate-600 transition hover:bg-slate-50 cursor-pointer"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Exportar
+            </button>
           </div>
         </div>
 
@@ -157,7 +237,7 @@ export default function GestionClientesPage() {
                             <div className="flex items-center gap-2">
                               <button
                                 onClick={() => handleOpenProfile(client)}
-                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-[12px] font-bold text-slate-600 transition hover:bg-slate-50"
+                                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-1.5 text-[12px] font-bold text-slate-600 transition hover:bg-slate-50 cursor-pointer"
                               >
                                 <Eye className="h-3.5 w-3.5" />
                                 Ver perfil
@@ -167,7 +247,7 @@ export default function GestionClientesPage() {
                                 <button
                                   onClick={() => handleActivate(client)}
                                   disabled={activarMutation.isPending}
-                                  className="inline-flex items-center gap-1 rounded-lg border border-[#a5edd9] px-3 py-1.5 text-[12px] font-bold text-[#0db39e] transition hover:bg-[#f0fdfa] disabled:opacity-50"
+                                  className="inline-flex items-center gap-1 rounded-lg border border-[#a5edd9] px-3 py-1.5 text-[12px] font-bold text-[#0db39e] transition hover:bg-[#f0fdfa] disabled:opacity-50 cursor-pointer"
                                 >
                                   {activarMutation.isPending ? (
                                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -179,7 +259,7 @@ export default function GestionClientesPage() {
                               ) : (
                                 <button
                                   onClick={() => handleOpenSuspend(client)}
-                                  className="inline-flex items-center gap-1 rounded-lg border border-[#fbcfe8] px-3 py-1.5 text-[12px] font-bold text-[#f43f5e] transition hover:bg-[#fff5f6]"
+                                  className="inline-flex items-center gap-1 rounded-lg border border-[#fbcfe8] px-3 py-1.5 text-[12px] font-bold text-[#f43f5e] transition hover:bg-[#fff5f6] cursor-pointer"
                                 >
                                   <Ban className="h-3.5 w-3.5" strokeWidth={2.5} />
                                   Suspender
@@ -201,7 +281,6 @@ export default function GestionClientesPage() {
               </table>
             </div>
 
-            {/* Footer con paginación */}
             <div className="mt-3 flex items-center justify-between">
               <p className="text-[11px] font-medium text-slate-400">
                 Mostrando {paginatedClientes.length} de {clientes?.length ?? 0} clientes
@@ -233,6 +312,88 @@ export default function GestionClientesPage() {
         )}
       </div>
 
+      {/* MODAL: Reporte */}
+      {activeModal === "report" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setActiveModal(null)} />
+          <div className="relative bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden shadow-xl flex flex-col">
+
+            <div className="border-b-2 border-slate-900 px-8 py-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Reporte de Clientes</h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  Emisión: {reportDate} {reportTime} | Búsqueda: {search || 'Todos'} | Resultados: {reportData.length}
+                </p>
+              </div>
+              <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-auto px-8 py-4">
+              <table className="w-full text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-900 text-white">
+                    <th className="px-4 py-3 text-left font-bold uppercase">ID</th>
+                    <th className="px-4 py-3 text-left font-bold uppercase">Cliente</th>
+                    <th className="px-4 py-3 text-left font-bold uppercase">Distrito</th>
+                    <th className="px-4 py-3 text-left font-bold uppercase">Teléfono</th>
+                    <th className="px-4 py-3 text-left font-bold uppercase">Estado</th>
+                    <th className="px-4 py-3 text-left font-bold uppercase">Registro</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200">
+                  {reportData.length > 0 ? (
+                    reportData.map((row, i) => (
+                      <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+                        <td className="px-4 py-3 font-mono text-slate-600">{row.id}</td>
+                        <td className="px-4 py-3 font-medium text-slate-900">{row.nombre}</td>
+                        <td className="px-4 py-3 text-slate-600">{row.distrito}</td>
+                        <td className="px-4 py-3 text-slate-600">{row.telefono}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${row.estado === 'Suspendido' ? 'bg-rose-50 text-rose-500' : 'bg-[#ccfbf1] text-[#0f766e]'}`}>
+                            {row.estado}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-500">{row.registro}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-12 text-center text-slate-400">
+                        Sin datos para los filtros seleccionados
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="border-t border-slate-200 px-8 py-4 flex items-center justify-between bg-slate-50">
+              <p className="text-xs text-slate-500">
+                Total: {reportData.length} clientes
+              </p>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleDownloadPDF}
+                  className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 hover:bg-slate-100 transition cursor-pointer"
+                >
+                  <FileText className="h-4 w-4" />
+                  PDF
+                </button>
+                <button
+                  onClick={handleDownloadExcel}
+                  className="inline-flex items-center gap-2 rounded-xl bg-[#0f766e] px-4 py-2 text-xs font-bold text-white hover:bg-[#0d5f58] transition cursor-pointer"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Excel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODAL: Ver Perfil */}
       {activeModal === "profile" && selectedClient && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -259,7 +420,7 @@ export default function GestionClientesPage() {
                     )}
                   </div>
                 </div>
-                <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-slate-600">
+                <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                   <X className="h-5 w-5" />
                 </button>
               </div>
@@ -296,7 +457,7 @@ export default function GestionClientesPage() {
                 {selectedClient.account_status === 'suspendido' ? (
                   <button
                     onClick={() => { handleActivate(selectedClient); setActiveModal(null); }}
-                    className="flex-1 rounded-xl bg-[#0db39e] py-3 text-[12px] font-bold text-white transition hover:bg-[#0a8e7c]"
+                    className="flex-1 rounded-xl bg-[#0db39e] py-3 text-[12px] font-bold text-white transition hover:bg-[#0a8e7c] cursor-pointer"
                   >
                     <Check className="h-3.5 w-3.5 inline-block mr-1 mb-0.5" strokeWidth={3} />
                     Activar cuenta
@@ -304,7 +465,7 @@ export default function GestionClientesPage() {
                 ) : (
                   <button
                     onClick={() => { setActiveModal(null); setTimeout(() => handleOpenSuspend(selectedClient), 100); }}
-                    className="flex-1 rounded-xl bg-rose-600 py-3 text-[12px] font-bold text-white transition hover:bg-rose-700"
+                    className="flex-1 rounded-xl bg-rose-600 py-3 text-[12px] font-bold text-white transition hover:bg-rose-700 cursor-pointer"
                   >
                     <Ban className="h-3.5 w-3.5 inline-block mr-1 mb-0.5" />
                     Suspender cuenta
@@ -312,7 +473,7 @@ export default function GestionClientesPage() {
                 )}
                 <button
                   onClick={() => setActiveModal(null)}
-                  className="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-[12px] font-bold text-slate-700 transition hover:bg-slate-50"
+                  className="flex-1 rounded-xl border border-slate-200 bg-white py-3 text-[12px] font-bold text-slate-700 transition hover:bg-slate-50 cursor-pointer"
                 >
                   Cerrar
                 </button>
@@ -333,7 +494,7 @@ export default function GestionClientesPage() {
                   <h2 className="text-xl font-bold text-slate-900">Suspender cuenta</h2>
                   <p className="mt-1 text-[12px] text-slate-500">{selectedClient.full_name}</p>
                 </div>
-                <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-slate-600">
+                <button onClick={() => setActiveModal(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                   <X className="h-5 w-5" />
                 </button>
               </div>
@@ -354,7 +515,7 @@ export default function GestionClientesPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setActiveModal(null)}
-                  className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-[13px] font-bold text-slate-700 transition hover:bg-slate-50"
+                  className="flex-1 rounded-xl border border-slate-200 bg-white py-2.5 text-[13px] font-bold text-slate-700 transition hover:bg-slate-50 cursor-pointer"
                 >
                   Cancelar
                 </button>
@@ -387,7 +548,7 @@ export default function GestionClientesPage() {
               <p className="mb-6 text-[14px] font-bold text-slate-900">{successMessage}</p>
               <button
                 onClick={() => setActiveModal(null)}
-                className="w-full rounded-xl bg-slate-900 py-3 text-[13px] font-bold text-white transition hover:bg-slate-800"
+                className="w-full rounded-xl bg-slate-900 py-3 text-[13px] font-bold text-white transition hover:bg-slate-800 cursor-pointer"
               >
                 Cerrar
               </button>
