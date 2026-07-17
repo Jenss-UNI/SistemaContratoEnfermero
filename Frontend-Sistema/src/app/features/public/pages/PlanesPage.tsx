@@ -23,11 +23,11 @@ const PLANS: Plan[] = [
     icon: <Bookmark size={20} strokeWidth={1.8} className="text-gray-500" />,
     monthlyPrice: 24.9, annualPrice: 249.0, patientsLabel: "Hasta 1 pacientes",
     features: [
-      { label: "Búsqueda de enfermeros",                  included: true  },
-      { label: "Pago seguro con retención",               included: true  },
-      { label: "Contratar cualquier tipo de profesional", included: true  },
-      { label: "Prioridad en solicitudes",                included: false },
-      { label: "Acceso a perfiles TOP",                   included: false },
+      { label: "Búsqueda de enfermeros", included: true },
+      { label: "Pago seguro con retención", included: true },
+      { label: "Contratar cualquier tipo de profesional", included: true },
+      { label: "Prioridad en solicitudes", included: false },
+      { label: "Acceso a perfiles TOP", included: false },
     ],
     highlighted: false, buttonVariant: "outline",
   },
@@ -36,11 +36,11 @@ const PLANS: Plan[] = [
     icon: <Star size={20} strokeWidth={1.8} className="text-white" />,
     monthlyPrice: 49.9, annualPrice: 499.0, patientsLabel: "Hasta 4 pacientes",
     features: [
-      { label: "Búsqueda de enfermeros",                  included: true },
-      { label: "Pago seguro con retención",               included: true },
+      { label: "Búsqueda de enfermeros", included: true },
+      { label: "Pago seguro con retención", included: true },
       { label: "Contratar cualquier tipo de profesional", included: true },
-      { label: "Prioridad en solicitudes",                included: true },
-      { label: "Acceso a perfiles TOP",                   included: true },
+      { label: "Prioridad en solicitudes", included: true },
+      { label: "Acceso a perfiles TOP", included: true },
     ],
     highlighted: true, badge: { label: "Más Popular", color: "teal" }, buttonVariant: "solid",
   },
@@ -49,11 +49,11 @@ const PLANS: Plan[] = [
     icon: <Home size={20} strokeWidth={1.8} className="text-amber-400" />,
     monthlyPrice: 89.9, annualPrice: 899.0, patientsLabel: "Pacientes ilimitados",
     features: [
-      { label: "Búsqueda de enfermeros",                  included: true },
-      { label: "Pago seguro con retención",               included: true },
+      { label: "Búsqueda de enfermeros", included: true },
+      { label: "Pago seguro con retención", included: true },
       { label: "Contratar cualquier tipo de profesional", included: true },
-      { label: "Prioridad máxima en solicitudes",         included: true },
-      { label: "Acceso a perfiles TOP",                   included: true },
+      { label: "Prioridad máxima en solicitudes", included: true },
+      { label: "Acceso a perfiles TOP", included: true },
     ],
     highlighted: false, badge: { label: "Mejor Valor", color: "orange" }, buttonVariant: "outline",
   },
@@ -64,22 +64,19 @@ function BillingToggle({ billing, onChange }: { billing: BillingCycle; onChange:
     <div className="inline-flex items-center bg-white border border-gray-200 rounded-full p-1 shadow-sm">
       <button
         onClick={() => onChange("mensual")}
-        className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-          billing === "mensual" ? "bg-[#0ABFBC] text-white" : "text-gray-500 hover:text-gray-700"
-        }`}
+        className={`px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${billing === "mensual" ? "bg-[#0ABFBC] text-white" : "text-gray-500 hover:text-gray-700"
+          }`}
       >
         Mensual
       </button>
       <button
         onClick={() => onChange("anual")}
-        className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-          billing === "anual" ? "bg-[#0ABFBC] text-white" : "text-gray-500 hover:text-gray-700"
-        }`}
+        className={`flex items-center gap-2 px-5 py-2 rounded-full text-sm font-medium transition-all duration-200 ${billing === "anual" ? "bg-[#0ABFBC] text-white" : "text-gray-500 hover:text-gray-700"
+          }`}
       >
         Anual
-        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-          billing === "anual" ? "bg-white/20 text-white" : "bg-emerald-50 text-emerald-600"
-        }`}>+2 meses gratis</span>
+        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${billing === "anual" ? "bg-white/20 text-white" : "bg-emerald-50 text-emerald-600"
+          }`}>+2 meses gratis</span>
       </button>
     </div>
   );
@@ -105,27 +102,27 @@ function PlanCard({
   customLabel,
 }: PlanCardProps) {
   const [hovered, setHovered] = useState(false);
-  const price  = billing === "mensual" ? plan.monthlyPrice : plan.annualPrice;
+  const price = billing === "mensual" ? plan.monthlyPrice : plan.annualPrice;
   const period = billing === "mensual" ? "mes" : "año";
   const [int, dec] = price.toFixed(2).split(".");
 
   const glowColor = isCurrent
     ? "rgba(56,189,248,0.25)"
     : plan.highlighted
-    ? "rgba(10,191,188,0.18)"
-    : plan.badge?.color === "orange"
-    ? "rgba(245,158,11,0.15)"
-    : "rgba(100,116,139,0.10)";
+      ? "rgba(10,191,188,0.18)"
+      : plan.badge?.color === "orange"
+        ? "rgba(245,158,11,0.15)"
+        : "rgba(100,116,139,0.10)";
 
   const borderColor = isCurrent
     ? "#38bdf8"
     : plan.id === "basico"
-    ? "#94a3b8"
-    : plan.highlighted
-    ? "#0ABFBC"
-    : plan.badge?.color === "orange"
-    ? "#F59E0B"
-    : hovered ? "#cbd5e1" : "#e2e8f0";
+      ? "#94a3b8"
+      : plan.highlighted
+        ? "#0ABFBC"
+        : plan.badge?.color === "orange"
+          ? "#F59E0B"
+          : hovered ? "#cbd5e1" : "#e2e8f0";
 
   const borderWidth = isCurrent || plan.id === "basico" || plan.highlighted || plan.badge?.color === "orange" ? "2px" : "1px";
 
@@ -154,9 +151,8 @@ function PlanCard({
 
       <div
         style={{ transition: "transform 0.3s ease" }}
-        className={`w-11 h-11 rounded-xl flex items-center justify-center mb-5 ${
-          hovered ? "scale-110" : "scale-100"
-        } ${plan.highlighted ? "bg-[#0ABFBC]" : plan.badge?.color === "orange" ? "bg-amber-50" : "bg-gray-100"}`}
+        className={`w-11 h-11 rounded-xl flex items-center justify-center mb-5 ${hovered ? "scale-110" : "scale-100"
+          } ${plan.highlighted ? "bg-[#0ABFBC]" : plan.badge?.color === "orange" ? "bg-amber-50" : "bg-gray-100"}`}
       >
         {plan.icon}
       </div>
@@ -172,9 +168,8 @@ function PlanCard({
         </span>
         <span
           style={{ transition: "color 0.3s ease" }}
-          className={`text-[38px] font-black leading-none tracking-tight mx-1 ${
-            hovered ? "text-[#0ABFBC]" : "text-gray-900"
-          }`}
+          className={`text-[38px] font-black leading-none tracking-tight mx-1 ${hovered ? "text-[#0ABFBC]" : "text-gray-900"
+            }`}
         >
           {int}.{dec}
         </span>
@@ -194,7 +189,7 @@ function PlanCard({
           >
             {included
               ? <Check size={15} strokeWidth={2.5} className="text-[#0ABFBC] shrink-0" />
-              : <X     size={15} strokeWidth={2.5} className="text-gray-300 shrink-0" />}
+              : <X size={15} strokeWidth={2.5} className="text-gray-300 shrink-0" />}
             <span className={`text-sm ${included ? "text-gray-700" : "text-gray-400"}`}>{label}</span>
           </li>
         ))}
@@ -204,17 +199,16 @@ function PlanCard({
         onClick={() => onSelect(plan.id)}
         disabled={isDisabled}
         style={{ transition: "background 0.25s ease, color 0.25s ease, transform 0.15s ease" }}
-        className={`w-full py-3 rounded-xl text-sm font-semibold transition-all active:scale-95 disabled:pointer-events-none ${
-          isDisabled
-            ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed active:scale-100"
-            : isCurrent
+        className={`w-full py-3 rounded-xl text-sm font-semibold transition-all active:scale-95 disabled:pointer-events-none ${isDisabled
+          ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed active:scale-100"
+          : isCurrent
             ? "bg-teal-100 text-teal-700 cursor-default"
             : plan.buttonVariant === "solid"
-            ? "bg-[#0ABFBC] text-white hover:bg-[#09aaa7]"
-            : hovered
-            ? "bg-[#0ABFBC] text-white border border-[#0ABFBC]"
-            : "border border-[#0ABFBC] text-[#0ABFBC] hover:bg-teal-50/50"
-        }`}
+              ? "bg-[#0ABFBC] text-white hover:bg-[#09aaa7]"
+              : hovered
+                ? "bg-[#0ABFBC] text-white border border-[#0ABFBC]"
+                : "border border-[#0ABFBC] text-[#0ABFBC] hover:bg-teal-50/50"
+          }`}
       >
         {btnText}
       </button>
@@ -368,21 +362,21 @@ export default function PlanesPage() {
     setShowConfirmModal(false);
     setSelectedPlanForModal(null);
     setSuccessMessage("¡Suscripción actualizada correctamente!");
-    
+
     // Recargar perfil local y en AuthContext
     await loadSub();
     await refetchAuthProfile();
-    
+
     // Limpiar query params de la URL (?mode=renew o ?mode=upgrade) para restaurar vista normal
     navigate("/planes", { replace: true });
-    
+
     setTimeout(() => {
       setSuccessMessage(null);
     }, 2500);
   };
 
   return (
-    <>
+    <div className="flex flex-col min-h-screen bg-[#F4F6F9]">
       <Header />
 
       {successMessage && (
@@ -392,7 +386,7 @@ export default function PlanesPage() {
         </div>
       )}
 
-      <main className={`bg-[#F4F6F9] ${HEADER_HEIGHT}`}>
+      <main className={`flex-grow w-full ${HEADER_HEIGHT}`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
 
           <div className="text-center mb-8">
@@ -455,6 +449,6 @@ export default function PlanesPage() {
       )}
 
       <Footer />
-    </>
+    </div>
   );
 }
