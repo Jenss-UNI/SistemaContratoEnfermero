@@ -211,17 +211,23 @@ export default function ClienteForm() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value } = e.target;
+    const sanitizedValue =
+      name === "nombres" || name === "apellidos_pa" || name === "apellidos_ma"
+        ? value.trimStart()
+        : name === "correo" || name === "password" || name === "confirmPassword"
+          ? value.replace(/\s/g, "")
+          : value;
 
-    if ((name === "dni" || name === "telefono") && value && !SOLO_NUMEROS.test(value)) return;
+    if ((name === "dni" || name === "telefono") && sanitizedValue && !SOLO_NUMEROS.test(sanitizedValue)) return;
 
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: sanitizedValue }));
 
     if (errors[name]) {
       setErrors((prev) => { const n = { ...prev }; delete n[name]; return n; });
     }
 
     if (name === "password" && formData.confirmPassword) {
-      const confErr = validarConfirmPassword(value, formData.confirmPassword);
+      const confErr = validarConfirmPassword(sanitizedValue, formData.confirmPassword);
       setErrors((prev) => ({ ...prev, confirmPassword: confErr || "" }));
     }
   };

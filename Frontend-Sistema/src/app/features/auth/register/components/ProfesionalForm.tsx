@@ -121,8 +121,15 @@ export default function ProfesionalForm() {
 
   const handleChange = (e: any) => {
     const { name, value } = e.target;
-    if ((name === "dni" || name === "telefono") && value && !SOLO_NUMEROS.test(value)) return;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    const sanitizedValue =
+      name === "nombres" || name === "apellidos_pa" || name === "apellidos_ma"
+        ? value.trimStart()
+        : name === "correo" || name === "password" || name === "confirmPassword"
+          ? value.replace(/\s/g, "")
+          : value;
+
+    if ((name === "dni" || name === "telefono") && sanitizedValue && !SOLO_NUMEROS.test(sanitizedValue)) return;
+    setFormData(prev => ({ ...prev, [name]: sanitizedValue }));
   };
 
   const validate = () => {

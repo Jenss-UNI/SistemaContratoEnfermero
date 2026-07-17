@@ -8,7 +8,7 @@ import loginImage from "../../../../assets/login/inicarsesion.jpg";
 export default function ForgotPasswordPage() {
 	const navigate = useNavigate();
 	const [step, setStep] = useState(1);
-	
+
 	const [email, setEmail] = useState("");
 	const [inputCode, setInputCode] = useState("");
 	const [newPassword, setNewPassword] = useState("");
@@ -19,10 +19,12 @@ export default function ForgotPasswordPage() {
 	const [errorMsg, setErrorMsg] = useState("");
 	const [successMsg, setSuccessMsg] = useState("");
 
+	const sanitizeNoSpaces = (value: string) => value.replace(/\s/g, "");
+
 	const handleSendCode = async (e: React.FormEvent) => {
 		e.preventDefault();
 		if (!email) return;
-		
+
 		setIsLoading(true);
 		setErrorMsg("");
 		try {
@@ -239,7 +241,10 @@ export default function ForgotPasswordPage() {
 														required
 														disabled={isLoading}
 														value={email}
-														onChange={(e) => setEmail(e.target.value)}
+														onChange={(e) => setEmail(sanitizeNoSpaces(e.target.value))}
+														onKeyDown={(e) => {
+															if (e.key === " ") e.preventDefault();
+														}}
 														autoComplete="email"
 														placeholder="tu@correo.com"
 														className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100 disabled:opacity-60"
