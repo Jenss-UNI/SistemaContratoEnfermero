@@ -271,6 +271,7 @@ export async function fetchContractDetail(serviceId: number): Promise<ContratoDe
       address,
       district,
       created_at,
+      updated_at,
       profiles:client_id (
         nombres,
         apellidos_pa,
@@ -349,23 +350,47 @@ export async function fetchContractDetail(serviceId: number): Promise<ContratoDe
   }
 
   // Formato de fechas amigables
-  const formatFriendlyDate = (dateStr: string) => {
+  const formatFriendlyDate = (dateStr?: string) => {
     if (!dateStr) return "";
-    const d = new Date(dateStr + "T12:00:00");
+    const cleanStr = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+    const d = new Date(cleanStr + "T12:00:00");
+    if (isNaN(d.getTime())) return dateStr;
     return d.toLocaleDateString("es-PE", { day: "numeric", month: "long", year: "numeric" });
   };
 
-  const formatShortDay = (dateStr: string) => {
-    const d = new Date(dateStr + "T12:00:00");
+  const formatShortDay = (dateStr?: string) => {
+    if (!dateStr) return "";
+    const cleanStr = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+    const d = new Date(cleanStr + "T12:00:00");
+    if (isNaN(d.getTime())) return dateStr;
     return d.toLocaleDateString("es-PE", { weekday: "short", day: "numeric", month: "short" });
   };
 
+  const formatFriendlyTime = (dateStr?: string) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const datePart = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+    const timeStr = d.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" });
+    return `${formatFriendlyDate(datePart)}${timeStr ? ` · ${timeStr}` : ""}`;
+  };
+
   // Convert service days to JornadaProgramada
-  const jornadas: JornadaProgramada[] = serviceDays.map((d: any) => ({
-    fecha: formatShortDay(d.day_date),
-    horario: `${formatHour(d.start_hour)} - ${formatHour(d.end_hour)}`,
-    estado: d.status === "completed" ? "completada" : d.status === "cancelled" ? "cancelada" : "pendiente",
-  }));
+  const jornadas: JornadaProgramada[] = serviceDays.map((d: any) => {
+    let est: any = "pendiente";
+    if (svc.status === "completed" || d.status === "completed") {
+      est = "completada";
+    } else if (d.status === "active") {
+      est = "activa";
+    } else if (d.status === "cancelled") {
+      est = "cancelada";
+    }
+    return {
+      fecha: formatShortDay(d.day_date),
+      horario: `${formatHour(d.start_hour)} - ${formatHour(d.end_hour)}`,
+      estado: est,
+    };
+  });
 
   // Define general terms
   const terminos = [
@@ -378,13 +403,44 @@ export async function fetchContractDetail(serviceId: number): Promise<ContratoDe
     "El contrato entra en vigor en el momento de la firma y activación por parte del cliente."
   ];
 
-  // Define history
-  const emitidoElStr = formatFriendlyDate(svc.created_at.split("T")[0]);
+  // Fetch signature details first to use in history timeline
+  let firma: any = null;
+  const { data: sigData } = await supabase
+    .from("contract_signatures")
+    .select("signature_url, signed_at, dni, ip_address")
+    .eq("service_id", serviceId)
+    .maybeSingle();
+  if (sigData) {
+    firma = sigData;
+  }
+
+  // Define history timeline sequentially based on status progress
+  const emitidoElStr = formatFriendlyDate(svc.created_at);
   const historial = [
-    { titulo: "Contrato generado", fecha: `${emitidoElStr} · ${new Date(svc.created_at).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}` }
+    { titulo: "Pendiente de Confirmacion del Enfermero", fecha: formatFriendlyTime(svc.created_at) },
+    { titulo: "Contrato generado", fecha: formatFriendlyTime(svc.created_at) }
   ];
+
   if (svc.status !== "pending") {
-    historial.push({ titulo: "Enfermero aceptó la solicitud", fecha: emitidoElStr });
+    historial.push({
+      titulo: "Enfermero Acepto Solicitud(Servicios Activo)",
+      fecha: formatFriendlyTime(svc.updated_at)
+    });
+  }
+
+  if (svc.status === "active" || svc.status === "in_progress" || svc.status === "completed") {
+    const cursoFecha = sigData?.signed_at ? formatFriendlyTime(sigData.signed_at) : formatFriendlyTime(svc.updated_at);
+    historial.push({
+      titulo: "Servicio en curso",
+      fecha: cursoFecha
+    });
+  }
+
+  if (svc.status === "completed") {
+    historial.push({
+      titulo: "Servicio Completado",
+      fecha: formatFriendlyTime(svc.updated_at)
+    });
   }
 
   const clientName = `${svc.profiles?.nombres || ""} ${svc.profiles?.apellidos_pa || ""}`.trim();
@@ -403,16 +459,7 @@ export async function fetchContractDetail(serviceId: number): Promise<ContratoDe
   const total = Number(svc.total_amount || 0);
   const comisionPorcentaje = 10;
   
-  // 5. Fetch signature details if service is active or completed
-  let firma: any = null;
-  const { data: sigData } = await supabase
-    .from("contract_signatures")
-    .select("signature_url, signed_at, dni, ip_address")
-    .eq("service_id", serviceId)
-    .maybeSingle();
-  if (sigData) {
-    firma = sigData;
-  }
+  
 
   return {
     id: String(svc.id),
