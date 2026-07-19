@@ -14,6 +14,23 @@ export type PaymentMethod = {
 
 export type PaymentHistoryStatus = "pagado" | "custodia" | "pendiente";
 
+export type FacturaDetalle = {
+  numFactura: string;
+  fechaEmision: string;
+  clienteNombre: string;
+  pacienteNombre: string;
+  direccion: string;
+  distrito: string;
+  enfermeroNombre: string;
+  enfermeroRol?: string;
+  tipoServicio: string;
+  horas: number;
+  tarifaHora: number;
+  fechaServicio: string;
+  metodoPago: string;
+  montoTotal: number;
+};
+
 export type PaymentHistoryItem = {
   id: string;
   fecha: string;
@@ -22,6 +39,7 @@ export type PaymentHistoryItem = {
   monto: number;
   estado: PaymentHistoryStatus;
   factura: string;
+  facturaDetalle?: FacturaDetalle;
 };
 
 export type CardFormData = {
