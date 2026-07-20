@@ -153,6 +153,7 @@ export default function ResumenContent({ onPinRegenerado: _onPinRegenerado }: Re
     rate: c.duracionHoras > 0 ? `S/ ${(c.montoTotal / c.duracionHoras).toFixed(0)}/hr` : "Tarifa fija",
     total: `S/ ${c.montoTotal.toLocaleString("es-PE")}`,
     hours: `${c.duracionDias} días`,
+    photoUrl: c.profesionalFotoUrl,
   }));
 
   const familyMembers = patients.filter(p => p.parentesco !== "Yo mismo");

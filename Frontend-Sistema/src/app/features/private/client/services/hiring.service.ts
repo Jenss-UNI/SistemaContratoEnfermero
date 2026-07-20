@@ -130,8 +130,9 @@ export async function fetchClientHirings(clientId: string): Promise<Contratacion
       notes,
       patient_name,
       created_at,
+      updated_at,
       pin_code,
-      nurse:nurse_id (
+      profiles:nurse_id (
         nombres,
         apellidos_pa,
         apellidos_ma,
@@ -162,9 +163,10 @@ export async function fetchClientHirings(clientId: string): Promise<Contratacion
   if (!data) return [];
 
   return data.map((row: any) => {
-    // El alias del join puede ser "nurse" o "profiles" según la FK detectada
-    const n = row.nurse || row.profiles || {};
-    const np = n.nurse_profiles || {};
+    // El alias del join es "profiles" según la relación de Supabase
+    const n = row.profiles || row.nurse || {};
+    const npArr = n.nurse_profiles;
+    const np = Array.isArray(npArr) ? npArr[0] || {} : npArr || {};
 
     const prefix = np.nivel === "Técnico en Enfermería" ? "Tec. " : "Lic. ";
     const fullName = `${prefix}${n.nombres || ""} ${n.apellidos_pa || ""}`.trim();
@@ -179,10 +181,14 @@ export async function fetchClientHirings(clientId: string): Promise<Contratacion
       maxDate = dayDates[dayDates.length - 1];
     }
 
+    const allDaysCompleted = (row.service_days || []).length > 0 &&
+      (row.service_days || []).every((d: any) => d.status === "completed");
+
     // Map DB status to hiring.model.ts ContratacionEstado
-    // DB: pending → "pendiente", confirmed → "firma_requerida", active → "confirmado", completed → "completado"
     let estado: any = "pendiente";
-    if (row.status === "confirmed") {
+    if (row.status === "completed" || allDaysCompleted) {
+      estado = "completado";
+    } else if (row.status === "confirmed") {
       estado = "firma_requerida";
     } else if (row.status === "active") {
       const hasActiveDay = (row.service_days || []).some(
@@ -191,24 +197,34 @@ export async function fetchClientHirings(clientId: string): Promise<Contratacion
       estado = hasActiveDay ? "en_curso" : "confirmado";
     } else if (row.status === "in_progress") {
       estado = "en_curso";
-    } else if (row.status === "completed") {
-      estado = "completado";
     }
 
-    // Map DB payment_status: pending, in_custody, released, refunded
-    // PagoEstado: "pendiente" | "preautorizado" | "liberado"
-    let pagoEstado: any = "pendiente";
-    if (row.payment_status === "in_custody") pagoEstado = "preautorizado";
-    else if (row.payment_status === "released") pagoEstado = "liberado";
+    const hasOpenIncident = (row.incident_reports || []).some(
+      (inc: any) => inc.status === "abierto"
+    );
 
     const ini = [
       (n.nombres || "").charAt(0),
       (n.apellidos_pa || "").charAt(0),
     ].filter(Boolean).join("").toUpperCase() || "EN";
 
-    const hasOpenIncident = (row.incident_reports || []).some(
-      (inc: any) => inc.status === "abierto"
-    );
+    // Regla de Auto-Liberación: 48 horas desde la finalización si no hay incidente abierto
+    const completionDate = row.updated_at ? new Date(row.updated_at) : (row.created_at ? new Date(row.created_at) : new Date());
+    const hoursPassed = (new Date().getTime() - completionDate.getTime()) / (1000 * 60 * 60);
+    const isAutoReleaseEligible = (row.status === "completed" || allDaysCompleted) && hoursPassed >= 48 && !hasOpenIncident;
+
+    // Map DB payment_status: pending, in_custody, released, refunded
+    let pagoEstado: any = "pendiente";
+    if (row.payment_status === "released" || isAutoReleaseEligible) {
+      if (isAutoReleaseEligible && row.payment_status !== "released") {
+        releasePayment(row.client_id, row.id).catch(console.error);
+      }
+      pagoEstado = "liberado";
+    } else if (row.payment_status === "in_custody") {
+      pagoEstado = "preautorizado";
+    }
+
+    const createdAtStr = row.created_at ? String(row.created_at).split("T")[0] : "";
 
     return {
       id: String(row.id),
@@ -224,8 +240,8 @@ export async function fetchClientHirings(clientId: string): Promise<Contratacion
       profesionalIniciales: ini,
       profesionalFotoUrl: n.foto_url || undefined,
       paciente: row.patient_name || "Paciente",
-      periodoInicio: minDate || row.created_at.split("T")[0],
-      periodoFin: maxDate || row.created_at.split("T")[0],
+      periodoInicio: minDate || createdAtStr,
+      periodoFin: maxDate || createdAtStr,
       duracionDias: dayDates.length || 1,
       duracionHoras: row.total_hours || 0,
       montoTotal: Number(row.total_amount || 0),
@@ -445,16 +461,32 @@ export async function fetchContractDetail(serviceId: number): Promise<ContratoDe
 
   const clientName = `${svc.profiles?.nombres || ""} ${svc.profiles?.apellidos_pa || ""}`.trim();
 
+  const allDaysCompletedDetail = (svc.service_days || []).length > 0 &&
+    (svc.service_days || []).every((d: any) => d.status === "completed");
+
   // Map to Contratacion fields
   let estado: any = "pendiente";
-  if (svc.status === "confirmed") estado = "firma_requerida";
+  if (svc.status === "completed" || allDaysCompletedDetail) estado = "completado";
+  else if (svc.status === "confirmed") estado = "firma_requerida";
   else if (svc.status === "active") estado = "confirmado";
   else if (svc.status === "in_progress") estado = "en_curso";
-  else if (svc.status === "completed") estado = "completado";
+
+  const hasOpenIncidentDetail = (svc.incident_reports || []).some(
+    (inc: any) => inc.status === "abierto"
+  );
+  const completionDateDetail = svc.updated_at ? new Date(svc.updated_at) : new Date(svc.created_at);
+  const hoursPassedDetail = (new Date().getTime() - completionDateDetail.getTime()) / (1000 * 60 * 60);
+  const isAutoReleaseEligibleDetail = (svc.status === "completed" || allDaysCompletedDetail) && hoursPassedDetail >= 48 && !hasOpenIncidentDetail;
 
   let pagoEstado: any = "pendiente";
-  if (svc.payment_status === "in_custody") pagoEstado = "preautorizado";
-  else if (svc.payment_status === "released") pagoEstado = "liberado";
+  if (svc.payment_status === "released" || isAutoReleaseEligibleDetail) {
+    if (isAutoReleaseEligibleDetail && svc.payment_status !== "released") {
+      releasePayment(svc.client_id, svc.id).catch(console.error);
+    }
+    pagoEstado = "liberado";
+  } else if (svc.payment_status === "in_custody") {
+    pagoEstado = "preautorizado";
+  }
 
   const total = Number(svc.total_amount || 0);
   const comisionPorcentaje = 10;
