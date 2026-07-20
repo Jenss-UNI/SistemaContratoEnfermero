@@ -24,6 +24,7 @@ export default function PaymentHistoryTable({
               <th className="px-4 py-3 font-semibold text-slate-600">Tipo</th>
               <th className="px-4 py-3 font-semibold text-slate-600">Monto</th>
               <th className="px-4 py-3 font-semibold text-slate-600">Estado</th>
+              <th className="px-4 py-3 font-semibold text-slate-600 text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -36,29 +37,31 @@ export default function PaymentHistoryTable({
                   S/ {row.monto.toLocaleString("es-PE")}
                 </td>
                 <td className="px-4 py-3.5">
-                  <div className="flex items-center gap-2">
-                    <PaymentStatusBadge status={row.estado} />
-                    {row.estado === "pagado" && (
-                      <div className="flex items-center gap-1 ml-1">
-                        <button
-                          type="button"
-                          onClick={() => onVerFactura?.(row)}
-                          title="Ver factura"
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-teal-50 hover:text-teal-600 transition cursor-pointer"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onImprimirFactura?.(row)}
-                          title="Imprimir / Descargar factura"
-                          className="rounded-lg p-1.5 text-slate-400 hover:bg-teal-50 hover:text-teal-600 transition cursor-pointer"
-                        >
-                          <Printer className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  <PaymentStatusBadge status={row.estado} />
+                </td>
+                <td className="px-4 py-3.5 text-center">
+                  {row.estado === "pagado" ? (
+                    <div className="flex items-center justify-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => onVerFactura?.(row)}
+                        title="Ver factura"
+                        className="rounded-lg p-1.5 text-slate-400 hover:bg-teal-50 hover:text-teal-600 transition cursor-pointer"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onImprimirFactura?.(row)}
+                        title="Imprimir / Descargar factura"
+                        className="rounded-lg p-1.5 text-slate-400 hover:bg-teal-50 hover:text-teal-600 transition cursor-pointer"
+                      >
+                        <Printer className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <span className="text-slate-300 text-xs font-semibold">-</span>
+                  )}
                 </td>
               </tr>
             ))}

@@ -31,6 +31,20 @@ export type FacturaDetalle = {
   montoTotal: number;
 };
 
+export type PlanFacturaDetalle = {
+  numFactura: string;
+  fechaEmision: string;
+  clienteNombre: string;
+  planNombre: string;
+  planTipo: string;
+  precioUnitario: number;
+  montoTotal: number;
+  metodoPago: string;
+  operacionId: string;
+  detallesPago: string;
+  fechaVencimiento: string;
+};
+
 export type PaymentHistoryItem = {
   id: string;
   fecha: string;
@@ -40,6 +54,7 @@ export type PaymentHistoryItem = {
   estado: PaymentHistoryStatus;
   factura: string;
   facturaDetalle?: FacturaDetalle;
+  planFacturaDetalle?: PlanFacturaDetalle;
 };
 
 export type CardFormData = {

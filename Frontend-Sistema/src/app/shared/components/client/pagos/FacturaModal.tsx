@@ -1,4 +1,4 @@
-import { X, User, Stethoscope, CheckCircle2, Printer } from "lucide-react";
+import { X, User, Stethoscope, CheckCircle2, Download } from "lucide-react";
 import type { FacturaDetalle } from "../../../../core/models/payment.model";
 import { generateInvoicePdf } from "./generateInvoicePdf";
 
@@ -201,17 +201,17 @@ export default function FacturaModal({ factura, onClose }: FacturaModalProps) {
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition cursor-pointer"
+              className="px-5 py-2.5 rounded-full border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition cursor-pointer"
             >
               Cerrar
             </button>
             <button
               type="button"
               onClick={handlePrint}
-              className="px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold transition flex items-center gap-2 shadow-sm cursor-pointer"
+              className="px-6 py-2.5 rounded-full bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold transition flex items-center gap-2 shadow-sm cursor-pointer"
             >
-              <Printer className="h-4 w-4" />
-              Imprimir / PDF
+              <Download className="h-4 w-4" />
+              Descargar Factura PDF
             </button>
           </div>
         </div>
