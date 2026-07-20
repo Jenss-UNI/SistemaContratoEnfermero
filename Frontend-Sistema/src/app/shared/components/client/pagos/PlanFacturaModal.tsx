@@ -1,4 +1,4 @@
-import { X, Check, Smartphone, ShieldCheck, CheckCircle2, Printer, Download } from "lucide-react";
+import { X, Smartphone, ShieldCheck, CheckCircle2, Download } from "lucide-react";
 import type { PlanFacturaDetalle } from "../../../../core/models/payment.model";
 import { generatePlanInvoicePdf } from "./generatePlanInvoicePdf";
 

@@ -10,6 +10,8 @@ export type PaymentMethod = {
   telefono?: string;
   /** Visa, etc. */
   marca?: string;
+  /** Nombre del titular de la tarjeta */
+  nombreTarjeta?: string;
 };
 
 export type PaymentHistoryStatus = "pagado" | "custodia" | "pendiente";

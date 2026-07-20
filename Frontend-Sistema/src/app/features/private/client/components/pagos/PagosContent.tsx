@@ -182,7 +182,6 @@ export default function PagosContent() {
       const subscriptionHistory: PaymentHistoryItem[] = (subscriptions || []).map((sub: any) => {
         const rawPlanName = sub.plans?.nombre || "Básico";
         const planTipo = rawPlanName.toUpperCase();
-        const planNombre = `Plan de Suscripción CUIDAME (${planTipo})`;
         const monto = Number(sub.plans?.precio_mensual ?? 24.9);
         const fechaStr = new Date(sub.created_at).toLocaleDateString("es-PE", { day: "2-digit", month: "short", year: "numeric" });
         const clientName = `${user?.user_metadata?.nombres || "Shirley"} ${user?.user_metadata?.apellidos_pa || ""}`.trim();
@@ -291,11 +290,11 @@ export default function PagosContent() {
         esPrincipal: isFirst,
         terminacion: last4,
         marca: "Visa",
-        nombreTarjeta: card.nombreTitular,
+        nombreTarjeta: card.nombreTarjeta,
       };
       dbPayload.terminacion = last4;
       dbPayload.marca = "Visa";
-      dbPayload.nombre_tarjeta = card.nombreTitular;
+      dbPayload.nombre_tarjeta = card.nombreTarjeta;
     } else {
       const wallet = data as WalletFormData;
       nuevo = {

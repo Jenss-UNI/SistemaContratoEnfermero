@@ -50,7 +50,6 @@ export function generateInvoicePdf(factura: FacturaDetalle) {
 
   // Patient & Service Info Card (Left)
   const leftX = 16;
-  const cardWidth = 84;
   const rightX = 110;
 
   // Patient data
