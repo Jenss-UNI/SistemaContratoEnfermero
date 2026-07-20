@@ -104,6 +104,17 @@ export default function MisServiciosPage() {
     setLoading(true);
     fetchNurseServices(user.id)
       .then((data) => {
+        // Auto-sincronizar servicios donde todas las jornadas están completadas
+        data.forEach((s) => {
+          const days = s.service_days || [];
+          const allCompleted = days.length > 0 && days.every((d: any) => d.status === "completed");
+          if (allCompleted && s.status !== "completed" && s.status !== "cancelled") {
+            s.status = "completed";
+            updateServiceStatus(s.id, "completed").catch((err) =>
+              console.error("Error auto-completing service in DB:", err)
+            );
+          }
+        });
         setServices(data);
       })
       .catch((err) => {
@@ -307,10 +318,21 @@ export default function MisServiciosPage() {
 
   const completedCount = (s: ServiceRow) => s.service_days.filter((d) => d.status === "completed").length;
 
+  const isServiceCompleted = (s: ServiceRow) => {
+    if (s.status === "completed") return true;
+    const days = s.service_days || [];
+    return days.length > 0 && days.every((d) => d.status === "completed");
+  };
+
   // Filters and Pagination
   const filteredServices = useMemo(() => {
     return services.filter((s) => {
-      if (activeTab === "in_progress") {
+      const isCompleted = isServiceCompleted(s);
+      if (activeTab === "completed") {
+        if (!isCompleted) return false;
+      } else if (isCompleted) {
+        return false;
+      } else if (activeTab === "in_progress") {
         if (!(s.status === "active" && getActiveDayIndex(s) >= 0)) return false;
       } else if (activeTab === "active") {
         if (!(s.status === "active" && getActiveDayIndex(s) === -1)) return false;
@@ -339,11 +361,11 @@ export default function MisServiciosPage() {
   // Tab counters
   const tabCounts = useMemo(() => {
     return {
-      pending: services.filter((s) => s.status === "pending").length,
-      confirmed: services.filter((s) => s.status === "confirmed").length,
-      active: services.filter((s) => s.status === "active" && getActiveDayIndex(s) === -1).length,
-      in_progress: services.filter((s) => s.status === "active" && getActiveDayIndex(s) >= 0).length,
-      completed: services.filter((s) => s.status === "completed").length,
+      pending: services.filter((s) => !isServiceCompleted(s) && s.status === "pending").length,
+      confirmed: services.filter((s) => !isServiceCompleted(s) && s.status === "confirmed").length,
+      active: services.filter((s) => !isServiceCompleted(s) && s.status === "active" && getActiveDayIndex(s) === -1).length,
+      in_progress: services.filter((s) => !isServiceCompleted(s) && s.status === "active" && getActiveDayIndex(s) >= 0).length,
+      completed: services.filter((s) => isServiceCompleted(s)).length,
     };
   }, [services]);
 

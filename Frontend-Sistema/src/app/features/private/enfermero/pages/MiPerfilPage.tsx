@@ -13,6 +13,12 @@ import {
   Search,
   X,
   Languages,
+  Sparkles,
+  FileText,
+  CheckCircle2,
+  ArrowRight,
+  UploadCloud,
+  AlertTriangle,
 } from "lucide-react";
 import { useAuth } from "../../../../core/contexts/AuthContext";
 import {
@@ -88,6 +94,272 @@ const predefinedLanguages = [
   "Chino Mandarín",
 ];
 
+// Carga dinámica de PDF.js
+const loadPdfJs = (): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    if ((window as any).pdfjsLib) {
+      resolve((window as any).pdfjsLib);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js";
+    script.onload = () => {
+      const pdfjsLib = (window as any).pdfjsLib;
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
+      resolve(pdfjsLib);
+    };
+    script.onerror = (err) => reject(err);
+    document.body.appendChild(script);
+  });
+};
+
+const detectDistrict = (text: string, allDistricts: string[]): string => {
+  for (const dist of allDistricts) {
+    const regex = new RegExp(`\\b${dist}\\b`, "i");
+    if (regex.test(text)) {
+      return dist;
+    }
+  }
+  return "";
+};
+
+const detectLanguages = (text: string): string[] => {
+  const detected: string[] = [];
+  const lines = text.split(/[\n\r]+/);
+  
+  for (const line of lines) {
+    const trimmedLine = line.trim();
+    if (!trimmedLine) continue;
+    
+    if (/ingl[eé]s|english/i.test(trimmedLine)) {
+      if (/avanzado|advanced|c1|c2/i.test(trimmedLine)) {
+        detected.push("Inglés (Avanzado)");
+      } else if (/intermedio|intermediate|b1|b2/i.test(trimmedLine)) {
+        detected.push("Inglés (Intermedio)");
+      } else {
+        detected.push("Inglés (Básico)");
+      }
+    }
+    
+    if (/quechua/i.test(trimmedLine)) detected.push("Quechua");
+    if (/aimara/i.test(trimmedLine)) detected.push("Aimara");
+    if (/portugu[eé]s/i.test(trimmedLine)) detected.push("Portugués");
+    if (/franc[eé]s/i.test(trimmedLine)) detected.push("Francés");
+    if (/italiano/i.test(trimmedLine)) detected.push("Italiano");
+    if (/alem[aá]n/i.test(trimmedLine)) detected.push("Alemán");
+    if (/chino|mandar[ií]n/i.test(trimmedLine)) detected.push("Chino Mandarín");
+  }
+  
+  if (detected.length === 0) {
+    detected.push("Español");
+  } else if (!detected.includes("Español")) {
+    detected.unshift("Español");
+  }
+  return detected;
+};
+
+const detectSpecialty = (text: string): string => {
+  const lines = text.split(/[\n\r]+/);
+  
+  // Look at the first 5 lines for professional titles (like "Técnico en Enfermería")
+  for (let i = 0; i < Math.min(5, lines.length); i++) {
+    const line = lines[i].trim();
+    if (/enfermer|técnico|licenciado|cuidador/i.test(line) && line.length > 5 && line.length < 50) {
+      return line.replace(/[^\w\s\dáéíóúÁÉÍÓÚñÑ]/g, "").replace(/\s+/g, " ").trim();
+    }
+  }
+
+  const specialties = [
+    "Geriatría y Cuidado del Adulto Mayor",
+    "Pediatría y Cuidado Infantil",
+    "Cuidados Intensivos (UCI)",
+    "Urgencias y Emergencias",
+    "Cardiología",
+    "Neonatología",
+    "Salud Mental y Psiquiatría",
+    "Rehabilitación y Fisioterapia",
+    "Oncología",
+  ];
+  for (const spec of specialties) {
+    const keyword = spec.split("y")[0].trim().split(" ")[0]; // e.g. "Geriatría"
+    const regex = new RegExp(keyword.replace(/[íí]/gi, "[ií]"), "i");
+    if (regex.test(text)) {
+      return spec;
+    }
+  }
+  if (/adulto mayor|ancian/i.test(text)) return "Geriatría y Cuidado del Adulto Mayor";
+  if (/ni[nñ]o|infantil|pediatr/i.test(text)) return "Pediatría y Cuidado Infantil";
+  if (/uci|intensivo/i.test(text)) return "Cuidados Intensivos (UCI)";
+  if (/urgencia|emergencia/i.test(text)) return "Urgencias y Emergencias";
+
+  return "";
+};
+
+const detectExperience = (text: string): string => {
+  const match1 = text.match(/(\d+)\s*(?:a[ñn]os de experiencia|a[ñn]os de trayectoria|a[ñn]os laborados)/i);
+  if (match1) return match1[1];
+
+  const match2 = text.match(/(?:experiencia|laboral|trayectoria)\s*(?:de|m[aá]s de)?\s*(\d+)\s*a[ñn]os/i);
+  if (match2) return match2[1];
+
+  const match3 = text.match(/(\d+)\s*a[ñn]os\s*(?:en el sector|en el rubro|trabajando)/i);
+  if (match3) return match3[1];
+
+  return "";
+};
+
+const detectBio = (text: string): string => {
+  const lines = text.split(/[\n\r]+/);
+  let startIndex = -1;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (/perfil profesional|sobre m[ií]|resumen profesional|presentaci[oó]n/i.test(line)) {
+      startIndex = i + 1;
+      break;
+    }
+  }
+  
+  if (startIndex !== -1) {
+    const bioLines: string[] = [];
+    for (let i = startIndex; i < lines.length; i++) {
+      const line = lines[i].trim();
+      // Stop if we hit any subsequent section header
+      if (/formaci[oó]n acad[eé]mica|educaci[oó]n|experiencia laboral|certificaciones|idiomas/i.test(line)) {
+        break;
+      }
+      if (line) {
+        bioLines.push(line);
+      }
+    }
+    if (bioLines.length > 0) {
+      return bioLines.join(" ").substring(0, 500);
+    }
+  }
+  
+  const cleanedText = text.replace(/\s+/g, " ").trim();
+  return cleanedText.substring(0, 300) + "...";
+};
+
+const detectEducation = (text: string): { degree: string; institution: string; year: string }[] => {
+  const eduList: { degree: string; institution: string; year: string }[] = [];
+  const lines = text.split(/[\n\r]+/);
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    
+    const hasEdKeyword = /licenciad|técnico|tec\.|bachiller|egresad|título|degree|enfermer/i.test(line);
+    const hasInstKeyword = /universidad|instituto|facultad|escuela|san marcos|cayetano|vallejo|ucv|unmsm|ispp/i.test(line);
+    
+    if (hasEdKeyword || hasInstKeyword) {
+      let year = "";
+      const yearMatchThis = line.match(/\b(19\d\d|20[0-2]\d)\b/);
+      if (yearMatchThis) {
+        year = yearMatchThis[1];
+      } else {
+        // Check next 2 lines
+        for (let offset = 1; offset <= 2; offset++) {
+          if (lines[i + offset]) {
+            const ym = lines[i + offset].match(/\b(19\d\d|20[0-2]\d)\b/);
+            if (ym) {
+              year = ym[1];
+              break;
+            }
+          }
+        }
+        // Check previous line
+        if (!year && lines[i - 1]) {
+          const ym = lines[i - 1].match(/\b(19\d\d|20[0-2]\d)\b/);
+          if (ym) {
+            year = ym[1];
+          }
+        }
+      }
+      if (!year) year = new Date().getFullYear().toString();
+
+      let degree = "";
+      let institution = "";
+      
+      const cleanedLine = line.replace(year, "").replace(/\s+/g, " ").trim();
+      if (hasEdKeyword && hasInstKeyword) {
+        const parts = cleanedLine.split(/(?:en|de|del|la|-)/i);
+        if (parts.length >= 2) {
+          degree = parts[0].trim();
+          institution = parts.slice(1).join(" ").trim();
+        } else {
+          degree = cleanedLine;
+          institution = "Institución Educativa";
+        }
+      } else if (hasEdKeyword) {
+        degree = cleanedLine;
+        institution = (lines[i + 1] || lines[i - 1] || "Institución Educativa").trim().substring(0, 50);
+      } else {
+        institution = cleanedLine;
+        degree = (lines[i - 1] || lines[i + 1] || "Formación Profesional").trim().substring(0, 50);
+      }
+      
+      degree = degree.replace(/\b(19\d\d|20[0-2]\d)\b/g, "").replace(/[^\w\s\dáéíóúÁÉÍÓÚñÑ]/g, "").replace(/\s+/g, " ").trim().substring(0, 60);
+      institution = institution.replace(/\b(19\d\d|20[0-2]\d)\b/g, "").replace(/[^\w\s\dáéíóúÁÉÍÓÚñÑ]/g, "").replace(/\s+/g, " ").trim().substring(0, 60);
+      
+      if (degree.length >= 3 && institution.length >= 3) {
+        const exists = eduList.some((e) => e.degree.toLowerCase() === degree.toLowerCase() && e.institution.toLowerCase() === institution.toLowerCase());
+        if (!exists) {
+          eduList.push({ degree, institution, year });
+        }
+      }
+    }
+  }
+  
+  return eduList.slice(0, 4);
+};
+
+const detectCertifications = (text: string): { name: string; issuer: string; year: string }[] => {
+  const certList: { name: string; issuer: string; year: string }[] = [];
+  const lines = text.split(/[\n\r]+/);
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    
+    const hasCertKeyword = /certificado|diplomado|curso|taller|seminario|certificac|constancia|capacitaci/i.test(line);
+    
+    if (hasCertKeyword) {
+      let year = "";
+      const yearMatchThis = line.match(/\b(19\d\d|20[0-2]\d)\b/);
+      if (yearMatchThis) {
+        year = yearMatchThis[1];
+      } else {
+        for (let offset = 1; offset <= 2; offset++) {
+          if (lines[i + offset]) {
+            const ym = lines[i + offset].match(/\b(19\d\d|20[0-2]\d)\b/);
+            if (ym) {
+              year = ym[1];
+              break;
+            }
+          }
+        }
+      }
+      if (!year) year = new Date().getFullYear().toString();
+
+      let name = line.replace(year, "").replace(/\s+/g, " ").trim();
+      name = name.replace(/\b(19\d\d|20[0-2]\d)\b/g, "").replace(/[^\w\s\dáéíóúÁÉÍÓÚñÑ]/g, "").replace(/\s+/g, " ").trim().substring(0, 60);
+      
+      let issuer = (lines[i + 1] || lines[i - 1] || "Organización Emisora").trim();
+      issuer = issuer.replace(/\b(19\d\d|20[0-2]\d)\b/g, "").replace(/[^\w\s\dáéíóúÁÉÍÓÚñÑ]/g, "").replace(/\s+/g, " ").trim().substring(0, 60);
+      
+      if (name.length >= 3 && issuer.length >= 3) {
+        const exists = certList.some((c) => c.name.toLowerCase() === name.toLowerCase());
+        if (!exists) {
+          certList.push({ name, issuer, year });
+        }
+      }
+    }
+  }
+  
+  return certList.slice(0, 5);
+};
+
 export default function MiPerfilPage() {
   const { user, refetchAuthProfile } = useAuth();
 
@@ -138,6 +410,129 @@ export default function MiPerfilPage() {
   const [saving, setSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<{ show: boolean; type: "success" | "error"; message: string } | null>(null);
+
+  // Estados para CV Parsing
+  const [showCvModal, setShowCvModal] = useState(false);
+  const [parsingCv, setParsingCv] = useState(false);
+  const [pdfjsLoading, setPdfjsLoading] = useState(false);
+  const [cvFile, setCvFile] = useState<File | null>(null);
+  const [parsedData, setParsedData] = useState<any>(null);
+  const [cvError, setCvError] = useState<string | null>(null);
+
+  const extractTextFromPdf = async (file: File): Promise<string> => {
+    setPdfjsLoading(true);
+    let pdfjs;
+    try {
+      pdfjs = await loadPdfJs();
+    } catch (err) {
+      setPdfjsLoading(false);
+      throw new Error("No se pudo cargar la biblioteca PDF.js. Verifica tu conexión a internet.");
+    }
+
+    const fileReader = new FileReader();
+    return new Promise((resolve, reject) => {
+      fileReader.onload = async (e) => {
+        try {
+          const typedarray = new Uint8Array(e.target?.result as ArrayBuffer);
+          const pdf = await pdfjs.getDocument({ data: typedarray }).promise;
+          let fullText = "";
+
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const textContent = await page.getTextContent();
+            let pageText = "";
+            let lastY = null;
+
+            for (const item of textContent.items as any[]) {
+              const y = item.transform ? item.transform[5] : null;
+              // If y-coordinate has shifted significantly, insert a newline
+              if (lastY !== null && y !== null && Math.abs(y - lastY) > 5) {
+                pageText += "\n";
+              }
+              pageText += item.str;
+              lastY = y;
+            }
+            fullText += pageText + "\n\n";
+          }
+          resolve(fullText);
+        } catch (err) {
+          reject(err);
+        } finally {
+          setPdfjsLoading(false);
+        }
+      };
+      fileReader.onerror = (err) => {
+        setPdfjsLoading(false);
+        reject(err);
+      };
+      fileReader.readAsArrayBuffer(file);
+    });
+  };
+
+  const handleCvFileChange = async (file: File) => {
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      setCvError("El archivo debe ser un documento PDF.");
+      return;
+    }
+    setCvFile(file);
+    setCvError(null);
+    setParsingCv(true);
+
+    try {
+      const text = await extractTextFromPdf(file);
+      
+      const spec = detectSpecialty(text);
+      const exp = detectExperience(text);
+      const dist = detectDistrict(text, allDistricts);
+      const bio = detectBio(text);
+      const edu = detectEducation(text);
+      const cert = detectCertifications(text);
+      const langs = detectLanguages(text);
+
+      setParsedData({
+        specialty: spec,
+        experiencia: exp,
+        district: dist,
+        bio: bio,
+        education: edu,
+        certifications: cert,
+        languages: langs,
+      });
+    } catch (err: any) {
+      console.error("Error parsing CV:", err);
+      setCvError(err.message || "Error al leer y extraer los datos del PDF.");
+    } finally {
+      setParsingCv(false);
+    }
+  };
+
+  const applyParsedData = () => {
+    if (!parsedData) return;
+    
+    setForm((prev) => ({
+      ...prev,
+      specialty: parsedData.specialty || prev.specialty,
+      experiencia: parsedData.experiencia || prev.experiencia,
+      district: parsedData.district || prev.district,
+      bio: parsedData.bio || prev.bio,
+    }));
+
+    if (parsedData.education && parsedData.education.length > 0) {
+      setEducation(parsedData.education);
+    }
+    if (parsedData.certifications && parsedData.certifications.length > 0) {
+      setCertifications(parsedData.certifications);
+    }
+    if (parsedData.languages && parsedData.languages.length > 0) {
+      setLanguages(parsedData.languages);
+    }
+
+    setShowCvModal(false);
+    setCvFile(null);
+    setParsedData(null);
+    showToast("Datos de CV extraídos y aplicados con éxito. ¡Por favor revisa el formulario!", "success");
+  };
 
   // Generar array de años desde 1960 hasta el año actual (2026) en orden descendente
   const currentYear = new Date().getFullYear();
@@ -609,6 +1004,26 @@ export default function MiPerfilPage() {
               />
             </div>
           </div>
+        </div>
+
+        {/* Banner de Importación de CV */}
+        <div className="bg-gradient-to-r from-teal-50/70 to-emerald-50/70 rounded-2xl border border-teal-200/50 p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+              <span className="text-lg">✨</span> Autocompletar Perfil con tu CV (PDF)
+            </h3>
+            <p className="text-xs text-slate-500 font-medium">
+              Sube tu currículum en formato PDF y nuestro asistente extraerá automáticamente tus datos básicos, formación, cursos y distritos.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowCvModal(true)}
+            className="px-4 py-2.5 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white text-xs font-bold rounded-xl shadow-xs transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 self-start md:self-auto"
+          >
+            <Sparkles className="h-4 w-4 animate-pulse" />
+            Importar Currículum
+          </button>
         </div>
 
         {/* Información Básica */}
@@ -1297,6 +1712,340 @@ export default function MiPerfilPage() {
             <p className="text-[11px] text-slate-300 leading-tight mt-0.5">
               {toast.message}
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Importación de CV */}
+      {showCvModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-4 animate-in fade-in duration-300">
+          <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in zoom-in-95 duration-300">
+            
+            {/* Cabecera del Modal */}
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-teal-55 flex items-center justify-center text-teal-600">
+                  <Sparkles className="h-4 w-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-800 text-base">Importar Perfil desde CV (PDF)</h3>
+                  <p className="text-xs text-slate-400 font-medium">Extrae automáticamente tus datos profesionales</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCvModal(false);
+                  setCvFile(null);
+                  setParsedData(null);
+                  setCvError(null);
+                }}
+                className="w-8 h-8 rounded-lg hover:bg-slate-50 text-slate-400 hover:text-slate-650 flex items-center justify-center transition cursor-pointer"
+                aria-label="Cerrar modal"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Contenido del Modal */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Error Alert */}
+              {cvError && (
+                <div className="bg-rose-50 border border-rose-100 text-rose-700 p-4 rounded-xl flex items-start gap-2.5 text-xs font-semibold">
+                  <AlertTriangle className="h-4 w-4 shrink-0 text-rose-500 mt-0.5" />
+                  <p className="leading-normal">{cvError}</p>
+                </div>
+              )}
+
+              {/* Zona 1: Drag & Drop (Si no hay archivo ni se está procesando) */}
+              {!cvFile && !parsingCv && (
+                <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 hover:border-teal-400/70 bg-slate-50/50 hover:bg-teal-50/10 rounded-2xl p-10 transition text-center relative group">
+                  <input
+                    type="file"
+                    accept="application/pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleCvFileChange(file);
+                    }}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                  />
+                  <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-450 flex items-center justify-center mb-4 group-hover:scale-105 group-hover:bg-teal-50 group-hover:text-teal-600 transition">
+                    <UploadCloud className="h-6 w-6" />
+                  </div>
+                  <h4 className="font-bold text-slate-800 text-sm mb-1">Arrastra tu CV aquí o haz clic para buscar</h4>
+                  <p className="text-xs text-slate-400 font-medium mb-1">Solo se admiten documentos en formato PDF</p>
+                  <p className="text-[10px] text-slate-450 font-bold">Tamaño máximo de archivo: 10 MB</p>
+                </div>
+              )}
+
+              {/* Zona 2: Procesando (Spinner de carga) */}
+              {(parsingCv || pdfjsLoading) && (
+                <div className="flex flex-col items-center justify-center py-12 gap-4">
+                  <div className="relative flex items-center justify-center">
+                    <div className="w-14 h-14 border-4 border-teal-500/20 border-t-teal-500 rounded-full animate-spin"></div>
+                    <FileText className="h-6 w-6 text-teal-600 absolute animate-pulse" />
+                  </div>
+                  <div className="text-center">
+                    <h4 className="font-bold text-slate-800 text-sm">Procesando currículum...</h4>
+                    <p className="text-xs text-slate-400 font-medium mt-1">
+                      {pdfjsLoading ? "Iniciando motor de lectura..." : "Extrayendo formación, experiencia y aptitudes..."}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Zona 3: Vista previa de datos extraídos (Si ya se procesaron) */}
+              {parsedData && !parsingCv && (
+                <div className="space-y-5 animate-in fade-in duration-300">
+                  <div className="bg-emerald-50/50 border border-emerald-200/40 rounded-xl p-4 flex items-start gap-2.5">
+                    <CheckCircle2 className="h-4.5 w-4.5 shrink-0 text-emerald-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-bold text-emerald-800 text-xs">¡CV extraído con éxito!</h4>
+                      <p className="text-[11px] text-emerald-700 leading-normal mt-0.5">
+                        Hemos detectado los siguientes datos. Puedes revisarlos y corregirlos aquí antes de aplicarlos a tu perfil profesional.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Campos detectados */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-5">
+                    {/* Especialidad */}
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wide">Especialidad Detectada</label>
+                      <input
+                        type="text"
+                        value={parsedData.specialty}
+                        onChange={(e) => setParsedData({ ...parsedData, specialty: e.target.value })}
+                        className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 bg-white"
+                        placeholder="Ej. Geriatría y Cuidado del Adulto Mayor"
+                      />
+                    </div>
+
+                    {/* Años de Experiencia */}
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wide">Años de Experiencia</label>
+                      <input
+                        type="number"
+                        value={parsedData.experiencia}
+                        onChange={(e) => setParsedData({ ...parsedData, experiencia: e.target.value })}
+                        className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 bg-white"
+                        placeholder="Ej. 5"
+                      />
+                    </div>
+
+                    {/* Distrito */}
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wide">Distrito</label>
+                      <select
+                        value={parsedData.district}
+                        onChange={(e) => setParsedData({ ...parsedData, district: e.target.value })}
+                        className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 bg-white"
+                      >
+                        <option value="">Selecciona distrito...</option>
+                        {allDistricts.map((d) => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Idiomas */}
+                    <div className="space-y-1.5">
+                      <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wide">Idiomas</label>
+                      <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 border border-slate-100 rounded-xl min-h-[42px]">
+                        {parsedData.languages.map((l: string, idx: number) => (
+                          <span key={idx} className="inline-flex items-center gap-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs font-bold text-slate-650">
+                            {l}
+                            <button
+                              type="button"
+                              onClick={() => setParsedData({
+                                ...parsedData,
+                                languages: parsedData.languages.filter((_: any, i: number) => i !== idx)
+                              })}
+                              className="text-slate-400 hover:text-rose-500 cursor-pointer"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </span>
+                        ))}
+                        {parsedData.languages.length === 0 && (
+                          <span className="text-xs text-slate-400 italic p-1">Ninguno detectado</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Biografía / Presentación */}
+                  <div className="space-y-1.5">
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wide">Presentación / Biografía</label>
+                    <textarea
+                      value={parsedData.bio}
+                      onChange={(e) => setParsedData({ ...parsedData, bio: e.target.value })}
+                      rows={3}
+                      className="w-full border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-400 resize-none bg-white"
+                      placeholder="Resumen profesional..."
+                    />
+                  </div>
+
+                  {/* Formación Académica */}
+                  <div className="space-y-2">
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wide">Formación Académica Detectada</label>
+                    <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+                      {parsedData.education.map((edu: any, idx: number) => (
+                        <div key={idx} className="flex gap-2 items-center bg-slate-50 border border-slate-100 rounded-xl p-3">
+                          <input
+                            type="text"
+                            value={edu.degree}
+                            onChange={(e) => {
+                              const newEd = [...parsedData.education];
+                              newEd[idx].degree = e.target.value;
+                              setParsedData({ ...parsedData, education: newEd });
+                            }}
+                            placeholder="Título / Grado"
+                            className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700"
+                          />
+                          <input
+                            type="text"
+                            value={edu.institution}
+                            onChange={(e) => {
+                              const newEd = [...parsedData.education];
+                              newEd[idx].institution = e.target.value;
+                              setParsedData({ ...parsedData, education: newEd });
+                            }}
+                            placeholder="Institución"
+                            className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700"
+                          />
+                          <select
+                            value={edu.year}
+                            onChange={(e) => {
+                              const newEd = [...parsedData.education];
+                              newEd[idx].year = e.target.value;
+                              setParsedData({ ...parsedData, education: newEd });
+                            }}
+                            className="w-20 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-700"
+                          >
+                            {yearsList.map((y) => (
+                              <option key={y} value={y}>{y}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => setParsedData({
+                              ...parsedData,
+                              education: parsedData.education.filter((_: any, i: number) => i !== idx)
+                            })}
+                            className="text-slate-400 hover:text-rose-500 cursor-pointer w-7 h-7 rounded-lg hover:bg-rose-50 flex items-center justify-center shrink-0 transition"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                      {parsedData.education.length === 0 && (
+                        <p className="text-xs text-slate-400 italic py-2 text-center">No se detectó formación académica</p>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Certificaciones y Cursos */}
+                  <div className="space-y-2">
+                    <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wide">Cursos y Certificaciones Detectados</label>
+                    <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+                      {parsedData.certifications.map((cert: any, idx: number) => (
+                        <div key={idx} className="flex gap-2 items-center bg-slate-50 border border-slate-100 rounded-xl p-3">
+                          <input
+                            type="text"
+                            value={cert.name}
+                            onChange={(e) => {
+                              const newCert = [...parsedData.certifications];
+                              newCert[idx].name = e.target.value;
+                              setParsedData({ ...parsedData, certifications: newCert });
+                            }}
+                            placeholder="Nombre del curso"
+                            className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700"
+                          />
+                          <input
+                            type="text"
+                            value={cert.issuer}
+                            onChange={(e) => {
+                              const newCert = [...parsedData.certifications];
+                              newCert[idx].issuer = e.target.value;
+                              setParsedData({ ...parsedData, certifications: newCert });
+                            }}
+                            placeholder="Organización emisora"
+                            className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-700"
+                          />
+                          <select
+                            value={cert.year}
+                            onChange={(e) => {
+                              const newCert = [...parsedData.certifications];
+                              newCert[idx].year = e.target.value;
+                              setParsedData({ ...parsedData, certifications: newCert });
+                            }}
+                            className="w-20 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-700"
+                          >
+                            {yearsList.map((y) => (
+                              <option key={y} value={y}>{y}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => setParsedData({
+                              ...parsedData,
+                              certifications: parsedData.certifications.filter((_: any, i: number) => i !== idx)
+                            })}
+                            className="text-slate-400 hover:text-rose-500 cursor-pointer w-7 h-7 rounded-lg hover:bg-rose-50 flex items-center justify-center shrink-0 transition"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                      {parsedData.certifications.length === 0 && (
+                        <p className="text-xs text-slate-400 italic py-2 text-center">No se detectaron certificaciones</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Pie del Modal */}
+            <div className="p-5 border-t border-slate-100 bg-slate-50 flex items-center justify-end gap-3.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCvModal(false);
+                  setCvFile(null);
+                  setParsedData(null);
+                  setCvError(null);
+                }}
+                className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-650 hover:bg-white transition cursor-pointer"
+              >
+                Cancelar
+              </button>
+              {parsedData && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCvFile(null);
+                      setParsedData(null);
+                      setCvError(null);
+                    }}
+                    className="px-4 py-2 border border-teal-250 rounded-xl text-xs font-bold text-teal-650 hover:bg-white transition cursor-pointer"
+                  >
+                    Subir otro
+                  </button>
+                  <button
+                    type="button"
+                    onClick={applyParsedData}
+                    className="px-5 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-xl shadow-xs transition cursor-pointer flex items-center gap-1"
+                  >
+                    Aplicar al Perfil
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                </>
+              )}
+            </div>
+
           </div>
         </div>
       )}

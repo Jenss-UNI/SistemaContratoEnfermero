@@ -10,9 +10,42 @@ export type PaymentMethod = {
   telefono?: string;
   /** Visa, etc. */
   marca?: string;
+  /** Nombre del titular de la tarjeta */
+  nombreTarjeta?: string;
 };
 
 export type PaymentHistoryStatus = "pagado" | "custodia" | "pendiente";
+
+export type FacturaDetalle = {
+  numFactura: string;
+  fechaEmision: string;
+  clienteNombre: string;
+  pacienteNombre: string;
+  direccion: string;
+  distrito: string;
+  enfermeroNombre: string;
+  enfermeroRol?: string;
+  tipoServicio: string;
+  horas: number;
+  tarifaHora: number;
+  fechaServicio: string;
+  metodoPago: string;
+  montoTotal: number;
+};
+
+export type PlanFacturaDetalle = {
+  numFactura: string;
+  fechaEmision: string;
+  clienteNombre: string;
+  planNombre: string;
+  planTipo: string;
+  precioUnitario: number;
+  montoTotal: number;
+  metodoPago: string;
+  operacionId: string;
+  detallesPago: string;
+  fechaVencimiento: string;
+};
 
 export type PaymentHistoryItem = {
   id: string;
@@ -22,6 +55,8 @@ export type PaymentHistoryItem = {
   monto: number;
   estado: PaymentHistoryStatus;
   factura: string;
+  facturaDetalle?: FacturaDetalle;
+  planFacturaDetalle?: PlanFacturaDetalle;
 };
 
 export type CardFormData = {

@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 function Footer() {
   return (
     <footer className="bg-[#021311] text-white mt-16 rounded-t-[28px] overflow-hidden border-t border-[#12312d]">
@@ -43,12 +44,12 @@ function Footer() {
             <ul className="space-y-4 text-[#c4d0cd] text-sm">
 
               <li>
-                <a
-                  href="#"
+                <Link
+                  to="/directorio"
                   className="hover:text-white transition underline underline-offset-4"
                 >
                   Buscar Enfermeros
-                </a>
+                </Link>
               </li>
 
               <li>
@@ -61,12 +62,12 @@ function Footer() {
               </li>
 
               <li>
-                <a
-                  href="#"
+                <Link
+                  to="/register"
                   className="hover:text-white transition underline underline-offset-4"
                 >
                   Registrarse
-                </a>
+                </Link>
               </li>
 
               <li>

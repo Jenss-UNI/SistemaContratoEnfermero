@@ -130,8 +130,9 @@ export async function fetchClientHirings(clientId: string): Promise<Contratacion
       notes,
       patient_name,
       created_at,
+      updated_at,
       pin_code,
-      nurse:nurse_id (
+      profiles:nurse_id (
         nombres,
         apellidos_pa,
         apellidos_ma,
@@ -162,9 +163,10 @@ export async function fetchClientHirings(clientId: string): Promise<Contratacion
   if (!data) return [];
 
   return data.map((row: any) => {
-    // El alias del join puede ser "nurse" o "profiles" según la FK detectada
-    const n = row.nurse || row.profiles || {};
-    const np = n.nurse_profiles || {};
+    // El alias del join es "profiles" según la relación de Supabase
+    const n = row.profiles || row.nurse || {};
+    const npArr = n.nurse_profiles;
+    const np = Array.isArray(npArr) ? npArr[0] || {} : npArr || {};
 
     const prefix = np.nivel === "Técnico en Enfermería" ? "Tec. " : "Lic. ";
     const fullName = `${prefix}${n.nombres || ""} ${n.apellidos_pa || ""}`.trim();
@@ -179,10 +181,14 @@ export async function fetchClientHirings(clientId: string): Promise<Contratacion
       maxDate = dayDates[dayDates.length - 1];
     }
 
+    const allDaysCompleted = (row.service_days || []).length > 0 &&
+      (row.service_days || []).every((d: any) => d.status === "completed");
+
     // Map DB status to hiring.model.ts ContratacionEstado
-    // DB: pending → "pendiente", confirmed → "firma_requerida", active → "confirmado", completed → "completado"
     let estado: any = "pendiente";
-    if (row.status === "confirmed") {
+    if (row.status === "completed" || allDaysCompleted) {
+      estado = "completado";
+    } else if (row.status === "confirmed") {
       estado = "firma_requerida";
     } else if (row.status === "active") {
       const hasActiveDay = (row.service_days || []).some(
@@ -191,24 +197,38 @@ export async function fetchClientHirings(clientId: string): Promise<Contratacion
       estado = hasActiveDay ? "en_curso" : "confirmado";
     } else if (row.status === "in_progress") {
       estado = "en_curso";
-    } else if (row.status === "completed") {
-      estado = "completado";
     }
 
-    // Map DB payment_status: pending, in_custody, released, refunded
-    // PagoEstado: "pendiente" | "preautorizado" | "liberado"
-    let pagoEstado: any = "pendiente";
-    if (row.payment_status === "in_custody") pagoEstado = "preautorizado";
-    else if (row.payment_status === "released") pagoEstado = "liberado";
+    const hasOpenIncident = (row.incident_reports || []).some(
+      (inc: any) => inc.status === "abierto"
+    );
 
     const ini = [
       (n.nombres || "").charAt(0),
       (n.apellidos_pa || "").charAt(0),
     ].filter(Boolean).join("").toUpperCase() || "EN";
 
-    const hasOpenIncident = (row.incident_reports || []).some(
-      (inc: any) => inc.status === "abierto"
-    );
+    // Regla de Auto-Liberación: 48 horas desde la finalización si no hay incidente abierto
+    let lastCompletionTime = row.updated_at ? new Date(row.updated_at).getTime() : (row.created_at ? new Date(row.created_at).getTime() : new Date().getTime());
+    if (allDaysCompleted && row.service_days && row.service_days.length > 0) {
+      const maxDate = Math.max(...row.service_days.map((d: any) => new Date(d.updated_at || d.created_at || lastCompletionTime).getTime()));
+      lastCompletionTime = maxDate;
+    }
+    const hoursPassed = (new Date().getTime() - lastCompletionTime) / (1000 * 60 * 60);
+    const isAutoReleaseEligible = (row.status === "completed" || allDaysCompleted) && hoursPassed >= 48 && !hasOpenIncident;
+
+    // Map DB payment_status: pending, in_custody, released, refunded
+    let pagoEstado: any = "pendiente";
+    if (row.payment_status === "released" || isAutoReleaseEligible) {
+      if (isAutoReleaseEligible && row.payment_status !== "released") {
+        releasePayment(row.client_id, row.id).catch(console.error);
+      }
+      pagoEstado = "liberado";
+    } else if (row.payment_status === "in_custody") {
+      pagoEstado = "preautorizado";
+    }
+
+    const createdAtStr = row.created_at ? String(row.created_at).split("T")[0] : "";
 
     return {
       id: String(row.id),
@@ -224,8 +244,8 @@ export async function fetchClientHirings(clientId: string): Promise<Contratacion
       profesionalIniciales: ini,
       profesionalFotoUrl: n.foto_url || undefined,
       paciente: row.patient_name || "Paciente",
-      periodoInicio: minDate || row.created_at.split("T")[0],
-      periodoFin: maxDate || row.created_at.split("T")[0],
+      periodoInicio: minDate || createdAtStr,
+      periodoFin: maxDate || createdAtStr,
       duracionDias: dayDates.length || 1,
       duracionHoras: row.total_hours || 0,
       montoTotal: Number(row.total_amount || 0),
@@ -271,6 +291,7 @@ export async function fetchContractDetail(serviceId: number): Promise<ContratoDe
       address,
       district,
       created_at,
+      updated_at,
       profiles:client_id (
         nombres,
         apellidos_pa,
@@ -349,23 +370,47 @@ export async function fetchContractDetail(serviceId: number): Promise<ContratoDe
   }
 
   // Formato de fechas amigables
-  const formatFriendlyDate = (dateStr: string) => {
+  const formatFriendlyDate = (dateStr?: string) => {
     if (!dateStr) return "";
-    const d = new Date(dateStr + "T12:00:00");
+    const cleanStr = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+    const d = new Date(cleanStr + "T12:00:00");
+    if (isNaN(d.getTime())) return dateStr;
     return d.toLocaleDateString("es-PE", { day: "numeric", month: "long", year: "numeric" });
   };
 
-  const formatShortDay = (dateStr: string) => {
-    const d = new Date(dateStr + "T12:00:00");
+  const formatShortDay = (dateStr?: string) => {
+    if (!dateStr) return "";
+    const cleanStr = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+    const d = new Date(cleanStr + "T12:00:00");
+    if (isNaN(d.getTime())) return dateStr;
     return d.toLocaleDateString("es-PE", { weekday: "short", day: "numeric", month: "short" });
   };
 
+  const formatFriendlyTime = (dateStr?: string) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const datePart = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+    const timeStr = d.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" });
+    return `${formatFriendlyDate(datePart)}${timeStr ? ` · ${timeStr}` : ""}`;
+  };
+
   // Convert service days to JornadaProgramada
-  const jornadas: JornadaProgramada[] = serviceDays.map((d: any) => ({
-    fecha: formatShortDay(d.day_date),
-    horario: `${formatHour(d.start_hour)} - ${formatHour(d.end_hour)}`,
-    estado: d.status === "completed" ? "completada" : d.status === "cancelled" ? "cancelada" : "pendiente",
-  }));
+  const jornadas: JornadaProgramada[] = serviceDays.map((d: any) => {
+    let est: any = "pendiente";
+    if (svc.status === "completed" || d.status === "completed") {
+      est = "completada";
+    } else if (d.status === "active") {
+      est = "activa";
+    } else if (d.status === "cancelled") {
+      est = "cancelada";
+    }
+    return {
+      fecha: formatShortDay(d.day_date),
+      horario: `${formatHour(d.start_hour)} - ${formatHour(d.end_hour)}`,
+      estado: est,
+    };
+  });
 
   // Define general terms
   const terminos = [
@@ -378,32 +423,7 @@ export async function fetchContractDetail(serviceId: number): Promise<ContratoDe
     "El contrato entra en vigor en el momento de la firma y activación por parte del cliente."
   ];
 
-  // Define history
-  const emitidoElStr = formatFriendlyDate(svc.created_at.split("T")[0]);
-  const historial = [
-    { titulo: "Contrato generado", fecha: `${emitidoElStr} · ${new Date(svc.created_at).toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}` }
-  ];
-  if (svc.status !== "pending") {
-    historial.push({ titulo: "Enfermero aceptó la solicitud", fecha: emitidoElStr });
-  }
-
-  const clientName = `${svc.profiles?.nombres || ""} ${svc.profiles?.apellidos_pa || ""}`.trim();
-
-  // Map to Contratacion fields
-  let estado: any = "pendiente";
-  if (svc.status === "confirmed") estado = "firma_requerida";
-  else if (svc.status === "active") estado = "confirmado";
-  else if (svc.status === "in_progress") estado = "en_curso";
-  else if (svc.status === "completed") estado = "completado";
-
-  let pagoEstado: any = "pendiente";
-  if (svc.payment_status === "in_custody") pagoEstado = "preautorizado";
-  else if (svc.payment_status === "released") pagoEstado = "liberado";
-
-  const total = Number(svc.total_amount || 0);
-  const comisionPorcentaje = 10;
-  
-  // 5. Fetch signature details if service is active or completed
+  // Fetch signature details first to use in history timeline
   let firma: any = null;
   const { data: sigData } = await supabase
     .from("contract_signatures")
@@ -413,6 +433,73 @@ export async function fetchContractDetail(serviceId: number): Promise<ContratoDe
   if (sigData) {
     firma = sigData;
   }
+
+  // Define history timeline sequentially based on status progress
+  const emitidoElStr = formatFriendlyDate(svc.created_at);
+  const historial = [
+    { titulo: "Pendiente de Confirmacion del Enfermero", fecha: formatFriendlyTime(svc.created_at) },
+    { titulo: "Contrato generado", fecha: formatFriendlyTime(svc.created_at) }
+  ];
+
+  if (svc.status !== "pending") {
+    historial.push({
+      titulo: "Enfermero Acepto Solicitud(Servicios Activo)",
+      fecha: formatFriendlyTime(svc.updated_at)
+    });
+  }
+
+  if (svc.status === "active" || svc.status === "in_progress" || svc.status === "completed") {
+    const cursoFecha = sigData?.signed_at ? formatFriendlyTime(sigData.signed_at) : formatFriendlyTime(svc.updated_at);
+    historial.push({
+      titulo: "Servicio en curso",
+      fecha: cursoFecha
+    });
+  }
+
+  if (svc.status === "completed") {
+    historial.push({
+      titulo: "Servicio Completado",
+      fecha: formatFriendlyTime(svc.updated_at)
+    });
+  }
+
+  const clientName = `${svc.profiles?.nombres || ""} ${svc.profiles?.apellidos_pa || ""}`.trim();
+
+  const allDaysCompletedDetail = (svc.service_days || []).length > 0 &&
+    (svc.service_days || []).every((d: any) => d.status === "completed");
+
+  // Map to Contratacion fields
+  let estado: any = "pendiente";
+  if (svc.status === "completed" || allDaysCompletedDetail) estado = "completado";
+  else if (svc.status === "confirmed") estado = "firma_requerida";
+  else if (svc.status === "active") estado = "confirmado";
+  else if (svc.status === "in_progress") estado = "en_curso";
+
+  const hasOpenIncidentDetail = (svc.incident_reports || []).some(
+    (inc: any) => inc.status === "abierto"
+  );
+  let lastCompletionTimeDetail = svc.updated_at ? new Date(svc.updated_at).getTime() : (svc.created_at ? new Date(svc.created_at).getTime() : new Date().getTime());
+  if (allDaysCompletedDetail && svc.service_days && svc.service_days.length > 0) {
+    const maxDateDetail = Math.max(...svc.service_days.map((d: any) => new Date(d.updated_at || d.created_at || lastCompletionTimeDetail).getTime()));
+    lastCompletionTimeDetail = maxDateDetail;
+  }
+  const hoursPassedDetail = (new Date().getTime() - lastCompletionTimeDetail) / (1000 * 60 * 60);
+  const isAutoReleaseEligibleDetail = (svc.status === "completed" || allDaysCompletedDetail) && hoursPassedDetail >= 48 && !hasOpenIncidentDetail;
+
+  let pagoEstado: any = "pendiente";
+  if (svc.payment_status === "released" || isAutoReleaseEligibleDetail) {
+    if (isAutoReleaseEligibleDetail && svc.payment_status !== "released") {
+      releasePayment(svc.client_id, svc.id).catch(console.error);
+    }
+    pagoEstado = "liberado";
+  } else if (svc.payment_status === "in_custody") {
+    pagoEstado = "preautorizado";
+  }
+
+  const total = Number(svc.total_amount || 0);
+  const comisionPorcentaje = 10;
+  
+  
 
   return {
     id: String(svc.id),

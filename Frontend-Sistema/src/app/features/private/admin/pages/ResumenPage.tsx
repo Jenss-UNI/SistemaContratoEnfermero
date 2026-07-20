@@ -2,14 +2,23 @@ import { User, FileText, ShieldCheck, Hourglass } from "lucide-react";
 import { useContratosRecientes, useResumenCards } from "../hooks/useResumenData";
 
 const statusStyle: Record<string, string> = {
-  confirmado: "bg-blue-100 text-blue-700",
-  activo: "bg-[#ccfbf1] text-[#0f766e]",
-  cancelado: "bg-rose-100 text-rose-600",
-  completado: "bg-[#d1fae5] text-[#059669]",
+  pending: "bg-[#fffbeb] text-[#d97706]",
+  confirmed: "bg-blue-100 text-blue-700",
+  active: "bg-[#ccfbf1] text-[#0f766e]",
+  completed: "bg-[#d1fae5] text-[#059669]",
+  cancelled: "bg-rose-100 text-rose-600",
+};
+
+const statusLabel: Record<string, string> = {
+  pending: "Pendiente",
+  confirmed: "Confirmado",
+  active: "Activo",
+  completed: "Completado",
+  cancelled: "Cancelado",
 };
 
 function formatAmount(amount: number | null): string {
-  return `S/ ${amount ?? 0}`;
+  return `S/ ${(amount ?? 0).toLocaleString('es-PE')}`;
 }
 
 function formatDate(dateString: string | null): string {
@@ -80,30 +89,33 @@ export default function ResumenPage() {
 
             <tbody className="divide-y divide-slate-50">
               {(contratos ?? []).length > 0 ? (
-                contratos!.map((c) => (
-                  <tr key={c.id} className="transition-colors hover:bg-slate-50/50">
-                    <td className="px-2 py-2.5 text-[11px] font-medium text-slate-700">
-                      {c.contract_code || `#${c.id}`}
-                    </td>
-                    <td className="px-2 py-2.5 text-[11px] font-medium text-slate-700">
-                      {c.patient_name || 'Sin nombre'}
-                    </td>
-                    <td className="px-2 py-2.5 text-[11px] font-medium text-slate-500">
-                      {c.service_type || '-'}
-                    </td>
-                    <td className="px-2 py-2.5">
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${statusStyle[c.status?.toLowerCase() || ''] || 'bg-gray-100 text-gray-600'}`}>
-                        {c.status || '-'}
-                      </span>
-                    </td>
-                    <td className="px-2 py-2.5 text-[11px] font-bold text-slate-900">
-                      {formatAmount(c.total_amount)}
-                    </td>
-                    <td className="px-2 py-2.5 text-[11px] font-medium text-slate-500">
-                      {formatDate(c.created_at)}
-                    </td>
-                  </tr>
-                ))
+                contratos!.map((c) => {
+                  const estado = c.status?.toLowerCase() || '';
+                  return (
+                    <tr key={c.id} className="transition-colors hover:bg-slate-50/50">
+                      <td className="px-2 py-2.5 text-[11px] font-medium text-slate-700">
+                        {c.contract_code || `#${c.id}`}
+                      </td>
+                      <td className="px-2 py-2.5 text-[11px] font-medium text-slate-700">
+                        {c.patient_name || 'Sin nombre'}
+                      </td>
+                      <td className="px-2 py-2.5 text-[11px] font-medium text-slate-500">
+                        {c.service_type || '-'}
+                      </td>
+                      <td className="px-2 py-2.5">
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${statusStyle[estado] || 'bg-gray-100 text-gray-600'}`}>
+                          {statusLabel[estado] || c.status || '-'}
+                        </span>
+                      </td>
+                      <td className="px-2 py-2.5 text-[11px] font-bold text-slate-900">
+                        {formatAmount(c.total_amount)}
+                      </td>
+                      <td className="px-2 py-2.5 text-[11px] font-medium text-slate-500">
+                        {formatDate(c.created_at)}
+                      </td>
+                    </tr>
+                  );
+                })
               ) : (
                 <tr>
                   <td colSpan={6} className="py-8 text-center text-[13px] font-medium text-slate-400">

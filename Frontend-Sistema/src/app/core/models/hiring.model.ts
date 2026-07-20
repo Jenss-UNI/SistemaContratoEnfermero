@@ -45,7 +45,7 @@ export type Contratacion = {
 export type JornadaProgramada = {
   fecha: string;
   horario: string;
-  estado: "pendiente" | "completada" | "cancelada";
+  estado: "pendiente" | "completada" | "cancelada" | "activa";
 };
 
 export type HistorialContratoItem = {

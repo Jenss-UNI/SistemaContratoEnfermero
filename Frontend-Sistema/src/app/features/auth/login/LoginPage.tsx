@@ -6,6 +6,8 @@ import { useAuth } from "../../../core/contexts/AuthContext";
 import { supabase } from "../../../core/services/supabase";
 import loginImage from "../../../../assets/login/inicarsesion.jpg";
 
+const removeSpaces = (value: string) => value.replace(/\s/g, "");
+
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail]               = useState("");
@@ -24,15 +26,34 @@ export default function LoginPage() {
     else                       navigate("/panel-cliente",   { replace: true });
   }, [user, role, loading, navigate]);
 
+  const handleEmailChange = (value: string) => {
+    setEmail(removeSpaces(value));
+  };
+
+  const handlePasswordChange = (value: string) => {
+    setPassword(removeSpaces(value));
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
+
+    const sanitizedEmail = removeSpaces(email);
+    const sanitizedPassword = removeSpaces(password);
+
+    if (sanitizedEmail !== email || sanitizedPassword !== password) {
+      setErrorMsg("No se permiten espacios en el correo electrónico ni en la contraseña.");
+      setEmail(sanitizedEmail);
+      setPassword(sanitizedPassword);
+      return;
+    }
+
     setIsLoggingIn(true);
 
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: sanitizedEmail,
+        password: sanitizedPassword,
       });
 
       if (error) throw error;
@@ -116,7 +137,7 @@ export default function LoginPage() {
                         placeholder="tu@correo.com"
                         required
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => handleEmailChange(e.target.value)}
                         className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-4 text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                       />
                     </div>
@@ -135,7 +156,7 @@ export default function LoginPage() {
                         placeholder="••••••••"
                         required
                         value={password}
-                        onChange={(e) => setPassword(e.target.value)}
+                        onChange={(e) => handlePasswordChange(e.target.value)}
                         className="w-full rounded-xl border border-slate-200 bg-white py-3 pl-11 pr-11 text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100"
                       />
                       <button
