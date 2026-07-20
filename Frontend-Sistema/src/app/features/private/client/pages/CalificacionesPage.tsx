@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAuth } from "../../../../core/contexts/AuthContext";
 import { supabase } from "../../../../core/services/supabase";
-import { CalendarDays, Star, UserRound, Loader2, X, CheckCheck } from "lucide-react";
+import { CalendarDays, Star, UserRound, Loader2, X, CheckCheck, Clock, Heart, Brain } from "lucide-react";
 
 interface DBRatingItem {
   id: string; // Service ID
@@ -302,18 +302,49 @@ export default function CalificacionesPage() {
                 </div>
 
                 {item.estado === "Calificados" ? (
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-slate-50/40 p-3 rounded-2xl border border-slate-100">
-                    <div className="inline-flex items-center gap-2 rounded-xl bg-amber-50/80 px-3 py-1.5 border border-amber-100 shrink-0 w-fit">
-                      <span className="text-[15px] font-black text-amber-500 leading-none">
-                        {item.rating.toFixed(1)}
-                      </span>
-                      {renderStars(item.rating)}
+                  <div className="space-y-3 pt-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 bg-slate-50/40 p-3 rounded-2xl border border-slate-100">
+                      <div className="inline-flex items-center gap-2 rounded-xl bg-amber-50/80 px-3 py-1.5 border border-amber-100 shrink-0 w-fit">
+                        <span className="text-[15px] font-black text-amber-500 leading-none">
+                          {item.rating.toFixed(1)}
+                        </span>
+                        {renderStars(item.rating)}
+                      </div>
+                      {item.comment && (
+                        <p className="text-xs italic text-slate-650 font-medium leading-relaxed">
+                          &ldquo;{item.comment}&rdquo;
+                        </p>
+                      )}
                     </div>
-                    {item.comment && (
-                      <p className="text-xs italic text-slate-655 font-medium leading-relaxed">
-                        &ldquo;{item.comment}&rdquo;
-                      </p>
-                    )}
+
+                    {/* Breakdown de Calificación: Puntualidad, Trato, Técnico */}
+                    <div className="rounded-2xl bg-teal-50/40 p-3 border border-teal-100/60 max-w-md">
+                      <div className="grid grid-cols-3 gap-2 text-center divide-x divide-teal-100/80">
+                        <div className="flex flex-col items-center">
+                          <div className="flex items-center gap-1.5 text-slate-800 font-black text-xs">
+                            <Clock className="h-3.5 w-3.5 text-teal-600 shrink-0" />
+                            <span>{(item.subRatings?.punctuality ?? item.rating).toFixed(1)}</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Puntualidad</span>
+                        </div>
+
+                        <div className="flex flex-col items-center">
+                          <div className="flex items-center gap-1.5 text-slate-800 font-black text-xs">
+                            <Heart className="h-3.5 w-3.5 text-teal-600 shrink-0" />
+                            <span>{(item.subRatings?.treatment ?? item.rating).toFixed(1)}</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Trato</span>
+                        </div>
+
+                        <div className="flex flex-col items-center">
+                          <div className="flex items-center gap-1.5 text-slate-800 font-black text-xs">
+                            <Brain className="h-3.5 w-3.5 text-teal-600 shrink-0" />
+                            <span>{(item.subRatings?.knowledge ?? item.rating).toFixed(1)}</span>
+                          </div>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">Técnico</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <button
