@@ -585,10 +585,14 @@ export default function BitacorasPage() {
               ) : (
                 <div className="grid sm:grid-cols-2 gap-4">
                   {serviceDays.map((d, index) => {
-                    const binnacleObj = d.service_binnacles?.[0] || d.service_binnacles || null;
+                    const binnacleObj = Array.isArray(d.service_binnacles) && d.service_binnacles.length > 0
+                      ? d.service_binnacles[0]
+                      : d.service_binnacles && !Array.isArray(d.service_binnacles)
+                      ? d.service_binnacles
+                      : null;
                     const hasBinnacle = !!binnacleObj;
                     const isCompleted = d.status === "completed";
-                    const isSelectable = isCompleted && !hasBinnacle;
+                    const isSelectable = !hasBinnacle;
 
                     return (
                       <div key={d.id} className="bg-white border border-slate-100 rounded-2xl p-5 shadow-sm flex flex-col justify-between">
@@ -605,9 +609,9 @@ export default function BitacorasPage() {
                           <span className={`text-[9px] font-bold px-2 py-0.5 rounded-lg uppercase tracking-wide shrink-0 ${
                             hasBinnacle ? "bg-emerald-50 text-emerald-700 border border-emerald-100" :
                             isCompleted ? "bg-teal-50 text-teal-700 border border-teal-100" :
-                            "bg-slate-100 text-slate-500 border border-slate-100"
+                            "bg-amber-50 text-amber-700 border border-amber-100"
                           }`}>
-                            {hasBinnacle ? "Ya redactada" : isCompleted ? "Completada" : "No finalizada"}
+                            {hasBinnacle ? "Ya redactada" : isCompleted ? "Completada" : "Pendiente de redactar"}
                           </span>
                         </div>
 

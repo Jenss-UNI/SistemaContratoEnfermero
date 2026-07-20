@@ -15,6 +15,7 @@ type ServiceCardProps = {
   rate?: string;
   total?: string;
   hours?: string;
+  photoUrl?: string;
 };
 
 export default function ServiceCard({
@@ -30,6 +31,7 @@ export default function ServiceCard({
   rate = "—",
   total = "—",
   hours = "—",
+  photoUrl,
 }: ServiceCardProps) {
   
   const getInitials = (name: string) => {
@@ -60,9 +62,17 @@ export default function ServiceCard({
       <div className="flex flex-col gap-4 lg:flex-row lg:justify-between">
         
         <div className="flex min-w-0 gap-4">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-teal-600 text-lg font-bold text-white">
-            {getInitials(professionalName)}
-          </div>
+          {photoUrl ? (
+            <img
+              src={photoUrl}
+              alt={professionalName}
+              className="h-14 w-14 shrink-0 rounded-full object-cover border border-slate-100 shadow-2xs"
+            />
+          ) : (
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-teal-600 text-lg font-bold text-white shadow-2xs">
+              {getInitials(professionalName)}
+            </div>
+          )}
           
           <div className="min-w-0">
             <div className="mb-1 flex flex-wrap items-center gap-2">

@@ -877,14 +877,18 @@ export async function fetchNurseServices(nurseId: string): Promise<any[]> {
  */
 export async function updateServiceStatus(
   serviceId: number,
-  status: "confirmed" | "rejected" | "cancelled" | "active" | "completed"
+  status: "confirmed" | "rejected" | "cancelled" | "active" | "in_progress" | "completed"
 ): Promise<void> {
+  const updatePayload: any = {
+    status,
+    updated_at: new Date().toISOString(),
+  };
+
+
+
   const { error } = await supabase
     .from("services")
-    .update({
-      status,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updatePayload)
     .eq("id", serviceId);
 
   if (error) throw error;

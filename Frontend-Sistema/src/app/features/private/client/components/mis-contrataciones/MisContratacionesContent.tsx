@@ -359,7 +359,7 @@ export default function MisContratacionesContent() {
                       )}
 
                       {/* Botón Ver Bitácora */}
-                      {j.estado === "completada" && (j.binnacle || j.reporte) && (
+                      {(j.binnacle || j.reporte) && (
                         <div className="flex justify-end">
                           <button
                             type="button"

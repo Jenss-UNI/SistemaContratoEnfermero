@@ -16,7 +16,8 @@ import {
   Stethoscope,
   Sun,
   Timer,
-  Loader2
+  Loader2,
+  Activity
 } from "lucide-react";
 import { generateContractPdf } from "./generateContractPdf";
 import { useEffect, useState } from "react";
@@ -301,11 +302,26 @@ export default function ContractDetailView({
                 {contrato.jornadas.map((j, i) => (
                   <div key={i} className="flex items-center justify-between rounded-xl bg-slate-50 p-4 border border-slate-100">
                     <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
-                      <span className="w-2 h-2 rounded-full bg-slate-300"></span>
+                      <span className={`w-2 h-2 rounded-full ${
+                        j.estado === "completada" ? "bg-emerald-500" :
+                        j.estado === "activa" ? "bg-teal-500" :
+                        j.estado === "cancelada" ? "bg-rose-500" :
+                        "bg-slate-300"
+                      }`}></span>
                       {j.fecha}
                     </div>
                     <span className="text-sm text-slate-500">{j.horario}</span>
-                    <span className="rounded bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-600">Pendiente</span>
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      j.estado === "completada" ? "bg-emerald-50 text-emerald-700 border border-emerald-200/50" :
+                      j.estado === "activa" ? "bg-teal-50 text-teal-700 border border-teal-200/50 animate-pulse" :
+                      j.estado === "cancelada" ? "bg-rose-50 text-rose-700 border border-rose-200/50" :
+                      "bg-slate-50 text-slate-650 border border-slate-200/50"
+                    }`}>
+                      {j.estado === "completada" ? "Completada" :
+                       j.estado === "activa" ? "Activa" :
+                       j.estado === "cancelada" ? "Cancelada" :
+                       "Pendiente"}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -377,20 +393,37 @@ export default function ContractDetailView({
             </h2>
             <div className="space-y-4">
               {contrato.historial.map((item: any, i: number) => {
-                const isAceptado = item.titulo.toLowerCase().includes("aceptó");
+                const getHistoryStyle = (titulo: string) => {
+                  const t = titulo.toLowerCase();
+                  if (t.includes("completado")) {
+                    return { bg: "bg-emerald-50 text-emerald-600 border border-emerald-200", icon: CheckCircle2 };
+                  }
+                  if (t.includes("curso")) {
+                    return { bg: "bg-blue-50 text-blue-600 border border-blue-200", icon: Activity };
+                  }
+                  if (t.includes("acepto") || t.includes("aceptó")) {
+                    return { bg: "bg-teal-50 text-teal-600 border border-teal-200", icon: ShieldCheck };
+                  }
+                  if (t.includes("confirmacion") || t.includes("confirmación")) {
+                    return { bg: "bg-amber-50 text-amber-600 border border-amber-200", icon: Clock };
+                  }
+                  return { bg: "bg-slate-50 text-slate-600 border border-slate-200", icon: FileText };
+                };
+
+                const style = getHistoryStyle(item.titulo);
+                const Icon = style.icon;
+
                 return (
                   <div key={i} className="flex gap-4">
                     <div className="flex flex-col items-center">
-                      <div className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                        isAceptado ? "bg-emerald-50 text-emerald-500" : "bg-slate-100 text-slate-500"
-                      }`}>
-                        {isAceptado ? <CheckCircle2 className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                      <div className={`flex h-8 w-8 items-center justify-center rounded-full ${style.bg}`}>
+                        <Icon className="h-4 w-4" />
                       </div>
                       {i !== contrato.historial.length - 1 && <div className="h-full w-px bg-slate-200 my-2"></div>}
                     </div>
                     <div className="pb-4 pt-1">
                       <p className="font-semibold text-slate-900">{item.titulo}</p>
-                      <p className="text-sm text-slate-500">{item.fecha}</p>
+                      <p className="text-sm text-slate-550">{item.fecha}</p>
                     </div>
                   </div>
                 );

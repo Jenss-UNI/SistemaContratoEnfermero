@@ -175,7 +175,13 @@ export async function generateContractPdf(contrato: ContratoDetalle) {
       }
       doc.text(item.label, 22, rowY);
       doc.setFont("helvetica", "normal");
-      doc.text(item.value, 58, rowY);
+      if (title === "HISTORIAL DEL CONTRATO" || title === "JORNADAS PROGRAMADAS") {
+        doc.setFontSize(9);
+        doc.setTextColor(90, 90, 90);
+        doc.text(item.value, w - 22, rowY, { align: "right" });
+      } else {
+        doc.text(item.value, 58, rowY);
+      }
       rowY += 8;
     });
 
@@ -213,6 +219,11 @@ export async function generateContractPdf(contrato: ContratoDetalle) {
     { label: "Horas", value: `${contrato.duracionHoras} horas` },
   ]);
 
+  card("JORNADAS PROGRAMADAS", contrato.jornadas.map(j => ({
+    label: j.fecha,
+    value: `${j.horario} — [${j.estado.charAt(0).toUpperCase() + j.estado.slice(1)}]`
+  })));
+
   //Pagos
   const com = Math.round(
     (contrato.montoTotal * contrato.comisionPorcentaje) / 100
@@ -234,6 +245,11 @@ export async function generateContractPdf(contrato: ContratoDetalle) {
       value: `S/ ${contrato.montoTotal.toLocaleString("es-PE")}`,
     },
   ]);
+
+  card("HISTORIAL DEL CONTRATO", contrato.historial.map(h => ({
+    label: h.titulo,
+    value: h.fecha
+  })));
 
   //Terminos
   title("TÉRMINOS Y CONDICIONES");
