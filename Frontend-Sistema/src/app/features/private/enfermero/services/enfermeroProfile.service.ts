@@ -884,9 +884,7 @@ export async function updateServiceStatus(
     updated_at: new Date().toISOString(),
   };
 
-  if (status === "completed") {
-    updatePayload.payment_status = "released";
-  }
+
 
   const { error } = await supabase
     .from("services")

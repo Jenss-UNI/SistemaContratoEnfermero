@@ -110,7 +110,6 @@ export default function MisServiciosPage() {
           const allCompleted = days.length > 0 && days.every((d: any) => d.status === "completed");
           if (allCompleted && s.status !== "completed" && s.status !== "cancelled") {
             s.status = "completed";
-            s.payment_status = "released";
             updateServiceStatus(s.id, "completed").catch((err) =>
               console.error("Error auto-completing service in DB:", err)
             );

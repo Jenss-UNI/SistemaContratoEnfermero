@@ -209,8 +209,12 @@ export async function fetchClientHirings(clientId: string): Promise<Contratacion
     ].filter(Boolean).join("").toUpperCase() || "EN";
 
     // Regla de Auto-Liberación: 48 horas desde la finalización si no hay incidente abierto
-    const completionDate = row.updated_at ? new Date(row.updated_at) : (row.created_at ? new Date(row.created_at) : new Date());
-    const hoursPassed = (new Date().getTime() - completionDate.getTime()) / (1000 * 60 * 60);
+    let lastCompletionTime = row.updated_at ? new Date(row.updated_at).getTime() : (row.created_at ? new Date(row.created_at).getTime() : new Date().getTime());
+    if (allDaysCompleted && row.service_days && row.service_days.length > 0) {
+      const maxDate = Math.max(...row.service_days.map((d: any) => new Date(d.updated_at || d.created_at || lastCompletionTime).getTime()));
+      lastCompletionTime = maxDate;
+    }
+    const hoursPassed = (new Date().getTime() - lastCompletionTime) / (1000 * 60 * 60);
     const isAutoReleaseEligible = (row.status === "completed" || allDaysCompleted) && hoursPassed >= 48 && !hasOpenIncident;
 
     // Map DB payment_status: pending, in_custody, released, refunded
@@ -474,8 +478,12 @@ export async function fetchContractDetail(serviceId: number): Promise<ContratoDe
   const hasOpenIncidentDetail = (svc.incident_reports || []).some(
     (inc: any) => inc.status === "abierto"
   );
-  const completionDateDetail = svc.updated_at ? new Date(svc.updated_at) : new Date(svc.created_at);
-  const hoursPassedDetail = (new Date().getTime() - completionDateDetail.getTime()) / (1000 * 60 * 60);
+  let lastCompletionTimeDetail = svc.updated_at ? new Date(svc.updated_at).getTime() : (svc.created_at ? new Date(svc.created_at).getTime() : new Date().getTime());
+  if (allDaysCompletedDetail && svc.service_days && svc.service_days.length > 0) {
+    const maxDateDetail = Math.max(...svc.service_days.map((d: any) => new Date(d.updated_at || d.created_at || lastCompletionTimeDetail).getTime()));
+    lastCompletionTimeDetail = maxDateDetail;
+  }
+  const hoursPassedDetail = (new Date().getTime() - lastCompletionTimeDetail) / (1000 * 60 * 60);
   const isAutoReleaseEligibleDetail = (svc.status === "completed" || allDaysCompletedDetail) && hoursPassedDetail >= 48 && !hasOpenIncidentDetail;
 
   let pagoEstado: any = "pendiente";

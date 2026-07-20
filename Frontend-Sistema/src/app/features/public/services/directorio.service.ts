@@ -116,7 +116,9 @@ function mapRowToNurse(row: any): Nurse {
     district: p.distrito || districts[0] || "Lima",
     districts,
     experience: Number(row.anios_experiencia || 0),
-    completedServices: Number(row.servicios_completados || 0),
+    completedServices: Array.isArray(p.services)
+      ? p.services.filter((s: any) => s.status === "completed").length
+      : Number(row.servicios_completados || 0),
     education: educationList,
     certifications: certificationsList,
     languages,
@@ -152,6 +154,9 @@ export async function fetchPublicNurses(): Promise<Nurse[]> {
         foto_url,
         distrito,
         role,
+        services:services!services_nurse_id_fkey (
+          status
+        ),
         ratings:ratings!ratings_nurse_id_fkey (
           id,
           comment,
@@ -224,6 +229,9 @@ export async function fetchPublicNurseProfile(id: string): Promise<Nurse | null>
         foto_url,
         distrito,
         role,
+        services:services!services_nurse_id_fkey (
+          status
+        ),
         ratings:ratings!ratings_nurse_id_fkey (
           id,
           comment,
