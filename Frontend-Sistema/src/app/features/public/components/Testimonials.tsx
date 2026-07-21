@@ -8,7 +8,7 @@ const testimonials = [
     rating: 5.0,
     comment: 'Contraté a la Lic. María para cuidar a mi madre después de su operación de cadera. Su profesionalismo y calidez nos dieron la tranquilidad que necesitábamos. La plataforma hizo todo muy fácil y el pago fue completamente seguro.',
     service: 'Lic. María Fernández',
-    image: 'https://i.pravatar.cc/150?img=47' 
+    image: 'src/assets/inicio/avatar-12.jpg' 
   },
   {
     name: 'Juan López',
@@ -16,7 +16,7 @@ const testimonials = [
     rating: 5.0,
     comment: 'El enfermero llegó puntual y con toda la preparación. El proceso de selección fue claro y las reseñas me ayudaron a tomar la mejor decisión.',
     service: 'Enfermero Especializado',
-    image: 'https://i.pravatar.cc/150?img=11'
+    image: 'src/assets/inicio/avatar-Defecto.jpg'
   },
   {
     name: 'Sofía Martínez',
@@ -24,7 +24,7 @@ const testimonials = [
     rating: 4.9,
     comment: 'Perfecto servicio de principio a fin. La comunicación con el profesional fue excelente y mi madre se sintió muy cuidada.',
     service: 'Técnico en Enfermería',
-    image: 'https://i.pravatar.cc/150?img=5'
+    image: 'src/assets/inicio/avatar-12.jpg'
   }
 ];
 

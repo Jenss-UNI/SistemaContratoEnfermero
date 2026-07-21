@@ -71,9 +71,9 @@ export default function Hero() {
           <div>
             <div className="flex items-center gap-4 mb-6">
               <div className="flex -space-x-2">
-                <img className="w-10 h-10 lg:w-12 lg:h-12 rounded-full border-2 border-slate-800 object-cover" src="https://i.pravatar.cc/100?img=1" alt="Familia 1" />
-                <img className="w-10 h-10 lg:w-12 lg:h-12 rounded-full border-2 border-slate-800 object-cover" src="https://i.pravatar.cc/100?img=5" alt="Familia 2" />
-                <img className="w-10 h-10 lg:w-12 lg:h-12 rounded-full border-2 border-slate-800 object-cover" src="https://i.pravatar.cc/100?img=9" alt="Familia 3" />
+                <img className="w-10 h-10 lg:w-12 lg:h-12 rounded-full border-2 border-slate-800 object-cover" src="src/assets/inicio/avatar-Defecto.jpg" alt="Familia 1" />
+                <img className="w-10 h-10 lg:w-12 lg:h-12 rounded-full border-2 border-slate-800 object-cover" src="src/assets/inicio/avatar-Defecto.jpg" alt="Familia 2" />
+                <img className="w-10 h-10 lg:w-12 lg:h-12 rounded-full border-2 border-slate-800 object-cover" src="src/assets/inicio/avatar-Defecto.jpg" alt="Familia 3" />
               </div>
               <span className="text-white text-sm lg:text-base font-medium">
                 +2,500 familias peruanas confían en nosotros

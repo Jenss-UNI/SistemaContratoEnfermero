@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Menu, X, LayoutGrid, ChevronDown, LogOut } from "lucide-react";
 import { useAuth } from "../../core/contexts/AuthContext";
+import logoImg from "../../../assets/logo/logo.png";
 
 type HeaderProps = {
   transparentOnTop?: boolean;
@@ -76,11 +77,7 @@ function Header({ transparentOnTop = false }: HeaderProps) {
         
         {/* Logo */}
         <Link to="/" onClick={scrollToTop} className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[#14b8a6] to-[#0ea5e9] flex items-center justify-center p-[2px]">
-            <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-               <div className="w-2 h-2 bg-[#14b8a6] rounded-full"></div>
-            </div>
-          </div>
+          <img src={logoImg} alt="Cuidame Logo" className="w-14 h-14 object-contain" />
           <span className={`text-[18px] font-bold tracking-tight ${isSolid ? "text-[#0f172a]" : "text-white"}`}>
             Cuidame
           </span>

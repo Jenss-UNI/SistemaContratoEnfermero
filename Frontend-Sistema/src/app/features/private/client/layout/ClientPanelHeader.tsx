@@ -1,6 +1,7 @@
 import { Bell, LogOut, Search } from "lucide-react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../../../../core/contexts/AuthContext";
+import logoImg from "../../../../../assets/logo/logo.png";
 
 export default function ClientPanelHeader() {
   const { user, signOut, displayName, initials, fotoUrl } = useAuth();
@@ -21,12 +22,8 @@ export default function ClientPanelHeader() {
       {/* Barra superior: logo + nav + usuario */}
       <div className="border-b border-slate-100">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 h-14 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-teal-400 to-sky-400 flex items-center justify-center p-[2px]">
-              <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-                <div className="w-2.5 h-2.5 bg-teal-500 rounded-full" />
-              </div>
-            </div>
+          <Link to="/" className="flex items-center gap-2.5">
+            <img src={logoImg} alt="Cuidame Logo" className="w-8 h-8 object-contain" />
             <span className="text-xl font-bold tracking-tight text-slate-900">Cuidame</span>
           </Link>
 

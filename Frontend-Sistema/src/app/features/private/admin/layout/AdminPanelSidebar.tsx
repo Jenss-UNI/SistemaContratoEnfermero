@@ -3,6 +3,7 @@ import { ADMIN_NAV_ITEMS } from "../adminNav";
 import { User, ShieldCheck, LogOut, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../../../../core/services/supabase";
+import logoImg from "../../../../../assets/logo/logo.png";
 
 type AdminPanelSidebarProps = {
   closeSidebar?: () => void;
@@ -40,8 +41,9 @@ export default function AdminPanelSidebar({ closeSidebar, onLogoutClick }: Admin
     <div className="flex h-full flex-col bg-white">
 
       <div className="flex h-[72px] flex-shrink-0 items-center justify-between border-b border-slate-200 px-6">
-        <div className="text-xl font-bold text-[#0f766e]">
-          Cuidame
+        <div className="flex items-center gap-2 text-xl font-bold text-[#0f766e]">
+          <img src={logoImg} alt="Cuidame Logo" className="w-7 h-7 object-contain" />
+          <span>Cuidame</span>
         </div>
         <button
           type="button"
